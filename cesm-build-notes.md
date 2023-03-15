@@ -1,4 +1,4 @@
-# Building CESM on CSDC Icelake nodes.
+# Building CESM on CSD3 Icelake nodes.
 
 - Clone the repo and checkout the release branch you want:
 ```bash
