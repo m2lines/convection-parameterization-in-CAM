@@ -1,12 +1,11 @@
 # Convection Parameterization in CAM
 
 ## Description
-This repository contains code as part of an effort to deploy machine learning (ML) models of parameterisations into the [Community Earth System Model (CESM)](https://www.cesm.ucar.edu/).
-This work is part of the [M<sup>2</sup>LInES](https://m2lines.github.io/) project to aiming to improve performance of climate models using ML models for subgrid parameterizations.
+This repository contains code as part of an effort to deploy machine learning (ML) models of geophysical parameterisations into the [Community Earth System Model (CESM)](https://www.cesm.ucar.edu/).
+This work is part of the [M<sup>2</sup>LInES](https://m2lines.github.io/) project aiming to improve performance of climate models using ML models for subgrid parameterizations.
 
 A Neural Net providing a subgrid parameterization of atmospheric convection in a [single column model](https://www.arm.gov/publications/proceedings/conf04/extended_abs/randall_da.pdf) has been developed and successfully deployed as part of an atmospheric simulation.
-The work is described in the [GRL paper - _Use of Neural Networks for Stable, Accurate and Physically Consistent Parameterization of Subgrid Atmospheric Processes With Good Performance at Reduced Precision_](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020GL091363).
-[Accompanying code is available](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3) in a repository containing the neural net and its implementation into a simple system for atmospheric modelling, [SAM](http://rossby.msrc.sunysb.edu/~marat/SAM.html).
+The work is described in a [GRL paper](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020GL091363) with [accompanying code available](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3). The repository contains the neural net and its implementation into a simple system for atmospheric modelling, [SAM](http://rossby.msrc.sunysb.edu/~marat/SAM.html).
 
 The aims of this repository are to:
 1. develop a standalone fortran module based on this neural net that can be used elsewhere,
@@ -17,7 +16,7 @@ We may also perform an investigation into interfacing the pytorch implementation
 
 The model will first be deployed into the [Single Column Atmospheric Model (SCAM)](https://www.cesm.ucar.edu/models/simple/scam) - a single column version of the CESM.
 We plan to evaluate performance using SCAM in the gateIII configuration for tropical convection in a similar manner described by the [SCAM6 pulication in JAMES](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018MS001578).
-This compares to data from an intense observation period (IOP) described in a [AMS publication](https://journals.ametsoc.org/view/journals/atsc/36/1/1520-0469_1979_036_0053_saposs_2_0_co_2.xml).
+This will compare model performance to data from an intense observation period (IOP) described in an [AMS publication](https://journals.ametsoc.org/view/journals/atsc/36/1/1520-0469_1979_036_0053_saposs_2_0_co_2.xml).
 
 Long term developments of this project will seek to re-deploy more complex ML parameterizations into mode complex atmospheric models such as the [Community Atmospheric Model (CAM)](https://www.cesm.ucar.edu/models/cam) part of the CESM.
 
@@ -25,7 +24,7 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 ## Contents
 
 ### `NN_module/`
-This folder contains the fortran neural net extracted from the [code referenced above](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3), along with any dependencies, that may be compiled as a standalone module.
+This folder contains the fortran neural net extracted from the [code referenced above](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3), along with any dependencies, that may be compiled as a standalone fortran module.
 
 Currently there is code that can be built on CSD3 using the included shell script.
 
