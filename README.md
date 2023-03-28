@@ -30,7 +30,6 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 ├── README.md
 └── torch_nets
     └── ...
-
 ```
 
 
