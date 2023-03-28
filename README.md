@@ -21,7 +21,21 @@ This will compare model performance to data from an intense observation period (
 Long term developments of this project will seek to re-deploy more complex ML parameterizations into mode complex atmospheric models such as the [Community Atmospheric Model (CAM)](https://www.cesm.ucar.edu/models/cam) part of the CESM.
 
 
-## Contents
+## Repository structure
+
+```
+├── LICENSE
+├── NN_module
+│   └── ...
+├── README.md
+└── torch_nets
+    └── ...
+
+```
+
+
+
+### Contents
 
 ### `NN_module/`
 This folder contains the fortran neural net extracted from the [code referenced above](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3), along with any dependencies, that may be compiled as a standalone fortran module.
@@ -29,6 +43,9 @@ This folder contains the fortran neural net extracted from the [code referenced 
 Currently there is code that can be built on CSD3 using the included shell script.
 
 This now needs cleaning up, testing, and a proper makefile creating (see open issues #9 and #10).
+
+### ``torch_nets/``
+The directory contains the PyTorch versions of the neural networks we are interested in.
 
 
 ## Contributing
