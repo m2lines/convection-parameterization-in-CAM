@@ -1,13 +1,14 @@
 name: cam-param
 channels:
+  - defaults
   - pytorch
-  - anaconda
+  - nvidia
 dependencies:
   - python>=3.10
-  - mypy
   - pytorch
   - pytorch-cuda
   - black
   - pytest
   - pydocstyle
   - pylint
+  - mypy
