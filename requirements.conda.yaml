@@ -1,4 +1,4 @@
-name: torch-tools
+name: cam-param
 channels:
   - pytorch
   - anaconda
