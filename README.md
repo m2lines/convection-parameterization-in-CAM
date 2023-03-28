@@ -24,10 +24,8 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 ## Repository structure
 
 ```
-├── LICENSE
 ├── NN_module
 │   └── ...
-├── README.md
 └── torch_nets
     └── ...
 ```
