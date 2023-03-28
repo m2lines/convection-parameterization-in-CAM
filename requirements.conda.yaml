@@ -1,0 +1,13 @@
+name: torch-tools
+channels:
+  - pytorch
+  - anaconda
+dependencies:
+  - python>=3.10
+  - mypy
+  - pytorch
+  - pytorch-cuda
+  - black
+  - pytest
+  - pydocstyle
+  - pylint
