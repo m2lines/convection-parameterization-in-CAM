@@ -101,6 +101,12 @@ class Net_ANN_4_no_BN(Module):
 
 
 class Net_ANN_5_no_BN(Module):
+    """This seems to be the model used in the paper.
+
+    Paper: https://doi.org/10.1029/2020GL091363
+
+    """
+
     def __init__(self, n_in, n_out, neurons=128, dropoff=0.0):
         super(Net_ANN_5_no_BN, self).__init__()
         self.linear1 = Linear(n_in, neurons)
