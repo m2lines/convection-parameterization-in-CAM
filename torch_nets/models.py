@@ -32,9 +32,7 @@ class ANN(Module):
         self.linear4 = Linear(neurons, neurons)
         self.linear5 = Linear(neurons, n_out)
 
-        self.lin_drop = Dropout(
-            dropout
-        )  # regularization method to prevent overfitting.
+        self.lin_drop = Dropout(dropout)
         self.lin_drop2 = Dropout(dropout)
         self.lin_drop3 = Dropout(dropout)
         self.lin_drop4 = Dropout(dropout)
