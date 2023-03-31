@@ -67,6 +67,17 @@ private
 
 contains
 
+   subroutine relu(logits)
+
+      real(4), dimension(:), intent(inout)   :: logits
+      where (logits .lt. 0.0)  logits = 0.0
+
+   end subroutine relu
+
+
+
+
+
 !#######################################################################
 
    subroutine nn_convection_flux_init
@@ -91,9 +102,9 @@ integer :: xscale_mean_varid, xscale_stnd_varid
 integer :: yscale_mean_varid, yscale_stnd_varid
 
 character(len=256) :: nn_filename
- 
+
       call task_rank_to_index(rank,it,jt)
- 
+
 
 !-------------allocate arrays and read data-------------------------
 
@@ -118,17 +129,17 @@ character(len=256) :: nn_filename
       call check( nf90_inquire_dimension(ncid, h3_dimid, len=n_h3))
 
       call check( nf90_inq_dimid(ncid, 'N_h4', h4_dimid))
-      call check( nf90_inquire_dimension(ncid, h4_dimid, len=n_h4)) 
+      call check( nf90_inquire_dimension(ncid, h4_dimid, len=n_h4))
       call check( nf90_inq_dimid(ncid, 'N_out', out_dimid))
       call check( nf90_inquire_dimension(ncid, out_dimid, len=n_out))
 
       call check( nf90_inq_dimid(ncid, 'N_out_dim', out_dimid))
-      call check( nf90_inquire_dimension(ncid, out_dimid, len=o_var_dim)) 
+      call check( nf90_inquire_dimension(ncid, out_dimid, len=o_var_dim))
 
      print *, 'size of features', n_in
      print *, 'size of outputs', n_out
 
-     nrf = 30 ! Size in the vertical 
+     nrf = 30 ! Size in the vertical
      nrfq = 29 !Size in the vertical  for advection
 
       call check( nf90_open(     trim(nn_filename),NF90_NOWRITE,ncid ))
@@ -150,7 +161,7 @@ character(len=256) :: nn_filename
       allocate(z4(n_h4))
       allocate(z5(n_out))
 
-     
+
       allocate(xscale_mean(n_in))
       allocate(xscale_stnd(n_in))
 
@@ -192,7 +203,7 @@ character(len=256) :: nn_filename
       call check( nf90_inq_varid(ncid,"oscale_stnd",     yscale_stnd_varid))
       call check( nf90_get_var(  ncid, yscale_stnd_varid,yscale_stnd      ))
 
-    
+
 ! Close the file
       call check( nf90_close(ncid))
 
@@ -214,7 +225,7 @@ character(len=256) :: nn_filename
 !
 !-----------------------------------------------------------------------
 !
-!   input:  tabs               absolute temperature 
+!   input:  tabs               absolute temperature
 !           q                  total non-precipitating water
 !           distance from equator
 !   changes: t                 liquid static energy as temperature
@@ -239,10 +250,10 @@ character(len=256) :: nn_filename
 
    if (do_init) call error_mesg('nn_convection_flux_init has not been called.')
    if (.not. rf_uses_qp) then
-    ! initialize precipitation 
+    ! initialize precipitation
     if(mod(nstep-1,nstatis).eq.0.and.icycle.eq.1) precsfc(:,:)=0.
    end if
- 
+
    rev_dz = 1/dz
    rev_dz2 = 1/(dz*dz)
 
@@ -272,7 +283,7 @@ character(len=256) :: nn_filename
         z2 = 0.
         z3 = 0.
         z4 = 0.
-        z5 = 0.        
+        z5 = 0.
         dim_counter = 0
         omp = 0.
         fac = 0.
@@ -304,12 +315,12 @@ character(len=256) :: nn_filename
         if(do_yin_input) then
          features(dim_counter+1) = real(abs(dy*(j+jt-(ny_gl+YES3D-1)/2-0.5)))
          dim_counter = dim_counter+1
-         
+
         endif
 
 
-       
-         
+
+
 !Normalize features
        features = (features - xscale_mean) / xscale_stnd
 
@@ -324,7 +335,7 @@ character(len=256) :: nn_filename
 
 ! forward prop to output layer
 
-        
+
         z2 = matmul( z1,r_w2) + r_b2
         where (z2 .lt. 0.0)  z2 = 0.0
 
@@ -341,7 +352,7 @@ character(len=256) :: nn_filename
         t_rad_rest_tend(1:nrf) = (outputs(1:nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
         out_dim_counter = nrf
         out_var_control = out_var_control + 1
-        t_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq)* yscale_stnd(out_var_control))  +  yscale_mean(out_var_control) 
+        t_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq)* yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
         out_dim_counter = out_dim_counter + nrfq
         out_var_control = out_var_control + 1
         q_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
@@ -355,51 +366,51 @@ character(len=256) :: nn_filename
         out_var_control = out_var_control + 1
 
 !        advection surface flux is zero
-        t_flux_adv(1) = 0.0 
+        t_flux_adv(1) = 0.0
         q_flux_adv(1) = 0.0
-        
+
         do k=2,nrf
-         if (q_flux_adv(k).lt.0) then          
+         if (q_flux_adv(k).lt.0) then
           if ( q(i,j,k).lt.-q_flux_adv(k)* irhoadzdz(k)) then
            q_flux_adv(k) = -q(i,j,k)/irhoadzdz(k)
           end if
-         else 
+         else
           if (q(i,j,k-1).lt.q_flux_adv(k)* irhoadzdz(k)) then
           q_flux_adv(k) = q(i,j,k-1)/irhoadzdz(k)
           end if
          end if
-        end do 
-        do k=1,nrf-1 
+        end do
+        do k=1,nrf-1
            t_tendency_adv(k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
            q_tendency_adv(k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
         end do
-        k = nrf 
+        k = nrf
         t_tendency_adv(k) = - (0.0 - t_flux_adv(k)) * irhoadzdz(k)
         q_tendency_adv(k) = - (0.0 - q_flux_adv(k)) * irhoadzdz(k)
 
         do k=1,nrf
          if (q(i,j,k).lt.-q_tendency_adv(k)) then
           q_tendency_adv(k) = -q(i,j,k)
-         end if 
+         end if
         end do
-        t(i,j,1:nrf) = t(i,j,1:nrf) + t_tendency_adv(1:nrf) 
+        t(i,j,1:nrf) = t(i,j,1:nrf) + t_tendency_adv(1:nrf)
         q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_adv(1:nrf)
 
 
         do k=1,nrf
          omp(k) = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
-         fac(k) = (fac_cond + fac_fus * (1.0 - omp(k))) 
+         fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
          if (q_tendency_auto(k).lt.0) then
-          q_tend_tot(k) = min(-q_tendency_auto(k) * dtn, q(i,j,k))!q_tendency_auto(1:nrf) * dtn + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)       
+          q_tend_tot(k) = min(-q_tendency_auto(k) * dtn, q(i,j,k))!q_tendency_auto(1:nrf) * dtn + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
           q_tend_tot(k) = -q_tend_tot(k)
-         else 
-          q_tend_tot(k) = q_tendency_auto(k) * dtn 
+         else
+          q_tend_tot(k) = q_tendency_auto(k) * dtn
          endif
         end do
 
- 
+
         q(i,j,1:nrf) = q(i,j,1:nrf) +q_tend_tot(1:nrf)
-        t(i,j,1:nrf) = t(i,j,1:nrf)  -q_tend_tot(1:nrf)*fac(1:nrf) 
+        t(i,j,1:nrf) = t(i,j,1:nrf)  -q_tend_tot(1:nrf)*fac(1:nrf)
 
       do k=2,nrf
          if (q_flux_sed(k).lt.0) then
@@ -416,7 +427,7 @@ character(len=256) :: nn_filename
          do k=1,nrf-1 ! One level less than I actually use
            q_tendency_sed(k) = - (q_flux_sed(k+1) - q_flux_sed(k)) * irhoadzdz(k)
         end do
-        k = nrf  
+        k = nrf
         q_tendency_sed(k) = - (0.0 - q_flux_sed(k)) * irhoadzdz(k)
 
 
@@ -427,11 +438,11 @@ character(len=256) :: nn_filename
          end if
         end do
 
-        t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond) 
+        t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond)
         q(i,j,1:nrf) = q(i,j,1:nrf) +q_tendency_sed(1:nrf)
-        
-        t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn 
-        
+
+        t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn
+
         precsfc(i,j) = precsfc(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For statistics
         prec_xy(i,j) = prec_xy(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For 2D output
 
@@ -455,7 +466,7 @@ character(len=256) :: nn_filename
 
        end do
      end do
-    
+
 
 
 
@@ -472,7 +483,7 @@ character(len=256) :: nn_filename
   subroutine check(status)
 
     ! checks error status after each netcdf, prints out text message each time
-    !   an error code is returned. 
+    !   an error code is returned.
 
     integer, intent(in) :: status
 
@@ -499,4 +510,3 @@ character(len=256) :: nn_filename
 
 
 end module nn_convection_flux_mod
-
