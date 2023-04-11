@@ -12,3 +12,4 @@ dependencies:
   - pydocstyle
   - pylint
   - mypy
+  - netcdf4
