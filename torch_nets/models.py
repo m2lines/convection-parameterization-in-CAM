@@ -32,7 +32,7 @@ class ANN(Module):
         self.linear4 = Linear(neurons, neurons)
         self.linear5 = Linear(neurons, n_out)
 
-        self.lin_drop = Dropout(dropout)
+        self.lin_drop1 = Dropout(dropout)
         self.lin_drop2 = Dropout(dropout)
         self.lin_drop3 = Dropout(dropout)
         self.lin_drop4 = Dropout(dropout)
@@ -52,7 +52,7 @@ class ANN(Module):
 
         """
         batch = F.relu(self.linear1(batch))
-        batch = self.lin_drop(batch)
+        batch = self.lin_drop1(batch)
 
         batch = F.relu(self.linear2(batch))
         batch = self.lin_drop2(batch)
