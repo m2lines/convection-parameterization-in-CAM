@@ -5,7 +5,7 @@ from torch.nn import Module, Linear, Dropout
 from torch.nn import functional as F
 
 
-class ANN(Module): #pylint: disable=too-many-instance-attributes
+class ANN(Module):  # pylint: disable=too-many-instance-attributes
     """This seems to be the model used in the paper.
 
     Paper: https://doi.org/10.1029/2020GL091363
@@ -37,6 +37,24 @@ class ANN(Module): #pylint: disable=too-many-instance-attributes
         self.lin_drop2 = Dropout(dropout)
         self.lin_drop3 = Dropout(dropout)
         self.lin_drop4 = Dropout(dropout)
+
+    def endow_with_netcdf_parameters(self, nc_file: str):
+        """Endow the model with the parameters saved in ``nc_file``.
+
+        Parameters
+        ----------
+        nc_file : str
+            Netcdf file with the parameters.
+
+        """
+        data_set = self._load_params_from_netcdf(nc_file)
+
+        for name, layer in self.named_children():
+            if not isinstance(layer, Linear):
+                continue
+
+            layer_num = int("".join(filter(lambda x: x.isdigit(), name)))
+            device = str(layer.weight.device)
 
     def _load_params_from_netcdf(self, nc_file: str):
         """Load weights and biases from ``nc_file``.
@@ -83,3 +101,7 @@ class ANN(Module): #pylint: disable=too-many-instance-attributes
         batch = self.linear5(batch)
 
         return batch
+
+
+if __name__ == "__main__":
+    pass
