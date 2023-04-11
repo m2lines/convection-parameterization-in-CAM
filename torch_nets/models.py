@@ -1,10 +1,11 @@
 """Neural network architectures."""
+import netCDF4 as nc
 
 from torch.nn import Module, Linear, Dropout
 from torch.nn import functional as F
 
 
-class ANN(Module):
+class ANN(Module): #pylint: disable=too-many-instance-attributes
     """This seems to be the model used in the paper.
 
     Paper: https://doi.org/10.1029/2020GL091363
@@ -17,7 +18,7 @@ class ANN(Module):
     n_out : int
         Number of output features.
     neurons : int
-        The number of neurons in the hidden layers.
+        The number of neurons in the bhidden layers.
     dropout : float
         The dropout probability to apply in the hidden layers.
 
@@ -36,6 +37,22 @@ class ANN(Module):
         self.lin_drop2 = Dropout(dropout)
         self.lin_drop3 = Dropout(dropout)
         self.lin_drop4 = Dropout(dropout)
+
+    def _load_params_from_netcdf(self, nc_file: str):
+        """Load weights and biases from ``nc_file``.
+
+        Parameters
+        ----------
+        nc_file : str
+            Path to the file containing the weights.
+
+        Returns
+        -------
+        nc.Dataset
+            A netcdf dataset containing the weights.
+
+        """
+        return nc.Dataset(nc_file)  # pylint: disable=no-member
 
     def forward(self, batch):
         """Pass ``batch`` through the model.
