@@ -78,7 +78,7 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
 
 
 @no_grad()
-def endow_model_with_netcdf_params(model: Module, nc_file: str):
+def endow_with_netcdf_params(model: Module, nc_file: str):
     """Endow the model with weights and biases in the netcdf file.
 
     Parameters
@@ -118,4 +118,4 @@ if __name__ == "__main__":
 
     nc_file = "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
 
-    endow_model_with_netcdf_params(model, nc_file)
+    endow_with_netcdf_params(model, nc_file)
