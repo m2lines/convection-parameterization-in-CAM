@@ -1,6 +1,8 @@
 """Neural network architectures."""
 import netCDF4 as nc
 
+from torch import as_tensor, no_grad  # pylint: disable=no-name-in-module
+
 from torch.nn import Module, Linear, Dropout
 from torch.nn import functional as F
 
@@ -24,7 +26,13 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
 
     """
 
-    def __init__(self, n_in, n_out, neurons=128, dropout=0.0):
+    def __init__(
+        self,
+        n_in: int = 61,
+        n_out: int = 148,
+        neurons=128,
+        dropout=0.0,
+    ):
         """Build ``ANN``."""
         super().__init__()
         self.linear1 = Linear(n_in, neurons)
@@ -37,40 +45,6 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
         self.lin_drop2 = Dropout(dropout)
         self.lin_drop3 = Dropout(dropout)
         self.lin_drop4 = Dropout(dropout)
-
-    def endow_with_netcdf_parameters(self, nc_file: str):
-        """Endow the model with the parameters saved in ``nc_file``.
-
-        Parameters
-        ----------
-        nc_file : str
-            Netcdf file with the parameters.
-
-        """
-        data_set = self._load_params_from_netcdf(nc_file)
-
-        for name, layer in self.named_children():
-            if not isinstance(layer, Linear):
-                continue
-
-            layer_num = int("".join(filter(lambda x: x.isdigit(), name)))
-            device = str(layer.weight.device)
-
-    def _load_params_from_netcdf(self, nc_file: str):
-        """Load weights and biases from ``nc_file``.
-
-        Parameters
-        ----------
-        nc_file : str
-            Path to the file containing the weights.
-
-        Returns
-        -------
-        nc.Dataset
-            A netcdf dataset containing the weights.
-
-        """
-        return nc.Dataset(nc_file)  # pylint: disable=no-member
 
     def forward(self, batch):
         """Pass ``batch`` through the model.
@@ -103,5 +77,45 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
         return batch
 
 
+@no_grad()
+def endow_model_with_netcdf_params(model: Module, nc_file: str):
+    """Endow the model with weights and biases in the netcdf file.
+
+    Parameters
+    ----------
+    model : Module
+        The model to add the parameters to.
+    nc_file : str
+        The netcdf file containing the parameters.
+
+    """
+    data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
+
+    for name, layer in model.named_children():
+        if not isinstance(layer, Linear):
+            continue
+
+        layer_num = int("".join(filter(lambda x: x.isdigit(), name)))
+
+        weight = as_tensor(
+            data_set.variables[f"w{layer_num}"][:],
+            dtype=layer.weight.dtype,
+            device=layer.weight.device,
+        )
+
+        bias = as_tensor(
+            data_set.variables[f"b{layer_num}"][:],
+            dtype=layer.bias.dtype,
+            device=layer.bias.device,
+        )
+
+        layer.weight[:] = weight[:]
+        layer.bias[:] = bias[:]
+
+
 if __name__ == "__main__":
-    pass
+    model = ANN(61, 148)
+
+    nc_file = "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
+
+    endow_model_with_netcdf_params(model, nc_file)
