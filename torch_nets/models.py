@@ -24,6 +24,11 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
     dropout : float
         The dropout probability to apply in the hidden layers.
 
+    Notes
+    -----
+    If you are doing inference, always remember ot put the model in eval model,
+    by using ``model.eval()``, so the dropout layers are turned off.
+
     """
 
     def __init__(
