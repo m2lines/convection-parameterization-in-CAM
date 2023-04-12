@@ -88,6 +88,11 @@ def endow_with_netcdf_params(model: Module, nc_file: str):
     nc_file : str
         The netcdf file containing the parameters.
 
+    Notes
+    -----
+    This function is protected with ``no_grad`` because PyTorch doesn't like
+    it when we edit a layer's weights/biases with gradients enabled.
+
     """
     data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
 
