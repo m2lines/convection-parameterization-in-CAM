@@ -26,7 +26,7 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
 
     Notes
     -----
-    If you are doing inference, always remember ot put the model in eval model,
+    If you are doing inference, always remember to put the model in eval model,
     by using ``model.eval()``, so the dropout layers are turned off.
 
     """
