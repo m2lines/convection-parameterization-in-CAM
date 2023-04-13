@@ -65,16 +65,38 @@ real(4), allocatable, dimension(:)       :: yscale_stnd
 
 !-----------------------------------------------------------------------
 
+
+
 contains
 
-   subroutine relu(logits)
+  subroutine relu(logits)
 
-      real(4), dimension(:), intent(inout)   :: logits
-      where (logits .lt. 0.0)  logits = 0.0
+    real(4), dimension(:), intent(inout)   :: logits
+    where (logits .lt. 0.0)  logits = 0.0
 
-   end subroutine relu
+  end subroutine relu
 
 
+
+  subroutine net_forward(features)
+
+    real(4), dimension(:), intent(in) :: features
+
+    z1 = matmul( features, r_w1) + r_b1
+    z1 = relu(z1)
+
+    z2 = matmul( z1,r_w2) + r_b2
+    z2 = relu(z2)
+
+    z3 = matmul( z2,r_w3) + r_b3
+    z3 = relu(z3)
+
+    z4 = matmul( z3,r_w4) + r_b4
+    z4 = relu(z4)
+
+    outputs = matmul( z4,r_w5) + r_b5
+
+  end subroutine
 
 
 
@@ -88,7 +110,7 @@ contains
 !
 !-----------------------------------------------------------------------
   integer  unit,io,ierr
-  
+
   ! This will be the netCDF ID for the file and data variable.
   integer :: ncid
   integer :: in_dimid, h1_dimid, out_dimid, single_dimid
@@ -96,18 +118,18 @@ contains
   integer :: r_w1_varid, r_w2_varid, r_b1_varid, r_b2_varid
   integer :: r_w3_varid, r_w4_varid, r_b3_varid, r_b4_varid
   integer :: r_w5_varid, r_b5_varid
-  
-  
+
+
   integer :: xscale_mean_varid, xscale_stnd_varid
   integer :: yscale_mean_varid, yscale_stnd_varid
-  
+
   character(len=1024), intent(in) :: nn_filename
-  
+
   call task_rank_to_index(rank,it,jt)
-  
-  
+
+
   !-------------allocate arrays and read data-------------------------
-  
+
   ! Open the file. NF90_NOWRITE tells netCDF we want read-only access
   ! Get the varid or dimid for each variable or dimension based on its name.
 
@@ -317,13 +339,13 @@ end subroutine nn_convection_flux_init
           dim_counter =  dim_counter + input_ver_dim
         endif
       endif
-      
+
       ! If using TODO?? then add as input feature
       if (rf_uses_qp) then
         features(dim_counter+1:dim_counter+input_ver_dim) = real(qp_i(i,j,1:input_ver_dim),4)
         dim_counter = dim_counter + input_ver_dim
       endif
- 
+
       ! If using TODO - Some magical mystery input?? then add as input feature
       if(do_yin_input) then
         features(dim_counter+1) = real(abs(dy*(j+jt-(ny_gl+YES3D-1)/2-0.5)))
@@ -518,38 +540,38 @@ end subroutine error_mesg
 
 !#######################################################################
 subroutine task_rank_to_index (rank,i,j)
-        
-!   returns the pair of  beginning indeces for the subdomain on the  
+
+!   returns the pair of  beginning indeces for the subdomain on the
 !   global grid given the subdomain's rank.
 
 integer ::  rank, i, j
-                
-j = rank/nsubdomains_x 
+
+j = rank/nsubdomains_x
 i = rank - j*nsubdomains_x
-        
-i = i * (nx_gl/nsubdomains_x) 
-j = j * (ny_gl/nsubdomains_y) 
-        
+
+i = i * (nx_gl/nsubdomains_x)
+j = j * (ny_gl/nsubdomains_y)
+
 end subroutine task_rank_to_index
 
 
 !#######################################################################
-! 
-! 
+!
+!
 ! ! Need omegan function to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
-! 
+!
 ! real function omegan(tabs)
 ! real tabs
 ! omegan = max(0.,min(1.,(tabs-tbgmin)*a_bg))
 ! return
 ! end
-! 
+!
 ! real function omegap(tabs)
 ! real tabs
 ! omegap = max(0.,min(1.,(tabs-tprmin)*a_pr))
 ! return
 ! end
-! 
+!
 ! real function omegag(tabs)
 ! real tabs
 ! omegag = max(0.,min(1.,(tabs-tgrmin)*a_gr))
