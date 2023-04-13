@@ -78,10 +78,10 @@ contains
 
 
 
-  subroutine net_forward(features)
+  subroutine net_forward(features, logits)
 
     real(4), dimension(:), intent(in)   :: features
-    real(4), dimension(:), intent(out)  :: outputs
+    real(4), dimension(:), intent(out)  :: logits
 
     z1 = matmul( features, r_w1) + r_b1
     z1 = relu(z1)
@@ -95,7 +95,7 @@ contains
     z4 = matmul( z3,r_w4) + r_b4
     z4 = relu(z4)
 
-    outputs = matmul( z4,r_w5) + r_b5
+    logits = matmul( z4,r_w5) + r_b5
 
   end subroutine
 
