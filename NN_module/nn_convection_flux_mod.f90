@@ -80,7 +80,8 @@ contains
 
   subroutine net_forward(features)
 
-    real(4), dimension(:), intent(in) :: features
+    real(4), dimension(:), intent(in)   :: features
+    real(4), dimension(:), intent(out)  :: outputs
 
     z1 = matmul( features, r_w1) + r_b1
     z1 = relu(z1)
