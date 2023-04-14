@@ -232,12 +232,12 @@ real &
 ! register functions:
 
 
-        real esatw,esati,dtesatw,dtesati
-        real qsatw,qsati,dtqsatw,dtqsati
-        external esatw,esati,dtesatw,dtesati,qsatw,qsati,dtqsatw,dtqsati
+        !real esatw,esati,dtesatw,dtesati
+        !real qsatw,qsati,dtqsatw,dtqsati
+        !external esatw,esati,dtesatw,dtesati,qsatw,qsati,dtqsatw,dtqsati
 
-	real omegan, omegap, omegag
-	external omegan, omegap, omegag
+	!real omegan, omegap, omegag
+	!external omegan, omegap, omegag
 
 
         integer lenstr

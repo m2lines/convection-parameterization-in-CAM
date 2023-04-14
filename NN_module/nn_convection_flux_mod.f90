@@ -1,4 +1,3 @@
-
 ! neural_net convection emulator
 
 module nn_convection_flux_mod
@@ -8,7 +7,7 @@ module nn_convection_flux_mod
 use netcdf
 use vars
 use grid
-use params , only: fac_cond, fac_fus, tprmin, a_pr, cp
+use params , only: fac_cond, fac_fus, tprmin, a_pr, cp, a_bg, tbgmin
 implicit none
 private
 
@@ -19,14 +18,28 @@ private
 public  relu, nn_convection_flux_init, nn_convection_flux
 
 !-----------------------------------------------------------------------
-!   ---- version number ----
-
-character(len=128) :: version = '$Id: nn_convection_flux.f90,v 1 2017/08 fms Exp $'
-character(len=128) :: tag = '$Name: fez $'
-
-!-----------------------------------------------------------------------
 !   ---- local/private data ----
 
+! Parameters from that are used here
+!! From domain.f90
+!integer, parameter :: YES3D = 1   ! Domain dimensionality: 1 - 3D, 0 - 2D
+!integer, parameter :: nx_gl = 72  ! Number of grid points in X - Yani changed to 36 from 32
+!integer, parameter :: ny_gl = 180 ! Number of grid points in Y
+!integer, parameter :: nz_gl = 48  ! Number of pressure (scalar) levels
+!integer, parameter :: nsubdomains_x  = 3  ! No of subdomains in x
+!integer, parameter :: nsubdomains_y  = 12 ! No of subdomains in y
+!
+!! From grid.f90
+!integer, parameter :: nx = nx_gl/nsubdomains_x   ! Number of x points in a subdomain
+!integer, parameter :: ny = ny_gl/nsubdomains_y   !           y
+!integer, parameter :: nz = nz_gl+1               !           z
+!integer, parameter :: nzm = nz-1                 ! ???
+
+
+
+
+
+! Neural Net Parameters
 logical :: do_init=.true.
 
 integer :: n_in ! Input dim features
@@ -132,11 +145,11 @@ contains
   call check( nf90_inq_dimid(ncid, 'N_out_dim', out_dimid))
   call check( nf90_inquire_dimension(ncid, out_dimid, len=o_var_dim))
 
-  rint *, 'size of features', n_in
-  rint *, 'size of outputs', n_out
+  print *, 'size of features', n_in
+  print *, 'size of outputs', n_out
 
-  rf = 30 ! Size in the vertical
-  rfq = 29 !Size in the vertical  for advection
+  nrf = 30 ! Size in the vertical
+  nrfq = 29 !Size in the vertical  for advection
 
   call check( nf90_open(     trim(nn_filename),NF90_NOWRITE,ncid ))
 
@@ -519,7 +532,7 @@ end subroutine error_mesg
 !#######################################################################
 subroutine task_rank_to_index (rank,i,j)
         
-!   returns the pair of  beginning indeces for the subdomain on the  
+!   returns the pair of  beginning indices for the subdomain on the  
 !   global grid given the subdomain's rank.
 
 integer ::  rank, i, j
@@ -534,15 +547,13 @@ end subroutine task_rank_to_index
 
 
 !#######################################################################
+! Need omegan function to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
 ! 
-! 
-! ! Need omegan function to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
-! 
-! real function omegan(tabs)
-! real tabs
-! omegan = max(0.,min(1.,(tabs-tbgmin)*a_bg))
-! return
-! end
+real function omegan(tabs)
+  real :: tabs
+  omegan = max(0.,min(1.,(tabs-tbgmin)*a_bg))
+  return
+end function
 ! 
 ! real function omegap(tabs)
 ! real tabs
@@ -555,5 +566,95 @@ end subroutine task_rank_to_index
 ! omegag = max(0.,min(1.,(tabs-tgrmin)*a_gr))
 ! return
 ! end
+
+!#######################################################################
+! Need qsatw functions to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/sat.f90
+! 
+! Saturation vapor pressure and mixing ratio. 
+! Based on Flatau et.al, (JAM, 1992:1507)
+!
+
+real function esatw(t)
+  real :: t  ! temperature (K)
+  real :: a0,a1,a2,a3,a4,a5,a6,a7,a8 
+  data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+          6.105851, 0.4440316, 0.1430341e-1, &
+          0.2641412e-3, 0.2995057e-5, 0.2031998e-7, &
+          0.6936113e-10, 0.2564861e-13,-0.3704404e-15/
+  !       6.11239921, 0.443987641, 0.142986287e-1, &
+  !       0.264847430e-3, 0.302950461e-5, 0.206739458e-7, &
+  !       0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
+  real :: dt
+  dt = max(-80.,t-273.16)
+  esatw = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
+end function esatw
+
+real function qsatw(t,p)
+  real :: t  ! temperature (K)
+  real :: p  ! pressure    (mb)
+  real :: esat, esatw
+  esat = esatw(t)
+  qsatw = 0.622 * esat/max(esat, p-esat)
+end function
+ 
+real function dtesatw(t)
+  real :: t  ! temperature (K)
+  real :: a0,a1,a2,a3,a4,a5,a6,a7,a8 
+  data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+            0.443956472, 0.285976452e-1, 0.794747212e-3, &
+            0.121167162e-4, 0.103167413e-6, 0.385208005e-9, &
+           -0.604119582e-12, -0.792933209e-14, -0.599634321e-17/
+  real :: dt
+  dt = max(-80.,t-273.16)
+  dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
+end function
+
+real function dtqsatw(t,p)
+  real :: t  ! temperature (K)
+  real :: p  ! pressure    (mb)
+  real :: dtesatw
+  dtqsatw=0.622*dtesatw(t)/p
+end function
+ 
+real function esati(t)
+  real :: t  ! temperature (K)
+  real :: a0,a1,a2,a3,a4,a5,a6,a7,a8 
+  data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+          6.11147274, 0.503160820, 0.188439774e-1, &
+          0.420895665e-3, 0.615021634e-5,0.602588177e-7, &
+          0.385852041e-9, 0.146898966e-11, 0.252751365e-14/       
+  real :: dt
+  dt = max(-80.0, t-273.16)
+  esati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
+end function
+ 
+real function qsati(t,p)
+  real :: t  ! temperature (K)
+  real :: p  ! pressure    (mb)
+  real :: esat,esati
+  esat = esati(t)
+  qsati = 0.622 * esat/max(esat,p-esat)
+end function
+        
+        
+real function dtesati(t)
+  real :: t  ! temperature (K)
+  real :: a0,a1,a2,a3,a4,a5,a6,a7,a8 
+  data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
+          0.503223089, 0.377174432e-1,0.126710138e-2, &
+          0.249065913e-4, 0.312668753e-6, 0.255653718e-8, &
+          0.132073448e-10, 0.390204672e-13, 0.497275778e-16/
+  real :: dt
+  dt = max(-800. ,t-273.16)
+  dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
+end function
+        
+        
+real function dtqsati(t,p)
+  real :: t  ! temperature (K)
+  real :: p  ! pressure    (mb)
+  real :: dtesati
+  dtqsati = 0.622 * dtesati(t) / p
+end function dtqsati
 
 end module nn_convection_flux_mod
