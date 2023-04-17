@@ -8,7 +8,7 @@ from torch.nn import functional as F
 
 
 class ANN(Module):  # pylint: disable=too-many-instance-attributes
-    """This seems to be the model used in the paper.
+    """Model used in the paper.
 
     Paper: https://doi.org/10.1029/2020GL091363
 
