@@ -84,16 +84,16 @@ contains
       real(4), dimension(:), intent(out)  :: logits
 
       z1 = matmul( features, r_w1) + r_b1
-      z1 = relu(z1)
+      call relu(z1)
 
       z2 = matmul( z1,r_w2) + r_b2
-      z2 = relu(z2)
+      call relu(z2)
 
       z3 = matmul( z2,r_w3) + r_b3
-      z3 = relu(z3)
+      call relu(z3)
 
       z4 = matmul( z3,r_w4) + r_b4
-      z4 = relu(z4)
+      call relu(z4)
 
       logits = matmul( z4,r_w5) + r_b5
 
@@ -155,11 +155,11 @@ contains
       call check( nf90_inq_dimid(ncid, 'N_out_dim', out_dimid))
       call check( nf90_inquire_dimension(ncid, out_dimid, len=o_var_dim))
 
-      rint *, 'size of features', n_in
-      rint *, 'size of outputs', n_out
+      print *, 'size of features', n_in
+      print *, 'size of outputs', n_out
 
-      rf = 30 ! Size in the vertical
-      rfq = 29 !Size in the vertical  for advection
+      nrf = 30 ! Size in the vertical
+      nrfq = 29 !Size in the vertical  for advection
 
       call check( nf90_open(     trim(nn_filename),NF90_NOWRITE,ncid ))
 
@@ -324,34 +324,34 @@ contains
                dim_counter = dim_counter + input_ver_dim
             endif
 
-            ! If using water content then add as input feature
-            if (qin_feature_rf) then
-               ! If using generalised relative humidity to estimate water content
-               if (rf_uses_rh) then
-                  do k=1,nzm
-                     omn = omegan(tabs(i,j,k))
-                     qsat(k) = omn*qsatw(tabs(i,j,k),pres(k))+(1.-omn)*qsati(tabs(i,j,k),pres(k))
-                  end do
-                  features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim)/qsat(1:input_ver_dim),4)
-                  dim_counter = dim_counter + input_ver_dim
-                  ! if using non-precipitating water as water content
-               else
-                  features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim),4)
-                  dim_counter =  dim_counter + input_ver_dim
-               endif
-            endif
+            ! ! If using water content then add as input feature
+            ! if (qin_feature_rf) then
+            !    ! If using generalised relative humidity to estimate water content
+            !    if (rf_uses_rh) then
+            !       do k=1,nzm
+            !          ! omn = omegan(tabs(i,j,k))
+            !          ! qsat(k) = omn*qsatw(tabs(i,j,k),pres(k))+(1.-omn)*qsati(tabs(i,j,k),pres(k))
+            !       end do
+            !       features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim)/qsat(1:input_ver_dim),4)
+            !       dim_counter = dim_counter + input_ver_dim
+            !       ! if using non-precipitating water as water content
+            !    else
+            !       features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim),4)
+            !       dim_counter =  dim_counter + input_ver_dim
+            !    endif
+            ! endif
 
-            ! If using TODO?? then add as input feature
-            if (rf_uses_qp) then
-               features(dim_counter+1:dim_counter+input_ver_dim) = real(qp_i(i,j,1:input_ver_dim),4)
-               dim_counter = dim_counter + input_ver_dim
-            endif
+            ! ! If using TODO?? then add as input feature
+            ! if (rf_uses_qp) then
+            !    features(dim_counter+1:dim_counter+input_ver_dim) = real(qp_i(i,j,1:input_ver_dim),4)
+            !    dim_counter = dim_counter + input_ver_dim
+            ! endif
 
-            ! If using TODO - Some magical mystery input?? then add as input feature
-            if(do_yin_input) then
-               features(dim_counter+1) = real(abs(dy*(j+jt-(ny_gl+YES3D-1)/2-0.5)))
-               dim_counter = dim_counter+1
-            endif
+            ! ! If using TODO - Some magical mystery input?? then add as input feature
+            ! if(do_yin_input) then
+            !    features(dim_counter+1) = real(abs(dy*(j+jt-(ny_gl+YES3D-1)/2-0.5)))
+            !    dim_counter = dim_counter+1
+            ! endif
 
 
             !-----------------------------------------------------------------------
@@ -379,131 +379,131 @@ contains
 
             ! outputs = matmul( z4,r_w5) + r_b5
 
-            outputs = net_forward(features)
+            call net_forward(features, outputs)
 
 
             !-----------------------------------------------------------------------
-            ! Separate out outputs into heating and moistening tendencies
-            out_var_control =1
-            t_rad_rest_tend(1:nrf) = (outputs(1:nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-            out_dim_counter = nrf
+            ! ! Separate out outputs into heating and moistening tendencies
+            ! out_var_control =1
+            ! t_rad_rest_tend(1:nrf) = (outputs(1:nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
+            ! out_dim_counter = nrf
 
-            out_var_control = out_var_control + 1
-            t_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq)* yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-            out_dim_counter = out_dim_counter + nrfq
+            ! out_var_control = out_var_control + 1
+            ! t_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq)* yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
+            ! out_dim_counter = out_dim_counter + nrfq
 
-            out_var_control = out_var_control + 1
-            q_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-            out_dim_counter = out_dim_counter + nrfq
+            ! out_var_control = out_var_control + 1
+            ! q_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
+            ! out_dim_counter = out_dim_counter + nrfq
 
-            out_var_control = out_var_control + 1
-            q_tendency_auto(1:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-            out_dim_counter = out_dim_counter + nrf
+            ! out_var_control = out_var_control + 1
+            ! q_tendency_auto(1:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
+            ! out_dim_counter = out_dim_counter + nrf
 
-            out_var_control = out_var_control + 1
-            q_flux_sed(1:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-            out_dim_counter = out_dim_counter + nrf
+            ! out_var_control = out_var_control + 1
+            ! q_flux_sed(1:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
+            ! out_dim_counter = out_dim_counter + nrf
 
-            out_var_control = out_var_control + 1
+            ! out_var_control = out_var_control + 1
 
-            ! advection surface flux is zero
-            t_flux_adv(1) = 0.0
-            q_flux_adv(1) = 0.0
+            ! ! advection surface flux is zero
+            ! t_flux_adv(1) = 0.0
+            ! q_flux_adv(1) = 0.0
 
-            do k=2,nrf
-               if (q_flux_adv(k).lt.0) then
-                  if ( q(i,j,k).lt.-q_flux_adv(k)* irhoadzdz(k)) then
-                     q_flux_adv(k) = -q(i,j,k)/irhoadzdz(k)
-                  end if
-               else
-                  if (q(i,j,k-1).lt.q_flux_adv(k)* irhoadzdz(k)) then
-                     q_flux_adv(k) = q(i,j,k-1)/irhoadzdz(k)
-                  end if
-               end if
-            end do
+            ! do k=2,nrf
+            !    if (q_flux_adv(k).lt.0) then
+            !       if ( q(i,j,k).lt.-q_flux_adv(k)* irhoadzdz(k)) then
+            !          q_flux_adv(k) = -q(i,j,k)/irhoadzdz(k)
+            !       end if
+            !    else
+            !       if (q(i,j,k-1).lt.q_flux_adv(k)* irhoadzdz(k)) then
+            !          q_flux_adv(k) = q(i,j,k-1)/irhoadzdz(k)
+            !       end if
+            !    end if
+            ! end do
 
-            do k=1,nrf-1
-               t_tendency_adv(k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
-               q_tendency_adv(k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
-            end do
+            ! do k=1,nrf-1
+            !    t_tendency_adv(k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
+            !    q_tendency_adv(k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
+            ! end do
 
-            k = nrf
-            t_tendency_adv(k) = - (0.0 - t_flux_adv(k)) * irhoadzdz(k)
-            q_tendency_adv(k) = - (0.0 - q_flux_adv(k)) * irhoadzdz(k)
+            ! k = nrf
+            ! t_tendency_adv(k) = - (0.0 - t_flux_adv(k)) * irhoadzdz(k)
+            ! q_tendency_adv(k) = - (0.0 - q_flux_adv(k)) * irhoadzdz(k)
 
-            do k=1,nrf
-               if (q(i,j,k).lt.-q_tendency_adv(k)) then
-                  q_tendency_adv(k) = -q(i,j,k)
-               end if
-            end do
+            ! do k=1,nrf
+            !    if (q(i,j,k).lt.-q_tendency_adv(k)) then
+            !       q_tendency_adv(k) = -q(i,j,k)
+            !    end if
+            ! end do
 
-            t(i,j,1:nrf) = t(i,j,1:nrf) + t_tendency_adv(1:nrf)
-            q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_adv(1:nrf)
+            ! t(i,j,1:nrf) = t(i,j,1:nrf) + t_tendency_adv(1:nrf)
+            ! q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_adv(1:nrf)
 
-            do k=1,nrf
-               omp(k) = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
-               fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
-               if (q_tendency_auto(k).lt.0) then
-                  q_tend_tot(k) = min(-q_tendency_auto(k) * dtn, q(i,j,k))!q_tendency_auto(1:nrf) * dtn + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
-                  q_tend_tot(k) = -q_tend_tot(k)
-               else
-                  q_tend_tot(k) = q_tendency_auto(k) * dtn
-               endif
-            end do
+            ! do k=1,nrf
+            !    omp(k) = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
+            !    fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
+            !    if (q_tendency_auto(k).lt.0) then
+            !       q_tend_tot(k) = min(-q_tendency_auto(k) * dtn, q(i,j,k))!q_tendency_auto(1:nrf) * dtn + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
+            !       q_tend_tot(k) = -q_tend_tot(k)
+            !    else
+            !       q_tend_tot(k) = q_tendency_auto(k) * dtn
+            !    endif
+            ! end do
 
-            q(i,j,1:nrf) = q(i,j,1:nrf) +q_tend_tot(1:nrf)
-            t(i,j,1:nrf) = t(i,j,1:nrf)  -q_tend_tot(1:nrf)*fac(1:nrf)
+            ! q(i,j,1:nrf) = q(i,j,1:nrf) +q_tend_tot(1:nrf)
+            ! t(i,j,1:nrf) = t(i,j,1:nrf)  -q_tend_tot(1:nrf)*fac(1:nrf)
 
-            do k=2,nrf
-               if (q_flux_sed(k).lt.0) then
-                  if ( q(i,j,k).lt.-q_flux_sed(k)* irhoadzdz(k)) then
-                     q_flux_sed(k) = -q(i,j,k)/irhoadzdz(k)
-                  end if
-               else
-                  if (q(i,j,k-1).lt.q_flux_sed(k)* irhoadzdz(k)) then
-                     q_flux_sed(k) = q(i,j,k-1)/irhoadzdz(k)
-                  end if
-               end if
-            end do
+            ! do k=2,nrf
+            !    if (q_flux_sed(k).lt.0) then
+            !       if ( q(i,j,k).lt.-q_flux_sed(k)* irhoadzdz(k)) then
+            !          q_flux_sed(k) = -q(i,j,k)/irhoadzdz(k)
+            !       end if
+            !    else
+            !       if (q(i,j,k-1).lt.q_flux_sed(k)* irhoadzdz(k)) then
+            !          q_flux_sed(k) = q(i,j,k-1)/irhoadzdz(k)
+            !       end if
+            !    end if
+            ! end do
 
-            do k=1,nrf-1 ! One level less than I actually use
-               q_tendency_sed(k) = - (q_flux_sed(k+1) - q_flux_sed(k)) * irhoadzdz(k)
-            end do
+            ! do k=1,nrf-1 ! One level less than I actually use
+            !    q_tendency_sed(k) = - (q_flux_sed(k+1) - q_flux_sed(k)) * irhoadzdz(k)
+            ! end do
 
-            k = nrf
-            q_tendency_sed(k) = - (0.0 - q_flux_sed(k)) * irhoadzdz(k)
+            ! k = nrf
+            ! q_tendency_sed(k) = - (0.0 - q_flux_sed(k)) * irhoadzdz(k)
 
-            do k=1,nrf
-               if (q_tendency_sed(k).lt.0) then
-                  q_tendency_sed(k) = min(-q_tendency_sed(k), q(i,j,k))
-                  q_tendency_sed(k) = -q_tendency_sed(k)
-               end if
-            end do
+            ! do k=1,nrf
+            !    if (q_tendency_sed(k).lt.0) then
+            !       q_tendency_sed(k) = min(-q_tendency_sed(k), q(i,j,k))
+            !       q_tendency_sed(k) = -q_tendency_sed(k)
+            !    end if
+            ! end do
 
-            t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond)
-            q(i,j,1:nrf) = q(i,j,1:nrf) +q_tendency_sed(1:nrf)
+            ! t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond)
+            ! q(i,j,1:nrf) = q(i,j,1:nrf) +q_tendency_sed(1:nrf)
 
-            t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn
+            ! t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn
 
-            precsfc(i,j) = precsfc(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For statistics
-            prec_xy(i,j) = prec_xy(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For 2D output
+            ! precsfc(i,j) = precsfc(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For statistics
+            ! prec_xy(i,j) = prec_xy(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For 2D output
 
-            do k=1, nrf
-               precsfc(i,j) = precsfc(i,j)-q_tend_tot(k)*adz(k)*dz*rho(k)*(1/dz)! removed the time step mult because q_tend_tot is already mult
-               prec_xy(i,j) = prec_xy(i,j)-q_tend_tot(k)*adz(k)*dz*rho(k)*(1/dz)
-            end do
+            ! do k=1, nrf
+            !    precsfc(i,j) = precsfc(i,j)-q_tend_tot(k)*adz(k)*dz*rho(k)*(1/dz)! removed the time step mult because q_tend_tot is already mult
+            !    prec_xy(i,j) = prec_xy(i,j)-q_tend_tot(k)*adz(k)*dz*rho(k)*(1/dz)
+            ! end do
 
-            do k = 1,nrf
-               q(i,j,k)=max(0.,q(i,j,k))
-            end do
+            ! do k = 1,nrf
+            !    q(i,j,k)=max(0.,q(i,j,k))
+            ! end do
 
-            where (qn(i,j,1:nrf).gt.0.0)
-               qn(i,j,1:nrf) = qn(i,j,1:nrf)+ q_tend_tot(1:nrf) + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
-            end where
+            ! where (qn(i,j,1:nrf).gt.0.0)
+            !    qn(i,j,1:nrf) = qn(i,j,1:nrf)+ q_tend_tot(1:nrf) + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
+            ! end where
 
-            where (qn(i,j,:).lt.0.0)
-               qn(i,j,:) = 0.0
-            end where
+            ! where (qn(i,j,:).lt.0.0)
+            !    qn(i,j,:) = 0.0
+            ! end where
 
          end do
       end do
