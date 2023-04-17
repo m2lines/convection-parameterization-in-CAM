@@ -1,5 +1,5 @@
 """Neural network architectures."""
-import netCDF4 as nc
+import netCDF4 as nc  # type: ignore
 
 from torch import as_tensor, no_grad  # pylint: disable=no-name-in-module
 
