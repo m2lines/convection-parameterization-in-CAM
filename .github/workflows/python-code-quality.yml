@@ -3,7 +3,7 @@ name: Python Package using Conda
 on: [pull_request]
 
 jobs:
-  build-linux:
+  code_quality:
     runs-on: ubuntu-latest
 
     steps:
