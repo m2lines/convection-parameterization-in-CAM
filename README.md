@@ -32,7 +32,7 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 
 
 
-### Contents
+## Contents
 
 ### `NN_module/`
 This folder contains the fortran neural net extracted from the [code referenced above](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3), along with any dependencies, that may be compiled as a standalone fortran module.
@@ -43,6 +43,11 @@ This now needs cleaning up, testing, and a proper makefile creating (see open is
 
 ### ``torch_nets/``
 The directory contains the PyTorch versions of the neural networks we are interested in.
+
+
+## Running tests
+Instructions for running the tests to be added here.
+
 
 
 ## Contributing
