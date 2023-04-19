@@ -9,6 +9,6 @@ program run_tests
 
     write (*,*) test_array
 
-    call nn_convection_flux_init("/home/jwa34/convection-parameterization-in-CAM/torch_nets/qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc")
+    call nn_convection_flux_init("/Users/jwa34/Documents/code/convection-parameterization-in-CAM/torch_nets/qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc")
 
 end program run_tests
