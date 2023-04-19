@@ -12,14 +12,12 @@ use params , only: fac_cond, fac_fus, tprmin, a_pr, cp, a_bg, tbgmin
 implicit none
 private
 
-
 !---------------------------------------------------------------------
 !  ---- public interfaces ----
 public  relu, nn_convection_flux_init, nn_convection_flux
 
 !-----------------------------------------------------------------------
 !   ---- local/private data ----
-
 ! Parameters from that are used here
 !! From domain.f90
 !integer, parameter :: YES3D = 1   ! Domain dimensionality: 1 - 3D, 0 - 2D
@@ -36,54 +34,77 @@ public  relu, nn_convection_flux_init, nn_convection_flux
 !integer, parameter :: nzm = nz-1                 ! ???
 
 
-! Neural Net Parameters
-
 logical :: do_init=.true.
 
-integer :: n_in ! Input dim features
-integer :: n_h1 ! hidden dim
-integer :: n_h2 ! hidden dim
-integer :: n_h3 ! hidden dim
-integer :: n_h4 ! hidden dim
-integer :: n_out ! outputs dim
-integer :: nrf  ! number of vertical levels the NN uses
-integer :: nrfq ! number of vertical levels the NN uses
-integer :: it,jt
-integer :: o_var_dim ! number of output variables  (different types)
+  ! Neural Net Parameters
 
-real(4), allocatable, dimension(:,:)     :: r_w1
-real(4), allocatable, dimension(:,:)     :: r_w2
-real(4), allocatable, dimension(:,:)     :: r_w3
-real(4), allocatable, dimension(:,:)     :: r_w4
-real(4), allocatable, dimension(:,:)     :: r_w5
-real(4), allocatable, dimension(:)       :: r_b1
-real(4), allocatable, dimension(:)       :: r_b2
-real(4), allocatable, dimension(:)       :: r_b3
-real(4), allocatable, dimension(:)       :: r_b4
-real(4), allocatable, dimension(:)       :: r_b5
-real(4), allocatable, dimension(:)       :: xscale_mean
-real(4), allocatable, dimension(:)       :: xscale_stnd
+  integer :: n_in ! Input dim features
+  integer :: n_h1 ! hidden dim
+  integer :: n_h2 ! hidden dim
+  integer :: n_h3 ! hidden dim
+  integer :: n_h4 ! hidden dim
+  integer :: n_out ! outputs dim
+  integer :: nrf  ! number of vertical levels the NN uses
+  integer :: nrfq ! number of vertical levels the NN uses
+  integer :: it,jt
+  integer :: o_var_dim ! number of output variables  (different types)
 
-real(4), allocatable, dimension(:)       :: z1
-real(4), allocatable, dimension(:)       :: z2
-real(4), allocatable, dimension(:)       :: z3
-real(4), allocatable, dimension(:)       :: z4
-real(4), allocatable, dimension(:)       :: z5
+  real(4), allocatable, dimension(:,:)     :: r_w1
+  real(4), allocatable, dimension(:,:)     :: r_w2
+  real(4), allocatable, dimension(:,:)     :: r_w3
+  real(4), allocatable, dimension(:,:)     :: r_w4
+  real(4), allocatable, dimension(:,:)     :: r_w5
+  real(4), allocatable, dimension(:)       :: r_b1
+  real(4), allocatable, dimension(:)       :: r_b2
+  real(4), allocatable, dimension(:)       :: r_b3
+  real(4), allocatable, dimension(:)       :: r_b4
+  real(4), allocatable, dimension(:)       :: r_b5
+  real(4), allocatable, dimension(:)       :: xscale_mean
+  real(4), allocatable, dimension(:)       :: xscale_stnd
 
-real(4), allocatable, dimension(:)       :: yscale_mean
-real(4), allocatable, dimension(:)       :: yscale_stnd
+  real(4), allocatable, dimension(:)       :: z1
+  real(4), allocatable, dimension(:)       :: z2
+  real(4), allocatable, dimension(:)       :: z3
+  real(4), allocatable, dimension(:)       :: z4
+  real(4), allocatable, dimension(:)       :: z5
+
+  real(4), allocatable, dimension(:)       :: yscale_mean
+  real(4), allocatable, dimension(:)       :: yscale_stnd
 
 
 !-----------------------------------------------------------------------
 
+
+
 contains
 
-   subroutine relu(logits)
+  subroutine relu(logits)
 
-      real(4), dimension(:), intent(inout)   :: logits
-      where (logits .lt. 0.0)  logits = 0.0
+     real(4), dimension(:), intent(inout)   :: logits
+     where (logits .lt. 0.0)  logits = 0.0
 
-   end subroutine relu
+  end subroutine relu
+
+  subroutine net_forward(features, logits)
+
+    real(4), dimension(:), intent(in)   :: features
+    real(4), dimension(:), intent(out)  :: logits
+
+    z1 = matmul( features, r_w1) + r_b1
+    call relu(z1)
+
+    z2 = matmul( z1,r_w2) + r_b2
+    call relu(z2)
+
+    z3 = matmul( z2,r_w3) + r_b3
+    call relu(z3)
+
+    z4 = matmul( z3,r_w4) + r_b4
+    call relu(z4)
+
+    logits = matmul( z4,r_w5) + r_b5
+
+  end subroutine
 
 
 !#######################################################################
@@ -216,9 +237,7 @@ contains
     do_init=.false.
 
   end subroutine nn_convection_flux_init
-
-
-!#######################################################################
+  !#######################################################################
 
   subroutine nn_convection_flux(tabs)
 
@@ -341,27 +360,8 @@ contains
         !-----------------------------------------------------------------------
         !Normalize features
         features = (features - xscale_mean) / xscale_stnd
-
-        !-----------------------------------------------------------------------
-        ! Run the Neural Net
-        ! calculate predicted values using NN
-        ! Apply trained regressor network to data using rectifier activation function
-        ! forward prop to hiddelayer
-        z1 = matmul( features, r_w1) + r_b1
-        where (z1 .lt. 0.0)  z1 = 0.0
-
-        ! forward prop to output layer
-        z2 = matmul( z1,r_w2) + r_b2
-        where (z2 .lt. 0.0)  z2 = 0.0
-
-        z3 = matmul( z2,r_w3) + r_b3
-        where (z3 .lt. 0.0)  z3 = 0.0
-
-        z4 = matmul( z3,r_w4) + r_b4
-        where (z4 .lt. 0.0)  z4 = 0.0
-
-        outputs = matmul( z4,r_w5) + r_b5
-
+        
+        call net_forward(features, outputs)
 
         !-----------------------------------------------------------------------
         ! Separate out outputs into heating and moistening tendencies
@@ -492,6 +492,7 @@ contains
 
   end subroutine nn_convection_flux
 
+
   !##############################################################################
   subroutine check(status)
 
@@ -522,9 +523,8 @@ contains
   !#######################################################################
   subroutine task_rank_to_index (rank,i,j)
 
-  !   returns the pair of  beginning indices for the subdomain on the  
-  !   global grid given the subdomain's rank.
-
+    ! returns the pair of  beginning indices for the subdomain on the  
+    ! global grid given the subdomain's rank.
     integer ::  rank, i, j
 
     j = rank/nsubdomains_x 
