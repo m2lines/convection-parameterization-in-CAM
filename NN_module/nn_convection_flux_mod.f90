@@ -2,42 +2,92 @@
 
 module nn_convection_flux_mod
 
-!----------------------------------------------------------------------
+
+!---------------------------------------------------------------------
 ! Libraries to use
 
 use netcdf
-use vars
-use grid
-use params , only: fac_cond, fac_fus, tprmin, a_pr, cp, a_bg, tbgmin
 implicit none
 private
 
+
 !---------------------------------------------------------------------
-!  ---- public interfaces ----
+! public interfaces
+
 public  relu, nn_convection_flux_init, nn_convection_flux
 
-!-----------------------------------------------------------------------
-!   ---- local/private data ----
-! Parameters from that are used here
-!! From domain.f90
-!integer, parameter :: YES3D = 1   ! Domain dimensionality: 1 - 3D, 0 - 2D
-!integer, parameter :: nx_gl = 72  ! Number of grid points in X - Yani changed to 36 from 32
-!integer, parameter :: ny_gl = 180 ! Number of grid points in Y
-!integer, parameter :: nz_gl = 48  ! Number of pressure (scalar) levels
-!integer, parameter :: nsubdomains_x  = 3  ! No of subdomains in x
-!integer, parameter :: nsubdomains_y  = 12 ! No of subdomains in y
-!
-!! From grid.f90
-!integer, parameter :: nx = nx_gl/nsubdomains_x   ! Number of x points in a subdomain
-!integer, parameter :: ny = ny_gl/nsubdomains_y   !           y
-!integer, parameter :: nz = nz_gl+1               !           z
-!integer, parameter :: nzm = nz-1                 ! ???
 
+!---------------------------------------------------------------------
+! local/private data
 
-logical :: do_init=.true.
+! Parameters from SAM that are used here
+! From domain.f90
+integer, parameter :: YES3D = 1   ! Domain dimensionality: 1 - 3D, 0 - 2D
+integer, parameter :: nx_gl = 72  ! Number of grid points in X - Yani changed to 36 from 32
+integer, parameter :: ny_gl = 180 ! Number of grid points in Y
+integer, parameter :: nz_gl = 48  ! Number of pressure (scalar) levels
+integer, parameter :: nsubdomains_x  = 3  ! No of subdomains in x
+integer, parameter :: nsubdomains_y  = 12 ! No of subdomains in y
+
+! From grid.f90
+integer input_ver_dim
+integer, parameter :: nx = nx_gl/nsubdomains_x   ! Number of x points in a subdomain
+integer, parameter :: ny = ny_gl/nsubdomains_y   !           y
+integer, parameter :: nz = nz_gl+1               !           z
+integer, parameter :: nzm = nz-1                 ! ???
+integer, parameter :: nxp3 = nx + 3
+integer, parameter :: nyp3 = ny + 3 * YES3D
+integer, parameter :: dimx1_s = -2
+integer, parameter :: dimx2_s = nxp3
+integer, parameter :: dimy1_s = 1-3*YES3D
+integer, parameter :: dimy2_s = nyp3
+real dy   ! grid spacing in y direction
+real dz   ! grid spacing in z direction for the lowest grid layer
+real dtn        ! current dynamical timestep (can be smaller than dt)
+real pres(nzm)  ! pressure,mb at scalar levels
+real adz(nzm)   ! ratio of the grid spacing to dz for pressure levels
+integer nstep   ! current number of performed time steps 
+integer icycle  ! current subcycle 
+integer nstatis ! the interval between substeps to compute statistics
+! Logical switches and flags:
+logical tin_feature_rf, rf_uses_rh, rf_uses_qp, qin_feature_rf, do_yin_input
+! Multitasking stuff
+integer rank    ! rank of the current subdomain task (default 0) 
+logical masterproc ! .true. if rank.eq.0 
+
+! From params.f90
+! Constants:
+real, parameter :: lfus = 0.3336e+06      ! Latent heat of fusion, J/kg
+real, parameter :: lcond = 2.5104e+06     ! Latent heat of condensation, J/kg
+real, parameter :: cp = 1004.             ! Specific heat of air, J/kg/K
+real, parameter :: fac_cond = lcond/cp 
+real, parameter :: fac_fus = lfus/cp
+! Temperatures limits for various hydrometeors
+real, parameter :: tprmin = 268.16    ! Minimum temperature for rain, K
+real, parameter :: tbgmin = 253.16    ! Minimum temperature for cloud water., K
+! Misc. microphysics variables
+real :: a_pr, a_bg
+
+! From vars.f90
+! prognostic variables:
+real t(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! moist static energy
+real q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! total water
+! diagnostic variables:
+real qn(nx, ny, nzm)                 ! cloud water+cloud ice
+! fluxes at the top and bottom of the domain:
+real precsfc(nx,ny) ! surface precip. rate
+!  Horizontally varying stuff (as a function of xy)
+real prec_xy(nx,ny) ! surface precipitation rate
+! reference vertical profiles:
+real rho(nzm)	  ! air density at pressure levels,kg/m3 
+! Fields from beginning of time step
+real t_i(nx,ny,nzm)
+real q_i(nx,ny,nzm)
+real qp_i (nx,ny,nzm)
+
+  logical :: do_init=.true.
 
   ! Neural Net Parameters
-
   integer :: n_in ! Input dim features
   integer :: n_h1 ! hidden dim
   integer :: n_h2 ! hidden dim
@@ -72,9 +122,8 @@ logical :: do_init=.true.
   real(4), allocatable, dimension(:)       :: yscale_stnd
 
 
-!-----------------------------------------------------------------------
-
-
+!---------------------------------------------------------------------
+! Functions and Subroutines
 
 contains
 
@@ -107,7 +156,7 @@ contains
   end subroutine
 
 
-!#######################################################################
+  !###################################################################
 
   subroutine nn_convection_flux_init(nn_filename)
 
@@ -237,7 +286,8 @@ contains
     do_init=.false.
 
   end subroutine nn_convection_flux_init
-  !#######################################################################
+
+  !###################################################################
 
   subroutine nn_convection_flux(tabs)
 
@@ -492,8 +542,8 @@ contains
 
   end subroutine nn_convection_flux
 
+  !###################################################################
 
-  !##############################################################################
   subroutine check(status)
 
     ! checks error status after each netcdf, prints out text message each time
@@ -506,8 +556,8 @@ contains
     end if
   end subroutine check
 
+  !###################################################################
 
-  !#######################################################################
   subroutine error_mesg (message)
     character(len=*), intent(in) :: message
 
@@ -520,7 +570,8 @@ contains
   end subroutine error_mesg
 
 
-  !#######################################################################
+  !###################################################################
+
   subroutine task_rank_to_index (rank,i,j)
 
     ! returns the pair of  beginning indices for the subdomain on the  
@@ -535,21 +586,20 @@ contains
 
   end subroutine task_rank_to_index
 
-  !#######################################################################
+  !###################################################################
   ! Need omegan function to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
-  ! 
+
   real function omegan(tabs)
     real :: tabs
     omegan = max(0.,min(1.,(tabs-tbgmin)*a_bg))
     return
   end function omegan
 
-  !#######################################################################
+  !###################################################################
   ! Need qsatw functions to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/sat.f90
-  ! 
+
   ! Saturation vapor pressure and mixing ratio. 
   ! Based on Flatau et.al, (JAM, 1992:1507)
-  !
 
   real function esatw(t)
     implicit none
@@ -618,8 +668,7 @@ contains
     esat = esati(t)
     qsati = 0.622 * esat/max(esat,p-esat)
   end function qsati
-  !         
-  !         
+     
   ! function dtesati(t)
   !   implicit none
   !   real :: t  ! temperature (K)
