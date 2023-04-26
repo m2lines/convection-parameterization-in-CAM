@@ -1,10 +1,11 @@
 module nn_interface_SAM_mod
-  !! Interface to convection NN for the SAM model
+    !! Interface to convection NN for the SAM model
+    !! Reference: https://doi.org/10.1029/2020GL091363
+    !! Also see YOG20: https://doi.org/10.1038/s41467-020-17142-3
 
 !---------------------------------------------------------------------
 ! Libraries to use
-
-use nn_convection_flux_mod, only: nn_convection_flux_init
+use nn_convection_flux_mod, only: nn_convection_flux_init, net_forward
 implicit none
 private
 
@@ -18,7 +19,19 @@ public  nn_convection_flux_SAM, nn_convection_flux_SAM_init
 ! local/private data
 
 integer :: it,jt
-    !! indices corresponding to the start of the grid domain for current MPI rank
+    !! indices corresponding to the start of the grid domain for
+    !! current MPI rank
+
+! Neural Net parameters
+integer :: n_inputs, n_outputs
+    !! Length of input/output vector to the NN
+integer :: nrf
+    !! number of vertical levels the NN uses
+integer :: nrfq
+    !! number of vertical levels the NN uses
+logical :: do_init=.true.
+    !! model initialisation is yet to be performed
+
 
 ! Parameters from SAM that are used here
 ! From domain.f90
@@ -43,7 +56,8 @@ integer, parameter :: ny = ny_gl/nsubdomains_y
     !! Number of y points in a subdomain
 integer, parameter :: nz = nz_gl+1
     !! Number of z points in a subdomain
-integer, parameter :: nzm = nz-1                 ! ???
+! Store useful variations on these values
+integer, parameter :: nzm = nz-1
 integer, parameter :: nxp3 = nx + 3
 integer, parameter :: nyp3 = ny + 3 * YES3D
 integer, parameter :: dimx1_s = -2
@@ -91,6 +105,7 @@ real, parameter :: tprmin = 268.16
     !! Minimum temperature for rain, K
 real, parameter :: tbgmin = 253.16
     !! Minimum temperature for cloud water., K
+
 real :: a_pr, a_bg
     !! Misc. microphysics variables
 
@@ -112,10 +127,14 @@ real prec_xy(nx,ny)
 ! reference vertical profiles:
 real rho(nzm)
     !! air density at pressure levels,kg/m3 
-! Fields from beginning of time step
+
+! Fields from beginning of time step used as NN inputs
 real t_i(nx,ny,nzm)
+    !! Temperature
 real q_i(nx,ny,nzm)
+    !! Non-precipitating water mixing ratio
 real qp_i (nx,ny,nzm)
+    !! Precipitating water mixing ratio
 
 !---------------------------------------------------------------------
 ! Functions and Subroutines
@@ -123,52 +142,75 @@ real qp_i (nx,ny,nzm)
 contains
 
     subroutine nn_convection_flux_SAM_init(nn_filename)
-        !! Initialise the module for use in SAM
+        !! Initialise the NN module for use in SAM
 
         character(len=1024), intent(in) :: nn_filename
             !! NetCDF filename from which to read model weights
         
+        ! Get indices for grid section on this MPI rank
         call task_rank_to_index(rank,it,jt)
-        call nn_convection_flux_init(nn_filename)
 
+        ! Initialise the Neural Net from file and get info
+        call nn_convection_flux_init(nn_filename, n_inputs, n_outputs)
+
+        ! Set init flag as complete
+        do_init=.false.
+
+        ! TODO Do we really need these variables, or are they defined through something else somewhere?
+        ! Hardcoded magic numbers
+        ! nrf is the fact results are supplied at lowest 30 half-model levels for sedimentation fluxes, and at 29 levels for fluxes
+        ! (as flux at bottom boundary is zero).
+        nrf = 30
+        nrfq = 29
+  
     end subroutine nn_convection_flux_SAM_init
 
-    subroutine nn_convection_flux_SAM(tabs)
+    subroutine nn_convection_flux_SAM()
+        ! Inputs?: t_i, q_i, qp_i
         !! Interface to the nn_convection for the SAM model
   
-        real, intent(in), dimension(:, :, :)  :: tabs
-            !! temperature
+        ! real, intent(in), dimension(:, :, :)  :: tabs
+            !! absolute temperature
+        real, dimension(nx, ny, nzm)  :: tabs
+            !! absolute temperature
 
         ! Local Variables
-        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, q_tendency_auto, q_tendency_sed,t_tendency_auto
-        real,   dimension(nrf) :: q_flux_sed, qp_flux_fall,t_tendency_sed, q_tend_tot
-        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, t_sed_flux, t_rad_rest_tend, omp,fac ! Do not predict surface adv flux
+        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, q_tendency_auto, q_tendency_sed, t_tendency_auto
+        real,   dimension(nrf) :: q_flux_sed, qp_flux_fall, t_tendency_sed, q_tend_tot
+        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, t_sed_flux, t_rad_rest_tend, omp, fac ! Do not predict surface adv flux
         real,   dimension(nzm) :: qsat, irhoadz, irhoadzdz, irhoadzdz2
-        real(4), dimension(n_in) :: features
+
+        ! NN parameters
+        real(4), dimension(n_inputs) :: features
             !! Vector of input features for the NN
-        real(4), dimension(n_out) :: outputs
+        real(4), dimension(n_outputs) :: outputs
             !! vector of output features from the NN
-        real    omn, rev_dz, rev_dz2
+
+        real :: omn
+            !! variable to store result of omegan function
+        real :: rev_dz
+            !! variable to store 1/dz factor
         integer  i, j, k,dd, dim_counter, out_dim_counter, out_var_control
 
         ! Check that we have initialised all of the variables.
-        if (do_init) call error_mesg('nn_convection_flux_init has not been called.')
+        if (do_init) call error_mesg('NN has not yet been initialised using nn_convection_flux_init.')
 
-        ! Initialise precipitation if required
+        ! Initialise precipitation to 0 if required and at start of cycle
         if (.not. rf_uses_qp) then
-            if(mod(nstep-1,nstatis).eq.0.and.icycle.eq.1) precsfc(:,:)=0.
+            if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
+                precsfc(:,:)=0.
+            end if
         end if
 
         ! Define TODO Magical Mystery variables
         rev_dz = 1/dz
-        rev_dz2 = 1/(dz*dz)
         do k=1,nzm
             irhoadz(k) = dtn/(rho(k)*adz(k)) ! Useful factor
             irhoadzdz(k) = irhoadz(k)/dz ! Note the time step
             irhoadzdz2(k) = irhoadz(k)/(dz*dz) ! Note the time step
         end do
 
-        ! The NN operates on columns, so loop over x and y coordinates in turn
+        ! The NN operates on atmospheric columns, so loop over x and y coordinates in turn
         do j=1,ny
             do i=1,nx
 
@@ -186,16 +228,11 @@ contains
                 t_flux_adv = 0.
                 q_flux_adv = 0.
                 q_flux_sed = 0.
-                z1 = 0.
-                z2 = 0.
-                z3 = 0.
-                z4 = 0.
-                z5 = 0.
                 dim_counter = 0
                 omp = 0.
                 fac = 0.
 
-                !-----------------------------------------------------------------------
+                !-----------------------------------------------------
                 ! Combine all features into one vector
 
                 ! If using temperature then add as input feature
@@ -204,13 +241,13 @@ contains
                     dim_counter = dim_counter + input_ver_dim
                 endif
 
-                ! If using water content then add as input feature
+                ! If using non-precipitating water mixing ratio then add as input feature using random forest (rf) approach from earlier paper
                 if (qin_feature_rf) then
                     if (rf_uses_rh) then
-                    ! If using generalised relative humidity to estimate water content
+                    ! If using generalised relative humidity convert non-precip. water content to rel. hum
                         do k=1,nzm
                             omn = omegan(tabs(i,j,k))
-                            qsat(k) = omn*qsatw(tabs(i,j,k),pres(k))+(1.-omn)*qsati(tabs(i,j,k),pres(k))
+                            qsat(k) = omn * qsatw(tabs(i,j,k),pres(k)) + (1.-omn) * qsati(tabs(i,j,k),pres(k))
                         end do
                         features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim)/qsat(1:input_ver_dim),4)
                         dim_counter = dim_counter + input_ver_dim
@@ -221,82 +258,91 @@ contains
                     endif
                 endif
 
-                ! If using rain+snow content then add as input feature
+                ! If using precipitating water (rain+snow) mixing ration content then add as input feature
                 if (rf_uses_qp) then
                     features(dim_counter+1:dim_counter+input_ver_dim) = real(qp_i(i,j,1:input_ver_dim),4)
                     dim_counter = dim_counter + input_ver_dim
                 endif
 
-                ! If using TODO - Some magical mystery input?? then add as input feature
+                ! If using distance to the equator then add as input feature
+                ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM
+                ! TODO Will this be true in CAM/SCAM?
                 if(do_yin_input) then
                     features(dim_counter+1) = real(abs(dy*(j+jt-(ny_gl+YES3D-1)/2-0.5)))
                     dim_counter = dim_counter+1
                 endif
 
-                !-----------------------------------------------------------------------
-                !Normalize features
-                features = (features - xscale_mean) / xscale_stnd
+                !-----------------------------------------------------
+                ! Call the forward method of the NN on the input features
+                ! Scaling and normalisation done as layers in NN
 
-                call net_forward(features, outputs)
+                call net_forward(features, outputs, nrf)
 
-                !-----------------------------------------------------------------------
-                ! Separate out outputs into heating and moistening tendencies
+                !-----------------------------------------------------
+                ! Separate physical outputs from NN output vector and apply physical constraints
+
+                ! TODO: The following code applies various physical constraints to the output of the NN
+                ! These are likely to be required for any application, so should they be in the NN rather than the interface?
+                ! If in the NN can they be generalised?
+
+                ! Temperature rest tendency
                 out_var_control =1
-                t_rad_rest_tend(1:nrf) = (outputs(1:nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
+                t_rad_rest_tend(1:nrf) = outputs(1:nrf)
                 out_dim_counter = nrf
 
-                out_var_control = out_var_control + 1
-                t_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq)* yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-                out_dim_counter = out_dim_counter + nrfq
-
-                out_var_control = out_var_control + 1
-                q_flux_adv(2:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrfq) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-                out_dim_counter = out_dim_counter + nrfq
-
-                out_var_control = out_var_control + 1
-                q_tendency_auto(1:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-                out_dim_counter = out_dim_counter + nrf
-
-                out_var_control = out_var_control + 1
-                q_flux_sed(1:nrf) = (outputs(out_dim_counter+1:out_dim_counter+nrf) * yscale_stnd(out_var_control))  +  yscale_mean(out_var_control)
-                out_dim_counter = out_dim_counter + nrf
-
-                out_var_control = out_var_control + 1
-
-                ! advection surface flux is zero
+                ! Temperature flux
+                ! BC: advection surface flux is zero
                 t_flux_adv(1) = 0.0
-                q_flux_adv(1) = 0.0
+                out_var_control = out_var_control + 1
+                t_flux_adv(2:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrfq)
+                out_dim_counter = out_dim_counter + nrfq
 
+                ! Non-precip. water flux
+                ! BC: advection surface flux is zero
+                q_flux_adv(1) = 0.0
+                out_var_control = out_var_control + 1
+                q_flux_adv(2:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrfq)
+                out_dim_counter = out_dim_counter + nrfq
+
+                ! Non-precip. water must be >= 0, so ensure advective flux will not reduce it below 0
                 do k=2,nrf
                     if (q_flux_adv(k).lt.0) then
                         if ( q(i,j,k).lt.-q_flux_adv(k)* irhoadzdz(k)) then
                             q_flux_adv(k) = -q(i,j,k)/irhoadzdz(k)
                         end if
                     else
+                        ! If gaining water content ensure that we are not gaining more than is in cell below
+                        ! TODO: Not sure I fully understant this constraint
                         if (q(i,j,k-1).lt.q_flux_adv(k)* irhoadzdz(k)) then
                             q_flux_adv(k) = q(i,j,k-1)/irhoadzdz(k)
                         end if
                     end if
                 end do
 
+                ! Calculate tendencies
+                out_var_control = out_var_control + 1
+                q_tendency_auto(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
+                out_dim_counter = out_dim_counter + nrf
+
+                ! Convert flux to advective tendency via finite difference
                 do k=1,nrf-1
                     t_tendency_adv(k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
                     q_tendency_adv(k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
                 end do
-
-                k = nrf
-                t_tendency_adv(k) = - (0.0 - t_flux_adv(k)) * irhoadzdz(k)
-                q_tendency_adv(k) = - (0.0 - q_flux_adv(k)) * irhoadzdz(k)
-
+                ! Apply finite difference boundary condition to advective tendencies
+                t_tendency_adv(nrf) = - (0.0 - t_flux_adv(nrf)) * irhoadzdz(nrf)
+                q_tendency_adv(nrf) = - (0.0 - q_flux_adv(nrf)) * irhoadzdz(nrf)
+                ! q must be >= 0 so ensure tendency won't reduce below zero
                 do k=1,nrf
-                    if (q(i,j,k).lt.-q_tendency_adv(k)) then
+                    if (q(i,j,k) .lt. -q_tendency_adv(k)) then
                         q_tendency_adv(k) = -q(i,j,k)
                     end if
                 end do
-
+                ! Apply advective tendencies to variables
                 t(i,j,1:nrf) = t(i,j,1:nrf) + t_tendency_adv(1:nrf)
                 q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_adv(1:nrf)
 
+                ! TODO ???
                 do k=1,nrf
                     omp(k) = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
                     fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
@@ -308,9 +354,14 @@ contains
                     endif
                 end do
 
-                q(i,j,1:nrf) = q(i,j,1:nrf) +q_tend_tot(1:nrf)
-                t(i,j,1:nrf) = t(i,j,1:nrf)  -q_tend_tot(1:nrf)*fac(1:nrf)
+                ! Update q and t
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tend_tot(1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) - q_tend_tot(1:nrf)*fac(1:nrf)
 
+                ! TODO ???
+                out_var_control = out_var_control + 1
+                q_flux_sed(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
+                ! q_flux must be >= 0
                 do k=2,nrf
                     if (q_flux_sed(k).lt.0) then
                         if ( q(i,j,k).lt.-q_flux_sed(k)* irhoadzdz(k)) then
@@ -323,13 +374,14 @@ contains
                     end if
                 end do
 
+                ! Calculate sed tendency via finite difference
                 do k=1,nrf-1 ! One level less than I actually use
                     q_tendency_sed(k) = - (q_flux_sed(k+1) - q_flux_sed(k)) * irhoadzdz(k)
                 end do
+                ! Set value at top of nrf layr
+                q_tendency_sed(nrf) = - (0.0 - q_flux_sed(nrf)) * irhoadzdz(nrf)
 
-                k = nrf
-                q_tendency_sed(k) = - (0.0 - q_flux_sed(k)) * irhoadzdz(k)
-
+                ! If q sed tendency < 0 ensure it will not reduce q below 0
                 do k=1,nrf
                     if (q_tendency_sed(k).lt.0) then
                         q_tendency_sed(k) = min(-q_tendency_sed(k), q(i,j,k))
@@ -337,28 +389,34 @@ contains
                     end if
                 end do
 
+                ! Apply sed tendency to variables
                 t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond)
                 q(i,j,1:nrf) = q(i,j,1:nrf) +q_tendency_sed(1:nrf)
 
+                ! Apply rest tendency to variables
                 t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn
 
+                ! Calculate surface precipitation
+                ! Apply sed flux at surface
                 precsfc(i,j) = precsfc(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For statistics
                 prec_xy(i,j) = prec_xy(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For 2D output
-
+                ! 
                 do k=1, nrf
-                    precsfc(i,j) = precsfc(i,j)-q_tend_tot(k)*adz(k)*dz*rho(k)*(1/dz)! removed the time step mult because q_tend_tot is already mult
-                    prec_xy(i,j) = prec_xy(i,j)-q_tend_tot(k)*adz(k)*dz*rho(k)*(1/dz)
+                    ! TODO: Both these lines have dz*(1/dz) can we just remove this?
+                    precsfc(i,j) = precsfc(i,j) - q_tend_tot(k)*adz(k)*dz*rho(k)*rev_dz! removed the time step mult because q_tend_tot is already mult
+                    prec_xy(i,j) = prec_xy(i,j) - q_tend_tot(k)*adz(k)*dz*rho(k)*rev_dz
                 end do
 
+                ! As a final ckeck q must be >= 0.0, if not then set to 0.0, otherwise add tendencies
                 do k = 1,nrf
-                    q(i,j,k)=max(0.,q(i,j,k))
+                    q(i,j,k) = max(0.,q(i,j,k))
                 end do
 
-                where (qn(i,j,1:nrf).gt.0.0)
-                    qn(i,j,1:nrf) = qn(i,j,1:nrf)+ q_tend_tot(1:nrf) + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
+                ! qn (precip.) must be >= 0.0, if not then set to 0.0, otherwise add tendencies
+                where (qn(i,j,1:nrf) .gt. 0.0)
+                    qn(i,j,1:nrf) = qn(i,j,1:nrf) + q_tend_tot(1:nrf) + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
                 end where
-
-                where (qn(i,j,:).lt.0.0)
+                where (qn(i,j,:) .lt. 0.0)
                     qn(i,j,:) = 0.0
                 end where
 
@@ -385,7 +443,10 @@ contains
   
       ! returns the pair of  beginning indices for the subdomain on the  
       ! global grid given the subdomain's rank.
-      integer ::  rank, i, j
+      integer, intent(in) :: rank
+          !! rank of MPI process
+      integer :: i, j
+          !! indices at which subdomain starts
   
       j = rank/nsubdomains_x 
       i = rank - j*nsubdomains_x
@@ -399,9 +460,14 @@ contains
     ! Need omegan function to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
   
     real function omegan(tabs)
-      real :: tabs
-      omegan = max(0.,min(1.,(tabs-tbgmin)*a_bg))
-      return
+
+        real, intent(in) :: tabs
+            !! Absolute temperature
+
+        omegan = max(0., min(1., (tabs-tbgmin)*a_bg))
+
+        return
+
     end function omegan
   
     !###################################################################
