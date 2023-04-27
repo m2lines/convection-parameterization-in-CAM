@@ -254,6 +254,12 @@ contains
 
         write(*, *) 'Finished reading NN regression file.'
 
+        ! Deallocate arrays
+        deallocate(r_w1, r_w2, r_w3, r_w4, r_w5)
+        deallocate(r_b1, r_b2, r_b3, r_b4, r_b5)
+        deallocate(z1, z2, z3, z4)
+        deallocate(xscale_mean, xscale_stnd, yscale_mean, yscale_stnd)
+
         n_inputs = n_in
         n_outputs = n_out
 
