@@ -68,51 +68,71 @@ real dy
     !! grid spacing in y direction
 real dz
     !! grid spacing in z direction for the lowest grid layer
+
+!= unit s :: dtn
 real dtn
     !! current dynamical timestep (can be smaller than dt)
+
+!= unit mb :: pres
 real pres(nzm)
     !! pressure,mb at scalar levels
 real adz(nzm)
     !! ratio of the grid spacing to dz for pressure levels
 integer nstep
-    !! current number of performed time steps 
+    !! current number of performed time steps
 integer icycle
-    !! current subcycle 
+    !! current subcycle
 integer nstatis
     !! the interval between substeps to compute statistics
 logical tin_feature_rf, rf_uses_rh, rf_uses_qp, qin_feature_rf, do_yin_input
 !! Logical switches and flags:
 ! Multitasking stuff
 integer rank
-    !! rank of the current subdomain task (default 0) 
+    !! rank of the current subdomain task (default 0)
 logical masterproc
-    !! logical variable .true. if rank .eq. 0 
+    !! logical variable .true. if rank .eq. 0
 
 ! From params.f90
 ! Constants:
+!= unit J / kg :: lfus
 real, parameter :: lfus = 0.3336e+06
-    !! Latent heat of fusion, J/kg
+    !! Latent heat of fusion
+
+!= unit J / kg :: lcond
 real, parameter :: lcond = 2.5104e+06
-    !! Latent heat of condensation, J/kg
+    !! Latent heat of condensation
+
+!= unit (J / kg) / K :: cp
 real, parameter :: cp = 1004.
-    !! Specific heat of air, J/kg/K
+    !! Specific heat of air
+
+! unit K - not checkable yet
 real, parameter :: fac_cond = lcond/cp
-    !! 
+    !!
+
+! unit K - not checkable yet
 real, parameter :: fac_fus = lfus/cp
-    !! 
+    !!
+
 ! Temperatures limits for various hydrometeors
+!= unit K :: tprmin
 real, parameter :: tprmin = 268.16
-    !! Minimum temperature for rain, K
+    !! Minimum temperature for rain
+
+!= unit K :: tbgmin
 real, parameter :: tbgmin = 253.16
-    !! Minimum temperature for cloud water., K
+    !! Minimum temperature for cloud water.
 
 real :: a_pr, a_bg
     !! Misc. microphysics variables
 
 ! From vars.f90
 ! prognostic variables:
+
+!= unit J :: t
 real t(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     !! moist static energy
+
 real q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     !! total water
 ! diagnostic variables:
@@ -125,8 +145,10 @@ real precsfc(nx,ny)
 real prec_xy(nx,ny)
     !! surface precipitation rate
 ! reference vertical profiles:
+
+!= unit (kg / m**3) :: rho
 real rho(nzm)
-    !! air density at pressure levels,kg/m3 
+    !! air density at pressure levels
 
 ! Fields from beginning of time step used as NN inputs
 real t_i(nx,ny,nzm)
@@ -146,7 +168,7 @@ contains
 
         character(len=1024), intent(in) :: nn_filename
             !! NetCDF filename from which to read model weights
-        
+
         ! Get indices for grid section on this MPI rank
         call task_rank_to_index(rank,it,jt)
 
@@ -162,13 +184,13 @@ contains
         ! (as flux at bottom boundary is zero).
         nrf = 30
         nrfq = 29
-  
+
     end subroutine nn_convection_flux_SAM_init
 
     subroutine nn_convection_flux_SAM()
         ! Inputs?: t_i, q_i, qp_i
         !! Interface to the nn_convection for the SAM model
-  
+
         ! real, intent(in), dimension(:, :, :)  :: tabs
             !! absolute temperature
         real, dimension(nx, ny, nzm)  :: tabs
@@ -400,7 +422,7 @@ contains
                 ! Apply sed flux at surface
                 precsfc(i,j) = precsfc(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For statistics
                 prec_xy(i,j) = prec_xy(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For 2D output
-                ! 
+                !
                 do k=1, nrf
                     ! TODO: Both these lines have dz*(1/dz) can we just remove this?
                     precsfc(i,j) = precsfc(i,j) - q_tend_tot(k)*adz(k)*dz*rho(k)*rev_dz! removed the time step mult because q_tend_tot is already mult
@@ -423,44 +445,45 @@ contains
             end do
         end do
         ! End of loop over x, y, columns
-  
+
     end subroutine nn_convection_flux_SAM
-  
+
     !###################################################################
-  
+
     subroutine error_mesg (message)
       character(len=*), intent(in) :: message
           !! message to be written to output   (character string)
-  
+
       if(masterproc) print*, 'Neural network  module: ', message
       stop
-  
+
     end subroutine error_mesg
- 
+
     !###################################################################
-  
+
     subroutine task_rank_to_index (rank,i,j)
-  
-      ! returns the pair of  beginning indices for the subdomain on the  
+
+      ! returns the pair of  beginning indices for the subdomain on the
       ! global grid given the subdomain's rank.
       integer, intent(in) :: rank
           !! rank of MPI process
       integer :: i, j
           !! indices at which subdomain starts
-  
-      j = rank/nsubdomains_x 
+
+      j = rank/nsubdomains_x
       i = rank - j*nsubdomains_x
-  
-      i = i * (nx_gl/nsubdomains_x) 
-      j = j * (ny_gl/nsubdomains_y) 
-  
+
+      i = i * (nx_gl/nsubdomains_x)
+      j = j * (ny_gl/nsubdomains_y)
+
     end subroutine task_rank_to_index
-  
+
     !###################################################################
     ! Need omegan function to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
-  
-    real function omegan(tabs)
 
+    != unit 1 :: omegan
+    real function omegan(tabs)
+        != unit K :: tabs
         real, intent(in) :: tabs
             !! Absolute temperature
 
@@ -469,17 +492,22 @@ contains
         return
 
     end function omegan
-  
+
     !###################################################################
     ! Need qsatw functions to run, ripped from https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/sat.f90
-  
-    ! Saturation vapor pressure and mixing ratio. 
+
+    ! Saturation vapor pressure and mixing ratio.
     ! Based on Flatau et.al, (JAM, 1992:1507)
-  
+
+    != unit mb :: esatw
     real function esatw(t)
       implicit none
+      != unit K :: t
       real :: t  ! temperature (K)
-      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8 
+
+      != unit :: a0
+      != unit :: mb / k :: a1, a2, a3, a4, a5, a6, a7, a8
+      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
       data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
               6.105851, 0.4440316, 0.1430341e-1, &
               0.2641412e-3, 0.2995057e-5, 0.2031998e-7, &
@@ -487,33 +515,40 @@ contains
       !       6.11239921, 0.443987641, 0.142986287e-1, &
       !       0.264847430e-3, 0.302950461e-5, 0.206739458e-7, &
       !       0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
+
+      != unit K :: dt
       real :: dt
       dt = max(-80.,t-273.16)
-      esatw = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
+      esatw = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
     end function esatw
-  
+
+    != unit 1 :: qsatw
     real function qsatw(t,p)
       implicit none
-      real :: t  ! temperature (K)
-      real :: p  ! pressure    (mb)
+      != unit K :: t
+      real :: t  ! temperature
+
+      != unit mb :: p, esat
+      real :: p  ! pressure
       real :: esat
+
       esat = esatw(t)
       qsatw = 0.622 * esat/max(esat, p-esat)
     end function qsatw
-  
+
     ! real function dtesatw(t)
     !   implicit none
     !   real :: t  ! temperature (K)
-    !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8 
+    !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
     !   data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
     !             0.443956472, 0.285976452e-1, 0.794747212e-3, &
     !             0.121167162e-4, 0.103167413e-6, 0.385208005e-9, &
     !            -0.604119582e-12, -0.792933209e-14, -0.599634321e-17/
     !   real :: dt
     !   dt = max(-80.,t-273.16)
-    !   dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
+    !   dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
     ! end function dtesatw
-    ! 
+    !
     ! real function dtqsatw(t,p)
     !   implicit none
     !   real :: t  ! temperature (K)
@@ -521,44 +556,51 @@ contains
     !   real :: dtesatw
     !   dtqsatw=0.622*dtesatw(t)/p
     ! end function dtqsatw
-  
+
     real function esati(t)
       implicit none
-      real :: t  ! temperature (K)
-      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8 
+      != unit K :: t
+      real :: t  ! temperature
+      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
       data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
               6.11147274, 0.503160820, 0.188439774e-1, &
               0.420895665e-3, 0.615021634e-5,0.602588177e-7, &
-              0.385852041e-9, 0.146898966e-11, 0.252751365e-14/       
+              0.385852041e-9, 0.146898966e-11, 0.252751365e-14/
       real :: dt
       dt = max(-80.0, t-273.16)
-      esati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
+      esati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
     end function esati
-  
+
+    != unit 1 :: qsati
     real function qsati(t,p)
       implicit none
-      real :: t  ! temperature (K)
-      real :: p  ! pressure    (mb)
+      != unit t :: K
+      real :: t  ! temperature
+
+      != unit mb :: p
+      real :: p  ! pressure
+
+      != unit mb :: esat
       real :: esat
       esat = esati(t)
       qsati = 0.622 * esat/max(esat,p-esat)
     end function qsati
-       
+
     ! function dtesati(t)
     !   implicit none
     !   real :: t  ! temperature (K)
-    !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8 
+    !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
     !   data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
     !           0.503223089, 0.377174432e-1,0.126710138e-2, &
     !           0.249065913e-4, 0.312668753e-6, 0.255653718e-8, &
     !           0.132073448e-10, 0.390204672e-13, 0.497275778e-16/
     !   real :: dtesati, dt
     !   dt = max(-800. ,t-273.16)
-    !   dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt))))))) 
+    !   dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
     !   return
     ! end function dtesati
-    !         
-    !         
+    !
+    !
     ! real function dtqsati(t,p)
     !   implicit none
     !   real :: t  ! temperature (K)
