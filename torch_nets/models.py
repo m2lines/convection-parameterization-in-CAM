@@ -1,5 +1,5 @@
 """Neural network architectures."""
-import netCDF4 as nc
+import netCDF4 as nc  # type: ignore
 
 from torch import as_tensor, no_grad  # pylint: disable=no-name-in-module
 
@@ -8,7 +8,7 @@ from torch.nn import functional as F
 
 
 class ANN(Module):  # pylint: disable=too-many-instance-attributes
-    """This seems to be the model used in the paper.
+    """Model used in the paper.
 
     Paper: https://doi.org/10.1029/2020GL091363
 
@@ -121,11 +121,3 @@ def endow_with_netcdf_params(model: Module, nc_file: str):
 
         layer.weight[:] = weight[:]
         layer.bias[:] = bias[:]
-
-
-if __name__ == "__main__":
-    model = ANN(61, 148)
-
-    nc_file = "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
-
-    endow_with_netcdf_params(model, nc_file)

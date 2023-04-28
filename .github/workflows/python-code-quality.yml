@@ -1,0 +1,39 @@
+name: Python Package using Conda
+
+on: [pull_request]
+
+jobs:
+  code_quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Add conda to system path
+      if: always()
+      run: |
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        echo $CONDA/bin >> $GITHUB_PATH
+
+    - name: Install dependencies
+      if: always()
+      run: |
+        conda env update --file requirements.conda.yaml --name base
+
+    - name: Lint with Pylint
+      if: always()
+      run: |
+        pylint $(git ls-files *.py)
+
+    - name: Lint with Mypy
+      if: always()
+      run: |
+        mypy $(git ls-files *.py)
+
+    - name: Lint with Pydocstyle
+      if: always()
+      run: |
+        pydocstyle --convention=numpy $(git ls-files *.py)
