@@ -1,5 +1,8 @@
 # Convection Parameterization in CAM
 
+Note that this repository and code is still work in progress and undergoing significant development.
+Once a useable release is produced it will be tagged.
+
 ## Description
 This repository contains code as part of an effort to deploy machine learning (ML) models of geophysical parameterisations into the [Community Earth System Model (CESM)](https://www.cesm.ucar.edu/).
 This work is part of the [M<sup>2</sup>LInES](https://m2lines.github.io/) project aiming to improve performance of climate models using ML models for subgrid parameterizations.
