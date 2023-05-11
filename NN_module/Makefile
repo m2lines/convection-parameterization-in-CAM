@@ -12,7 +12,7 @@ LDFLAGS = -L/opt/netcdf-c/lib -lnetcdf -L/opt/netcdf-fortran/lib -lnetcdff -lm
 # LDFLAGS = -I/usr/local/software/spack/spack-views/rhel8-icelake-20211027_2/netcdf-fortran-4.5.3/gcc-11.2.0/intel-oneapi-mpi-2021.4.0/g4qjb23rucofcg5uitt4jwrkgyf7gba7/include
 
 PROGRAM = test
-SRC = nn_convection_flux.f90 nn_interface_SAM.f90 test.f90
+SRC = nn_cf_net.f90 nn_interface_SAM.f90 test.f90
 OBJECTS = $(SRC:.f90=.o)
 
 all: $(PROGRAM)

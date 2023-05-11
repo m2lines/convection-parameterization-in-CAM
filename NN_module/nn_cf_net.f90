@@ -1,6 +1,9 @@
 ! neural_net convection emulator
 
-module nn_convection_flux_mod
+! Module containing code pertaining only to the Neural Net functionalities of
+! the M2LiNES Convection Flux parameterisation
+
+module nn_cf_net_mod
 
 !---------------------------------------------------------------------
 ! Libraries to use
@@ -10,7 +13,7 @@ private
 
 !---------------------------------------------------------------------
 ! public interfaces
-public  relu, net_forward, nn_convection_flux_init, nn_convection_flux_finalize
+public  relu, net_forward, nn_cf_net_init, nn_cf_net_finalize
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -137,7 +140,7 @@ contains
 
     !#################################################################
 
-    subroutine nn_convection_flux_init(nn_filename, n_inputs, n_outputs)
+    subroutine nn_cf_net_init(nn_filename, n_inputs, n_outputs)
         !! Initialise the neural net
 
         integer  unit,io,ierr
@@ -257,17 +260,17 @@ contains
         n_inputs = n_in
         n_outputs = n_out
 
-    end subroutine nn_convection_flux_init
+    end subroutine nn_cf_net_init
 
     !#################################################################
 
-    subroutine nn_convection_flux_finalize()
+    subroutine nn_cf_net_finalize()
       ! Deallocate arrays
       deallocate(r_w1, r_w2, r_w3, r_w4, r_w5)
       deallocate(r_b1, r_b2, r_b3, r_b4, r_b5)
       deallocate(z1, z2, z3, z4)
       deallocate(xscale_mean, xscale_stnd, yscale_mean, yscale_stnd)
-    end subroutine nn_convection_flux_finalize
+    end subroutine nn_cf_net_finalize
 
     !#################################################################
 
@@ -283,4 +286,4 @@ contains
         end if
     end subroutine check
 
-end module nn_convection_flux_mod
+end module nn_cf_net_mod

@@ -5,7 +5,7 @@ module nn_interface_SAM_mod
 
 !---------------------------------------------------------------------
 ! Libraries to use
-use nn_convection_flux_mod, only: nn_convection_flux_init, net_forward
+use nn_cf_net_mod, only: nn_cf_net_init, net_forward
 implicit none
 private
 
@@ -173,7 +173,7 @@ contains
         call task_rank_to_index(rank,it,jt)
 
         ! Initialise the Neural Net from file and get info
-        call nn_convection_flux_init(nn_filename, n_inputs, n_outputs)
+        call nn_cf_net_init(nn_filename, n_inputs, n_outputs)
 
         ! Set init flag as complete
         do_init=.false.
