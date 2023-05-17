@@ -75,10 +75,10 @@ real, parameter :: tprmax = 283.16
 !     !! Maximum temperature for cloud ice, K
 
 ! Misc. microphysics variables
-real :: a_pr
+real, parameter :: a_pr = 1./(tprmax-tprmin)
     !! Misc. microphysics variables
 
-! real :: a_bg
+! real, parameter :: a_bg = 1./(tbgmax-tbgmin)
 !     !! Misc. microphysics variables
 
 
@@ -106,11 +106,6 @@ contains
         ! (as flux at bottom boundary is zero).
         ! nrf = 30
         ! nrfq = 29
-
-        ! TODO SAM microphysics variables need setting somewhere
-        ! From setparm.f90 in SAM
-        a_pr = 1./(tprmax-tprmin)
-        ! a_bg = 1./(tbgmax-tbgmin)
 
     end subroutine nn_convection_flux_init
 
