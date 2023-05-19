@@ -1,5 +1,5 @@
 module nn_interface_SAM_mod
-    !! Interface to convection NN for the SAM model
+    !! Interface to convection parameterisation for the SAM model
     !! Reference: https://doi.org/10.1029/2020GL091363
     !! Also see YOG20: https://doi.org/10.1038/s41467-020-17142-3
 
@@ -55,33 +55,26 @@ integer, parameter :: dimx1_s = -2
 integer, parameter :: dimx2_s = nxp3
 integer, parameter :: dimy1_s = 1-3*YES3D
 integer, parameter :: dimy2_s = nyp3
+
 real dy
     !! grid spacing in y direction
 real dz
-    !! grid spacing in z direction for the lowest grid layer
+    !! grid spacing in z direction for the lowest grid layer, input to parameterisation
 
-!= unit s :: dtn
-real dtn
-    !! current dynamical timestep (can be smaller than dt)
 
-!= unit mb :: pres
-real pres(nzm)
-    !! pressure,mb at scalar levels
-real adz(nzm)
-    !! ratio of the grid spacing to dz for pressure levels
+! Subcycling variables
 integer nstep
     !! current number of performed time steps
 integer icycle
     !! current subcycle
 integer nstatis
     !! the interval between substeps to compute statistics
-logical tin_feature_rf, rf_uses_rh, rf_uses_qp, qin_feature_rf, do_yin_input
-!! Logical switches and flags:
+
 ! Multitasking stuff
 integer rank
     !! rank of the current subdomain task (default 0)
-logical masterproc
-    !! logical variable .true. if rank .eq. 0
+! logical masterproc
+!     !! logical variable .true. if rank .eq. 0
 
 
 
@@ -123,6 +116,15 @@ real q_i(nx,ny,nzm)
     !! Non-precipitating water mixing ratio
 real qp_i (nx,ny,nzm)
     !! Precipitating water mixing ratio
+real adz(nzm)
+    !! ratio of the grid spacing to dz for pressure levels
+!= unit s :: dtn
+real dtn
+    !! current dynamical timestep (can be smaller than dt)
+! ONLY Needed if using rf_uses_rh
+! != unit mb :: pres
+! real pres(nzm)
+!     !! pressure,mb at scalar levels
 
 !---------------------------------------------------------------------
 ! Functions and Subroutines
@@ -140,6 +142,7 @@ contains
 
         ! Initialise the Neural Net from file and get info
         call nn_convection_flux_init(nn_filename)
+
     end subroutine nn_convection_flux_SAM_init
 
     subroutine nn_convection_flux_SAM()
@@ -196,17 +199,6 @@ contains
 
     end subroutine nn_convection_flux_SAM_finalize
     
-    !###################################################################
-
-    subroutine error_mesg (message)
-      character(len=*), intent(in) :: message
-          !! message to be written to output   (character string)
-
-      if(masterproc) print*, 'Neural network  module: ', message
-      stop
-
-    end subroutine error_mesg
-
     !###################################################################
 
     subroutine task_rank_to_index (rank,i,j)

@@ -25,7 +25,7 @@ integer :: n_inputs, n_outputs
 integer, parameter :: nrf = 30
     !! number of vertical levels the NN uses
 integer, parameter :: nrfq = 29
-    !! number of vertical levels the NN uses
+    !! number of vertical levels the NN uses when boundary condition is set to 0
 integer, parameter :: input_ver_dim = 48
     !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
 logical :: do_init=.true.
@@ -55,14 +55,16 @@ real, parameter :: cp = 1004.
 ! unit K - not checkable yet
 real, parameter :: fac_cond = lcond/cp
     !!
-!
+
 ! unit K - not checkable yet
 real, parameter :: fac_fus = lfus/cp
     !!
 ! Temperatures limits for various hydrometeors
 != unit K :: tprmin
+
 real, parameter :: tprmin = 268.16
     !! Minimum temperature for rain
+
 != unit K :: tprmax
 real, parameter :: tprmax = 283.16
     !! Maximum temperature for snow+graupel, K
@@ -70,6 +72,7 @@ real, parameter :: tprmax = 283.16
 ! != unit K :: tbgmin
 ! real, parameter :: tbgmin = 253.16
 !     !! Minimum temperature for cloud water.
+!
 ! != unit K :: tbgmin
 ! real, parameter :: tbgmax = 273.16
 !     !! Maximum temperature for cloud ice, K
@@ -115,7 +118,7 @@ contains
         !! Interface to the neural net that applies physical constraints and reshaping
         !! of variables.
 
-        ! ------------------------------------
+        ! -----------------------------------
         ! Input Variables
         real, intent(in) :: y_in(:)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
@@ -144,7 +147,7 @@ contains
             !! current dynamical timestep (can be smaller than dt)
 
 
-
+        ! -----------------------------------
         ! Output Variables
         ! Taken from vars.f90 in SAM
         ! Prognostic variables
@@ -163,6 +166,8 @@ contains
         real, intent(inout) :: prec_xy(:, :)
             !! surface precipitation rate
 
+
+        ! -----------------------------------
         ! Local Variables
         integer nx
             !! Number of x points in a subdomain
@@ -171,12 +176,15 @@ contains
         integer nzm
             !! Number of z points in a subdomain - 1
 
-        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, q_tendency_auto, q_tendency_sed, t_tendency_auto
+        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, q_tendency_auto, &
+                                  q_tendency_sed, t_tendency_auto
         real,   dimension(nrf) :: q_flux_sed, qp_flux_fall, t_tendency_sed, q_tend_tot
-        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, t_sed_flux, t_rad_rest_tend, omp, fac ! Do not predict surface adv flux
+        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, t_sed_flux, t_rad_rest_tend, &
+                                  omp, fac ! Do not predict surface adv flux
         real,   dimension(size(t_i, 3)) :: qsat, irhoadz, irhoadzdz, irhoadzdz2
 
-        ! NN parameters
+        ! -----------------------------------
+        ! NN variables
         real(4), dimension(n_inputs) :: features
             !! Vector of input features for the NN
         real(4), dimension(n_outputs) :: outputs
