@@ -24,7 +24,7 @@ integer :: n_inputs, n_outputs
     !! Length of input/output vector to the NN
 integer, parameter :: nrf = 30
     !! number of vertical levels the NN uses
-integer, parameter :: nrfq = 29
+integer, parameter :: nrfq = nrf - 1
     !! number of vertical levels the NN uses when boundary condition is set to 0
 integer, parameter :: input_ver_dim = 48
     !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
@@ -143,7 +143,7 @@ contains
         real, intent(in) :: dz
             !! grid spacing in z direction for the lowest grid layer
         != unit s :: dtn
-        real dtn
+        real, intent(in) :: dtn
             !! current dynamical timestep (can be smaller than dt)
 
 
