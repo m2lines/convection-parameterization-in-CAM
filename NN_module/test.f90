@@ -92,7 +92,7 @@ program run_tests
 
     write (*,*) test_array
 
-    call nn_cf_net_init("../torch_nets/qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc", nin, nout)
+    call nn_cf_net_init("./NN_weights_YOG_convection.nc", nin, nout)
     call nn_cf_net_finalize()
 
 
@@ -115,7 +115,7 @@ program run_tests
     dtn = 1.
 
 
-    call nn_convection_flux_init("../torch_nets/qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc")
+    call nn_convection_flux_init("./NN_weights_YOG_convection.nc")
 
     call nn_convection_flux(t_i, q_i, qp_i, y_in, &
                             rho, adz, tabs, dz, dtn, &
