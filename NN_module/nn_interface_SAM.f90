@@ -69,7 +69,7 @@ contains
         real, intent(in) :: dy
         integer, intent(in) :: ny, ny_gl, nstep, nstatis, icycle, YES3D
 
-        real, intent(out) :: y_in(ny)
+        real :: y_in(ny)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
         ! Initialise precipitation to 0 if required and at start of cycle
