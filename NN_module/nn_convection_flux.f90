@@ -22,12 +22,14 @@ public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
 ! Neural Net parameters used throughout module
 integer :: n_inputs, n_outputs
     !! Length of input/output vector to the NN
+integer, parameter :: input_ver_dim = 48
+    !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
+! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,
+! and at 29 levels for fluxes (as flux at bottom boundary is zero).
 integer, parameter :: nrf = 30
     !! number of vertical levels the NN uses
 integer, parameter :: nrfq = nrf - 1
     !! number of vertical levels the NN uses when boundary condition is set to 0
-integer, parameter :: input_ver_dim = 48
-    !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
 logical :: do_init=.true.
     !! model initialisation is yet to be performed
 
@@ -99,7 +101,7 @@ contains
             !! NetCDF filename from which to read model weights
 
         ! Initialise the Neural Net from file and get info
-        call nn_cf_net_init(nn_filename, n_inputs, n_outputs)
+        call nn_cf_net_init(nn_filename, n_inputs, n_outputs, nrf)
 
         ! Set init flag as complete
         do_init = .false.
@@ -266,7 +268,7 @@ contains
                 ! Call the forward method of the NN on the input features
                 ! Scaling and normalisation done as layers in NN
 
-                call net_forward(features, outputs, nrf)
+                call net_forward(features, outputs)
 
                 !-----------------------------------------------------
                 ! Separate physical outputs from NN output vector and apply physical constraints

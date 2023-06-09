@@ -92,7 +92,7 @@ program run_tests
 
     write (*,*) test_array
 
-    call nn_cf_net_init("./NN_weights_YOG_convection.nc", nin, nout)
+    call nn_cf_net_init("./NN_weights_YOG_convection.nc", nin, nout, 30)
     call nn_cf_net_finalize()
 
 

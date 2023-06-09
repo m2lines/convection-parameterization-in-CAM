@@ -20,15 +20,19 @@ public  relu, net_forward, nn_cf_net_init, nn_cf_net_finalize
 
 ! Neural Net Parameters
 integer :: n_in
-    !! Input dim features
+    !! Combined length of input features
+integer :: n_features_out
+    !! Number of output features (variables)
+integer, allocatable, dimension(:) :: feature_out_sizes
+    !! Vector storing the length of each of the input features
+integer :: n_lev
+    !! number of atmospheric layers (model levels) output is supplied for
 ! Dimension of each hidden layer
 integer :: n_h1
 integer :: n_h2
 integer :: n_h3
 integer :: n_h4
 integer :: n_out
-integer :: out_var_dim
-    !! number of output variables  (different types)
 
 ! Weights at each hidden layer of the NN
 real(4), allocatable, dimension(:,:)     :: r_w1
@@ -78,7 +82,7 @@ contains
     end subroutine relu
 
 
-    subroutine net_forward(features, logits, nrf)
+    subroutine net_forward(features, logits)
         !! Run forward method of the Neural Net.
 
         real(4), dimension(:) :: features
@@ -87,9 +91,10 @@ contains
             !! Output vector
         integer :: i
             !! Loop counter
-        integer, intent(in) :: nrf
-            !! number of layers to apply
         integer :: out_dim_counter
+            !!
+        integer :: out_pos, feature_size, f
+            !! 
 
         ! Initialise hidden layer values
         ! TODO Is this really neccessary...???
@@ -115,35 +120,23 @@ contains
 
         logits = matmul(z4, r_w5) + r_b5
 
-        ! Apply scaling and normalisation of output features
-        ! TODO: This is ugly, but not sure much can be done now.
-        i =1
-        logits(1:nrf) = (logits(1:nrf) * yscale_stnd(i))  +  yscale_mean(i)
-        out_dim_counter = nrf
-
-        i = i + 1
-        logits(out_dim_counter+1:out_dim_counter+nrf-1) = (logits(out_dim_counter+1:out_dim_counter+nrf-1)* yscale_stnd(i))  +  yscale_mean(i)
-        out_dim_counter = out_dim_counter + nrf-1
-
-        i = i + 1
-        logits(out_dim_counter+1:out_dim_counter+nrf-1) = (logits(out_dim_counter+1:out_dim_counter+nrf-1) * yscale_stnd(i))  +  yscale_mean(i)
-        out_dim_counter = out_dim_counter + nrf-1
-
-        i = i + 1
-        logits(out_dim_counter+1:out_dim_counter+nrf) = (logits(out_dim_counter+1:out_dim_counter+nrf) * yscale_stnd(i))  +  yscale_mean(i)
-        out_dim_counter = out_dim_counter + nrf
-
-        i = i + 1
-        logits(out_dim_counter+1:out_dim_counter+nrf) = (logits(out_dim_counter+1:out_dim_counter+nrf) * yscale_stnd(i))  +  yscale_mean(i)
-        out_dim_counter = out_dim_counter + nrf
+        ! Apply scaling and normalisation of each output feature in logits
+        out_pos = 0
+        do f = 1, n_features_out
+           feature_size = feature_out_sizes(f)
+           logits(out_pos+1:out_pos+feature_size) = (logits(out_pos+1:out_pos+feature_size)*yscale_stnd(f)) + yscale_mean(f)
+           out_pos = out_pos + feature_size
+        end do
 
     end subroutine
 
 
-    subroutine nn_cf_net_init(nn_filename, n_inputs, n_outputs)
+    subroutine nn_cf_net_init(nn_filename, n_inputs, n_outputs, nrf)
         !! Initialise the neural net
 
         integer, intent(out) :: n_inputs, n_outputs
+        integer, intent(in) :: nrf
+            !! number of atmospheric layers in each input
 
         ! This will be the netCDF ID for the file and data variable.
         integer :: ncid
@@ -182,7 +175,7 @@ contains
         call check( nf90_inq_dimid(ncid, 'N_out', out_dimid))
         call check( nf90_inquire_dimension(ncid, out_dimid, len=n_out))
         call check( nf90_inq_dimid(ncid, 'N_out_dim', out_dimid))
-        call check( nf90_inquire_dimension(ncid, out_dimid, len=out_var_dim))
+        call check( nf90_inquire_dimension(ncid, out_dimid, len=n_features_out))
 
         print *, 'size of features to NN', n_in
         print *, 'size of outputs from NN', n_out
@@ -208,8 +201,9 @@ contains
         allocate(xscale_mean(n_in))
         allocate(xscale_stnd(n_in))
 
-        allocate(yscale_mean(out_var_dim))
-        allocate(yscale_stnd(out_var_dim))
+        allocate(yscale_mean(n_features_out))
+        allocate(yscale_stnd(n_features_out))
+        allocate(feature_out_sizes(n_features_out))
 
         ! Read NN data in from nc file
         call check( nf90_inq_varid(ncid, "w1", r_w1_varid))
@@ -252,6 +246,13 @@ contains
         n_inputs = n_in
         n_outputs = n_out
 
+        ! Set sizes of output features based on nrf
+        n_lev = nrf
+        
+        ! Set sizes of the feature groups
+        feature_out_sizes(:)   = n_lev
+        feature_out_sizes(2:3) = n_lev-1
+
     end subroutine nn_cf_net_init
 
 
@@ -263,6 +264,7 @@ contains
         deallocate(r_b1, r_b2, r_b3, r_b4, r_b5)
         deallocate(z1, z2, z3, z4)
         deallocate(xscale_mean, xscale_stnd, yscale_mean, yscale_stnd)
+        deallocate(feature_out_sizes)
 
     end subroutine nn_cf_net_finalize
 
