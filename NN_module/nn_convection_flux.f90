@@ -106,13 +106,6 @@ contains
         ! Set init flag as complete
         do_init = .false.
 
-        ! Hardcoded magic numbers
-        ! These have been made module parameters
-        ! nrf is the fact results are supplied at lowest 30 half-model levels for sedimentation fluxes, and at 29 levels for fluxes
-        ! (as flux at bottom boundary is zero).
-        ! nrf = 30
-        ! nrfq = 29
-
     end subroutine nn_convection_flux_init
 
 
@@ -384,9 +377,8 @@ contains
                 prec_xy(i,j) = prec_xy(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For 2D output
                 !
                 do k=1, nrf
-                    ! TODO: Both these lines have dz*(1/dz) can we just remove this?
-                    precsfc(i,j) = precsfc(i,j) - q_tend_tot(k)*adz(k)*dz*rho(k)*rev_dz! removed the time step mult because q_tend_tot is already mult
-                    prec_xy(i,j) = prec_xy(i,j) - q_tend_tot(k)*adz(k)*dz*rho(k)*rev_dz
+                    precsfc(i,j) = precsfc(i,j) - q_tend_tot(k)*adz(k)*rho(k)! removed the time step mult because q_tend_tot is already mult
+                    prec_xy(i,j) = prec_xy(i,j) - q_tend_tot(k)*adz(k)*rho(k)
                 end do
 
                 ! As a final check q must be >= 0.0, if not then set to 0.0, otherwise add tendencies
