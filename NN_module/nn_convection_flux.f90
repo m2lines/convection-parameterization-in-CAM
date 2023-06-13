@@ -140,7 +140,7 @@ contains
         ! real, intent(in) pres(nzm)
         !     !! pressure,mb at scalar levels
         real, intent(in) :: adz(:)
-            !! ratio of the pressure level grid spacing to dz for from grid.f90
+            !! ratio of the pressure level grid height spacing [m] to dz (lowest dz spacing)
         
         ! Single value parameters from model/grid
         real, intent(in) :: dz
@@ -189,10 +189,11 @@ contains
         real,   dimension(nrf) :: q_flux_sed, qp_flux_fall, t_tendency_sed, q_tend_tot
         real,   dimension(nrf) :: t_flux_adv, q_flux_adv, t_sed_flux, t_rad_rest_tend, &
                                   omp, fac ! Do not predict surface adv flux
-        real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz, irhoadzdz2
+        real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz
 
         ! -----------------------------------
         ! variables for NN
+        ! -----------------------------------
         real(4), dimension(n_inputs) :: features
             !! Vector of input features for the NN
         real(4), dimension(n_outputs) :: outputs
@@ -205,12 +206,11 @@ contains
         ! Check that we have initialised all of the variables.
         if (do_init) call error_mesg('NN has not yet been initialised using nn_convection_flux_init.')
 
-        ! Define TODO Magical Mystery variables
+        ! Define useful variables relating to grid spacing to convert values to fluxes
         rev_dz = 1/dz
         do k=1,nzm
-            irhoadz(k) = dtn/(rho(k)*adz(k)) ! Useful factor
-            irhoadzdz(k) = irhoadz(k)/dz ! Note the time step
-            irhoadzdz2(k) = irhoadz(k)/(dz*dz) ! Note the time step
+            irhoadz(k) = dtn/(rho(k)*adz(k)) !  Temporary factor for below
+            irhoadzdz(k) = irhoadz(k)/dz ! 2.0 * dtn / (rho(k)*(z(k+1) - z(k-1))) [(kg.m/s)^-1]
         end do
 
         ! The NN operates on atmospheric columns, so loop over x and y coordinates in turn
@@ -290,12 +290,13 @@ contains
 
                 ! Non-precip. water must be >= 0, so ensure advective flux will not reduce it below 0
                 do k=2,nrf
+                    ! If flux is negative ensure we don't lose more than is already in the box
                     if (q_flux_adv(k).lt.0) then
                         if ( q(i,j,k).lt.-q_flux_adv(k)* irhoadzdz(k)) then
                             q_flux_adv(k) = -q(i,j,k)/irhoadzdz(k)
                         end if
                     else
-                        ! If gaining water content ensure that we are not gaining more than is in cell below
+                    ! If flux is positive ensure we don't gain more than is in the box below
                         ! TODO: Not sure I fully understand this constraint
                         if (q(i,j,k-1).lt.q_flux_adv(k)* irhoadzdz(k)) then
                             q_flux_adv(k) = q(i,j,k-1)/irhoadzdz(k)
