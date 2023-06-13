@@ -109,25 +109,29 @@ contains
     end subroutine nn_convection_flux_init
 
 
-    subroutine nn_convection_flux(t_i, q_i, qp_i, y_in, &
-                                  rho, adz, tabs, dz, dtn, &
+    subroutine nn_convection_flux(tabs_i, q_i, y_in, &
+                                  tabs, &
+                                  rho, adz, &
+                                  dz, dtn, &
                                   t, q, qn, precsfc, prec_xy)
         !! Interface to the neural net that applies physical constraints and reshaping
         !! of variables.
 
         ! -----------------------------------
         ! Input Variables
-        real, intent(in) :: y_in(:)
-            !! Distance of column from equator (proxy for insolation and sfc albedo)
-
+        ! -----------------------------------
         ! Fields from beginning of time step used as NN inputs
-        real, intent(in) :: t_i(:, :, :)
+        real, intent(in) :: tabs_i(:, :, :)
             !! Temperature
         real, intent(in) :: q_i(:, :, :)
             !! Non-precipitating water mixing ratio
-        real, intent(in) :: qp_i (:, :, :)
-            !! Precipitating water mixing ratio
+        
+        real, intent(in) :: y_in(:)
+            !! Distance of column from equator (proxy for insolation and sfc albedo)
 
+        real, intent(in) :: tabs(:, :, :)
+            !! absolute temperature
+        
         ! reference vertical profiles:
         != unit (kg / m**3) :: rho
         real, intent(in) :: rho(:)
@@ -136,17 +140,18 @@ contains
         ! real, intent(in) pres(nzm)
         !     !! pressure,mb at scalar levels
         real, intent(in) :: adz(:)
-            !! ratio of the grid spacing to dz for pressure levels from grid.f90
-        real, intent(in) :: tabs(:, :, :)
-            !! absolute temperature
+            !! ratio of the pressure level grid spacing to dz for from grid.f90
+        
+        ! Single value parameters from model/grid
         real, intent(in) :: dz
             !! grid spacing in z direction for the lowest grid layer
         != unit s :: dtn
         real, intent(in) :: dtn
-            !! current dynamical timestep (can be smaller than dt)
+            !! current dynamical timestep (can be smaller than dt due to subcycling)
 
         ! -----------------------------------
         ! Output Variables
+        ! -----------------------------------
         ! Taken from vars.f90 in SAM
         ! Prognostic variables
         != unit J :: t
@@ -166,6 +171,7 @@ contains
 
         ! -----------------------------------
         ! Local Variables
+        ! -----------------------------------
         integer  i, j, k, dim_counter, out_dim_counter
         integer nx
             !! Number of x points in a subdomain
@@ -183,7 +189,7 @@ contains
         real,   dimension(nrf) :: q_flux_sed, qp_flux_fall, t_tendency_sed, q_tend_tot
         real,   dimension(nrf) :: t_flux_adv, q_flux_adv, t_sed_flux, t_rad_rest_tend, &
                                   omp, fac ! Do not predict surface adv flux
-        real,   dimension(size(t_i, 3)) :: qsat, irhoadz, irhoadzdz, irhoadzdz2
+        real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz, irhoadzdz2
 
         ! -----------------------------------
         ! variables for NN
@@ -192,9 +198,9 @@ contains
         real(4), dimension(n_outputs) :: outputs
             !! vector of output features from the NN
 
-        nx = size(t_i, 1)
-        ny = size(t_i, 2)
-        nzm = size(t_i, 3)
+        nx = size(tabs_i, 1)
+        ny = size(tabs_i, 2)
+        nzm = size(tabs_i, 3)
 
         ! Check that we have initialised all of the variables.
         if (do_init) call error_mesg('NN has not yet been initialised using nn_convection_flux_init.')
@@ -233,7 +239,7 @@ contains
                 ! Combine all features into one vector
 
                 ! Add temperature as input feature
-                features(dim_counter+1:dim_counter + input_ver_dim) = real(t_i(i,j,1:input_ver_dim),4)
+                features(dim_counter+1:dim_counter + input_ver_dim) = real(tabs_i(i,j,1:input_ver_dim),4)
                 dim_counter = dim_counter + input_ver_dim
 
                 ! Add non-precipitating water mixing ratio as input feature using random forest (rf) approach from earlier paper
@@ -366,7 +372,7 @@ contains
 
                 ! Apply sed tendency to variables
                 t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond)
-                q(i,j,1:nrf) = q(i,j,1:nrf) +q_tendency_sed(1:nrf)
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_sed(1:nrf)
 
                 ! Apply radiation rest tendency to variables
                 t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn

@@ -70,12 +70,10 @@ program run_tests
     ! Input Variables
 
     ! Fields from beginning of time step used as NN inputs
-    real t_i(nx,ny,nzm)
+    real tabs_i(nx,ny,nzm)
         !! Temperature
     real q_i(nx,ny,nzm)
         !! Non-precipitating water mixing ratio
-    real qp_i (nx,ny,nzm)
-        !! Precipitating water mixing ratio
     real :: y_in(ny)
         !! Distance of column from equator (proxy for insolation and sfc albedo)
     real adz(nzm)
@@ -106,9 +104,8 @@ program run_tests
     prec_xy = 0.
     rho = 1.
     tabs = 1.
-    t_i = 287.15
+    tabs_i = 287.15
     q_i = 0.2
-    qp_i = 0.2
     adz = 1.
     y_in = 1.
     dz = 1.
@@ -117,8 +114,10 @@ program run_tests
 
     call nn_convection_flux_init("./NN_weights_YOG_convection.nc")
 
-    call nn_convection_flux(t_i, q_i, qp_i, y_in, &
-                            rho, adz, tabs, dz, dtn, &
+    call nn_convection_flux(tabs_i, q_i, y_in, &
+                            tabs, &
+                            rho, adz, &
+                            dz, dtn, &
                             t, q, qn, precsfc, prec_xy)
 
     call nn_convection_flux_finalize()

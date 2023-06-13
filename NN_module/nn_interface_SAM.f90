@@ -54,15 +54,17 @@ contains
     end subroutine nn_convection_flux_SAM_init
 
 
-    subroutine nn_convection_flux_SAM(t_i, q_i, qp_i, rho, adz, tabs, &
-                                      dz, dtn, t, q, qn, precsfc, prec_xy, &
-                                      dy, ny, ny_gl, &
-                                      nstep, nstatis, icycle, YES3D)
+    subroutine nn_convection_flux_SAM(tabs_i, q_i, &
+                                      tabs, &
+                                      rho, adz, &
+                                      dz, dtn, dy, ny, ny_gl, &
+                                      nstep, nstatis, icycle, YES3D, &
+                                      t, q, qn, precsfc, prec_xy)
         !! Interface to the nn_convection parameterisation for the SAM model
 
         integer :: j, k
 
-        real, dimension(:,:,:) :: t_i, q_i, qp_i, tabs, t, q, qn
+        real, dimension(:,:,:) :: tabs_i, q_i, tabs, t, q, qn
         real, dimension(:, :) :: precsfc, prec_xy
         real, dimension(:) :: rho, adz
         real, intent(in) :: dz, dtn
@@ -77,8 +79,8 @@ contains
             precsfc(:,:)=0.
         end if
 
-        ! temperature
-        ! t_i(i,j,1:input_ver_dim)
+        ! temperature - Note that this variable is called t_i in the main SAM code!!!
+        ! tabs_i(i,j,1:input_ver_dim)
 
         ! non-precipitating water mixing ratio
         ! if (rf_uses_rh) then
@@ -95,9 +97,6 @@ contains
         !     q_i(i,j,1:input_ver_dim)
         ! end if
 
-        ! precipitating water (rain+snow) mixing ratio content
-        ! qp_i(i,j,1:input_ver_dim)
-
         ! distance to the equator
         ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM
         do j=1, ny
@@ -105,8 +104,10 @@ contains
         enddo
 
         ! Run the parameterization
-        call nn_convection_flux(t_i, q_i, qp_i, y_in, &
-                                rho, adz, tabs, dz, dtn, &
+        call nn_convection_flux(tabs_i, q_i, y_in, &
+                                tabs, &
+                                rho, adz, &
+                                dz, dtn, &
                                 t, q, qn, precsfc, prec_xy)
 
     end subroutine nn_convection_flux_SAM
