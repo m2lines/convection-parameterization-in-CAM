@@ -219,10 +219,10 @@ contains
         real :: rev_dz
             !! variable to store 1/dz factor
 
-        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, q_tend_auto, &
-                                  q_tendency_sed, t_tendency_auto
-        real,   dimension(nrf) :: q_flux_sed, t_tendency_sed, q_tendency_auto
-        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, t_sed_flux, t_rad_rest_tend, &
+        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, &
+                                  q_tendency_auto, q_tendency_sed
+        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
+                                  q_sed_flux, t_rad_rest_tend, &
                                   omp, fac ! Do not predict surface adv flux
         real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz
 
@@ -254,19 +254,17 @@ contains
 
                 ! Initialize variables
                 features = 0.
+                dim_counter = 0
                 outputs = 0.
+                t_rad_rest_tend = 0.
+                t_flux_adv = 0.
+                q_flux_adv = 0.
                 t_tendency_adv = 0.
                 q_tendency_adv = 0.
                 q_tend_auto = 0.
-                t_tendency_auto = 0.
-                q_tendency_sed = 0.
-                t_tendency_sed = 0.
-                t_rad_rest_tend = 0.
                 q_tendency_auto = 0.
-                t_flux_adv = 0.
-                q_flux_adv = 0.
-                q_flux_sed = 0.
-                dim_counter = 0
+                q_sed_flux = 0.
+                q_tendency_sed = 0.
                 omp = 0.
                 fac = 0.
 
@@ -328,7 +326,7 @@ contains
                 out_dim_counter = out_dim_counter + nrf
 
                 ! total non-precip. water mix. ratio ice-sedimenting flux
-                q_flux_sed(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
+                q_sed_flux(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
                 
                 !-----------------------------------------------------
                 ! Apply physical constraints and update q and t
@@ -385,25 +383,25 @@ contains
 
                 ! Ensure sedimenting ice will not reduce q below zero anywhere
                 do k=2,nrf
-                    if (q_flux_sed(k).lt.0) then
+                    if (q_sed_flux(k).lt.0) then
                         ! If flux is negative ensure we don't lose more than is already present
-                        if ( q(i,j,k).lt.-q_flux_sed(k)* irhoadzdz(k)) then
-                            q_flux_sed(k) = -q(i,j,k)/irhoadzdz(k)
+                        if ( q(i,j,k).lt.-q_sed_flux(k)* irhoadzdz(k)) then
+                            q_sed_flux(k) = -q(i,j,k)/irhoadzdz(k)
                         end if
                     else
                         ! If flux is positive ensure we don't gain more than is in the box below
-                        if (q(i,j,k-1).lt.q_flux_sed(k)* irhoadzdz(k)) then
-                            q_flux_sed(k) = q(i,j,k-1)/irhoadzdz(k)
+                        if (q(i,j,k-1).lt.q_sed_flux(k)* irhoadzdz(k)) then
+                            q_sed_flux(k) = q(i,j,k-1)/irhoadzdz(k)
                         end if
                     end if
                 end do
 
                 ! Convert sedimenting fluxes to tendencies (multiplied by dtn, so really dt and dq)
                 do k=1,nrf-1 ! One level less than I actually use
-                    q_tendency_sed(k) = - (q_flux_sed(k+1) - q_flux_sed(k)) * irhoadzdz(k)
+                    q_tendency_sed(k) = - (q_sed_flux(k+1) - q_sed_flux(k)) * irhoadzdz(k)
                 end do
                 ! Enforce boundary condition at top of column
-                q_tendency_sed(nrf) = - (0.0 - q_flux_sed(nrf)) * irhoadzdz(nrf)
+                q_tendency_sed(nrf) = - (0.0 - q_sed_flux(nrf)) * irhoadzdz(nrf)
                 ! q must be >= 0 so ensure tendency won't reduce it below zero
                 do k=1,nrf
                     if (q_tendency_sed(k).lt.0) then
@@ -422,8 +420,8 @@ contains
                 !-----------------------------------------------------
                 ! Calculate surface precipitation
                 ! Apply sedimenting flux at surface
-                precsfc(i,j) = precsfc(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For statistics
-                prec_xy(i,j) = prec_xy(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For 2D output
+                precsfc(i,j) = precsfc(i,j)  - q_sed_flux(1)*dtn*rev_dz ! For statistics
+                prec_xy(i,j) = prec_xy(i,j)  - q_sed_flux(1)*dtn*rev_dz ! For 2D output
                 ! Apply all autoconversion in the column (all precip. falls out on larger timescale)
                 do k=1, nrf
                     precsfc(i,j) = precsfc(i,j) - q_tendency_auto(k)*adz(k)*rho(k)! removed the time step mult because q_tend_tot is already mult
