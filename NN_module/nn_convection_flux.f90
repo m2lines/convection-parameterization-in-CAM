@@ -20,16 +20,20 @@ public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
 ! local/private data
 
 ! Neural Net parameters used throughout module
+
 integer :: n_inputs, n_outputs
     !! Length of input/output vector to the NN
+
 integer, parameter :: input_ver_dim = 48
     !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
+
 ! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,
 ! and at 29 levels for fluxes (as flux at bottom boundary is zero).
 integer, parameter :: nrf = 30
     !! number of vertical levels the NN uses
 integer, parameter :: nrfq = nrf - 1
     !! number of vertical levels the NN uses when boundary condition is set to 0
+
 logical :: do_init=.true.
     !! model initialisation is yet to be performed
 
@@ -116,35 +120,56 @@ contains
                                   t, q, qn, precsfc, prec_xy)
         !! Interface to the neural net that applies physical constraints and reshaping
         !! of variables.
+        !! Operates on subcycle of timestep dtn to update tabs, q, qn, precsfc, and prec_xy
 
         ! -----------------------------------
         ! Input Variables
         ! -----------------------------------
+        
+        ! ---------------------
         ! Fields from beginning of time step used as NN inputs
+        ! ---------------------
+        != unit s :: tabs_i
         real, intent(in) :: tabs_i(:, :, :)
             !! Temperature
+        
+        != unit 1 :: q_i
         real, intent(in) :: q_i(:, :, :)
             !! Non-precipitating water mixing ratio
         
+        != unit m :: y_in
         real, intent(in) :: y_in(:)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
+        ! ---------------------
+        ! Other fields from SAM
+        ! ---------------------
+        != unit s :: tabs
         real, intent(in) :: tabs(:, :, :)
             !! absolute temperature
         
+        ! ---------------------
         ! reference vertical profiles:
+        ! ---------------------
         != unit (kg / m**3) :: rho
         real, intent(in) :: rho(:)
             !! air density at pressure levels
+        
         ! != unit mb :: pres
         ! real, intent(in) pres(nzm)
         !     !! pressure,mb at scalar levels
+        
+        != unit 1 :: adz
         real, intent(in) :: adz(:)
             !! ratio of the pressure level grid height spacing [m] to dz (lowest dz spacing)
         
+        ! ---------------------
         ! Single value parameters from model/grid
+        ! ---------------------
+        != unit m :: dz
         real, intent(in) :: dz
             !! grid spacing in z direction for the lowest grid layer
+        
         != unit s :: dtn
         real, intent(in) :: dtn
             !! current dynamical timestep (can be smaller than dt due to subcycling)
@@ -153,19 +178,29 @@ contains
         ! Output Variables
         ! -----------------------------------
         ! Taken from vars.f90 in SAM
-        ! Prognostic variables
-        != unit J :: t
+        ! ---------------------
+        ! Prognostic variables:
+        ! ---------------------
+
+        != unit K :: t
         real, intent(inout) :: t(:, :, :)
-            !! moist static energy
+            !! Liquid Ice static energy (cp*T + g*z − L(qliq + qice) − Lf*qice)
+        
+        != unit 1 :: q
         real, intent(inout) :: q(:, :, :)
             !! total water
+
+        ! ---------------------
         ! Diagnostic variables:
+        ! ---------------------
+
+        != unit 1 :: qn
         real, intent(inout) :: qn(:, :, :)
             !! cloud water+cloud ice
-        ! fluxes at the top and bottom of the domain:
+        
         real, intent(inout) :: precsfc(:, :)
             !! surface precip. rate
-        !  Horizontally varying stuff (as a function of xy)
+        
         real, intent(inout) :: prec_xy(:, :)
             !! surface precipitation rate
 
@@ -184,9 +219,9 @@ contains
         real :: rev_dz
             !! variable to store 1/dz factor
 
-        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, q_tendency_auto, &
+        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, q_tend_auto, &
                                   q_tendency_sed, t_tendency_auto
-        real,   dimension(nrf) :: q_flux_sed, qp_flux_fall, t_tendency_sed, q_tend_tot
+        real,   dimension(nrf) :: q_flux_sed, t_tendency_sed, q_tendency_auto
         real,   dimension(nrf) :: t_flux_adv, q_flux_adv, t_sed_flux, t_rad_rest_tend, &
                                   omp, fac ! Do not predict surface adv flux
         real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz
@@ -206,7 +241,7 @@ contains
         ! Check that we have initialised all of the variables.
         if (do_init) call error_mesg('NN has not yet been initialised using nn_convection_flux_init.')
 
-        ! Define useful variables relating to grid spacing to convert values to fluxes
+        ! Define useful variables relating to grid spacing to convert fluxes to tendencies
         rev_dz = 1/dz
         do k=1,nzm
             irhoadz(k) = dtn/(rho(k)*adz(k)) !  Temporary factor for below
@@ -222,12 +257,12 @@ contains
                 outputs = 0.
                 t_tendency_adv = 0.
                 q_tendency_adv = 0.
-                q_tendency_auto = 0.
+                q_tend_auto = 0.
                 t_tendency_auto = 0.
                 q_tendency_sed = 0.
                 t_tendency_sed = 0.
                 t_rad_rest_tend = 0.
-                q_tend_tot = 0.
+                q_tendency_auto = 0.
                 t_flux_adv = 0.
                 q_flux_adv = 0.
                 q_flux_sed = 0.
@@ -270,100 +305,106 @@ contains
                 call net_forward(features, outputs)
 
                 !-----------------------------------------------------
-                ! Separate physical outputs from NN output vector and apply physical constraints
+                ! Separate physical outputs from NN output vector
 
-                ! Temperature rest tendency
+                ! Moist Static Energy radiative + rest(microphysical changes) tendency
                 t_rad_rest_tend(1:nrf) = outputs(1:nrf)
                 out_dim_counter = nrf
 
-                ! Temperature flux
+                ! Moist Static Energy advective subgrid flux
                 ! BC: advection surface flux is zero
                 t_flux_adv(1) = 0.0
                 t_flux_adv(2:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrfq)
                 out_dim_counter = out_dim_counter + nrfq
 
-                ! Non-precip. water flux
+                ! Total non-precip. water mix. ratio advective flux
                 ! BC: advection surface flux is zero
                 q_flux_adv(1) = 0.0
                 q_flux_adv(2:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrfq)
                 out_dim_counter = out_dim_counter + nrfq
 
-                ! Non-precip. water must be >= 0, so ensure advective flux will not reduce it below 0
+                ! Total non-precip. water autoconversion tendency
+                q_tend_auto(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
+                out_dim_counter = out_dim_counter + nrf
+
+                ! total non-precip. water mix. ratio ice-sedimenting flux
+                q_flux_sed(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
+                
+                !-----------------------------------------------------
+                ! Apply physical constraints and update q and t
+
+                ! Non-precip. water content must be >= 0, so ensure advective fluxes
+                ! will not reduce it below 0 anywhere
                 do k=2,nrf
-                    ! If flux is negative ensure we don't lose more than is already in the box
                     if (q_flux_adv(k).lt.0) then
+                        ! If flux is negative ensure we don't lose more than is already present
                         if ( q(i,j,k).lt.-q_flux_adv(k)* irhoadzdz(k)) then
                             q_flux_adv(k) = -q(i,j,k)/irhoadzdz(k)
                         end if
                     else
-                    ! If flux is positive ensure we don't gain more than is in the box below
-                        ! TODO: Not sure I fully understand this constraint
+                        ! If flux is positive ensure we don't gain more than is in the box below
                         if (q(i,j,k-1).lt.q_flux_adv(k)* irhoadzdz(k)) then
                             q_flux_adv(k) = q(i,j,k-1)/irhoadzdz(k)
                         end if
                     end if
                 end do
 
-                ! Calculate tendencies
-                q_tendency_auto(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
-                out_dim_counter = out_dim_counter + nrf
-
-                ! Convert flux to advective tendency via finite difference
+                ! Convert advective fluxes to tendencies (multiplied by dtn, so really dt and dq)
                 do k=1,nrf-1
                     t_tendency_adv(k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
                     q_tendency_adv(k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
                 end do
-                ! Apply finite difference boundary condition to advective tendencies
+                ! Enforce boundary condition at top of column
                 t_tendency_adv(nrf) = - (0.0 - t_flux_adv(nrf)) * irhoadzdz(nrf)
                 q_tendency_adv(nrf) = - (0.0 - q_flux_adv(nrf)) * irhoadzdz(nrf)
-                ! q must be >= 0 so ensure tendency won't reduce below zero
+                ! q must be >= 0 so ensure tendency won't reduce it below zero
                 do k=1,nrf
                     if (q(i,j,k) .lt. -q_tendency_adv(k)) then
                         q_tendency_adv(k) = -q(i,j,k)
                     end if
                 end do
-                ! Apply advective tendencies to variables
-                t(i,j,1:nrf) = t(i,j,1:nrf) + t_tendency_adv(1:nrf)
-                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_adv(1:nrf)
 
-                ! TODO ???
+                ! Update q and t with advective tendency difference
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_adv(1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) + t_tendency_adv(1:nrf)
+
+                ! ensure autoconversion tendency won't reduce q below 0
                 do k=1,nrf
                     omp(k) = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
                     fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
-                    if (q_tendency_auto(k).lt.0) then
-                        q_tend_tot(k) = min(-q_tendency_auto(k) * dtn, q(i,j,k))!q_tendency_auto(1:nrf) * dtn + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
-                        q_tend_tot(k) = -q_tend_tot(k)
+                    if (q_tend_auto(k).lt.0) then
+                        q_tendency_auto(k) = - min(-q_tend_auto(k) * dtn, q(i,j,k))
                     else
-                        q_tend_tot(k) = q_tendency_auto(k) * dtn
+                        q_tendency_auto(k) = q_tend_auto(k) * dtn
                     endif
                 end do
 
-                ! Update q and t
-                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tend_tot(1:nrf)
-                t(i,j,1:nrf) = t(i,j,1:nrf) - q_tend_tot(1:nrf)*fac(1:nrf)
+                ! Update with autoconversion tendency q and t (t = q*(latent_heat/cp))
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_auto(1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_auto(1:nrf)*fac(1:nrf)
 
-                ! TODO ???
-                q_flux_sed(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
-                ! q_flux must be >= 0
+                ! Ensure sedimenting ice will not reduce q below zero anywhere
                 do k=2,nrf
                     if (q_flux_sed(k).lt.0) then
+                        ! If flux is negative ensure we don't lose more than is already present
                         if ( q(i,j,k).lt.-q_flux_sed(k)* irhoadzdz(k)) then
                             q_flux_sed(k) = -q(i,j,k)/irhoadzdz(k)
                         end if
                     else
+                        ! If flux is positive ensure we don't gain more than is in the box below
                         if (q(i,j,k-1).lt.q_flux_sed(k)* irhoadzdz(k)) then
                             q_flux_sed(k) = q(i,j,k-1)/irhoadzdz(k)
                         end if
                     end if
                 end do
 
-                ! Calculate sed tendency via finite difference
+                ! Convert sedimenting fluxes to tendencies (multiplied by dtn, so really dt and dq)
                 do k=1,nrf-1 ! One level less than I actually use
                     q_tendency_sed(k) = - (q_flux_sed(k+1) - q_flux_sed(k)) * irhoadzdz(k)
                 end do
-                ! Set value at top of nrf layr
+                ! Enforce boundary condition at top of column
                 q_tendency_sed(nrf) = - (0.0 - q_flux_sed(nrf)) * irhoadzdz(nrf)
-                ! If q sed tendency < 0 ensure it will not reduce q below 0
+                ! q must be >= 0 so ensure tendency won't reduce it below zero
                 do k=1,nrf
                     if (q_tendency_sed(k).lt.0) then
                         q_tendency_sed(k) = min(-q_tendency_sed(k), q(i,j,k))
@@ -371,32 +412,37 @@ contains
                     end if
                 end do
 
-                ! Apply sed tendency to variables
-                t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond)
+                ! Update q and t with sed tendency q and t (t = q*(latent_heat/cp))
                 q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_sed(1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond)
 
-                ! Apply radiation rest tendency to variables
+                ! Apply radiation rest tendency to variables (multiply by dtn to get dt)
                 t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn
 
+                !-----------------------------------------------------
                 ! Calculate surface precipitation
-                ! Apply sed flux at surface
+                ! Apply sedimenting flux at surface
                 precsfc(i,j) = precsfc(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For statistics
                 prec_xy(i,j) = prec_xy(i,j)  - q_flux_sed(1)*dtn*rev_dz ! For 2D output
-                !
+                ! Apply all autoconversion in the column (all precip. falls out on larger timescale)
                 do k=1, nrf
-                    precsfc(i,j) = precsfc(i,j) - q_tend_tot(k)*adz(k)*rho(k)! removed the time step mult because q_tend_tot is already mult
-                    prec_xy(i,j) = prec_xy(i,j) - q_tend_tot(k)*adz(k)*rho(k)
+                    precsfc(i,j) = precsfc(i,j) - q_tendency_auto(k)*adz(k)*rho(k)! removed the time step mult because q_tend_tot is already mult
+                    prec_xy(i,j) = prec_xy(i,j) - q_tendency_auto(k)*adz(k)*rho(k)
                 end do
 
-                ! As a final check q must be >= 0.0, if not then set to 0.0, otherwise add tendencies
+                ! As a final check enforce q must be >= 0.0
                 do k = 1,nrf
                     q(i,j,k) = max(0.,q(i,j,k))
                 end do
 
-                ! qn (precip.) must be >= 0.0, if not then set to 0.0, otherwise add tendencies
+                !-----------------------------------------------------
+                ! Update cloud water content (same as total q here)
                 where (qn(i,j,1:nrf) .gt. 0.0)
-                    qn(i,j,1:nrf) = qn(i,j,1:nrf) + q_tend_tot(1:nrf) + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
+                    ! cloud water and ice has autoconversion, advective, and sedimenting tendencies added
+                    qn(i,j,1:nrf) = qn(i,j,1:nrf) + q_tendency_auto(1:nrf) + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
                 end where
+
+                ! Enforce qn (cloud water+ice) must be >= 0.0
                 where (qn(i,j,:) .lt. 0.0)
                     qn(i,j,:) = 0.0
                 end where

@@ -98,8 +98,8 @@ program run_tests
 
 
     t = 0.
-    q = 0.
-    qn = 0.
+    q = 0.4
+    qn = 0.4
     precsfc = 0.
     prec_xy = 0.
     rho = 1.
