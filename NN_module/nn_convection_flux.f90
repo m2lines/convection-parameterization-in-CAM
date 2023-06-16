@@ -66,7 +66,6 @@ real, parameter :: fac_fus = lfus/cp
     !!
 ! Temperatures limits for various hydrometeors
 != unit K :: tprmin
-
 real, parameter :: tprmin = 268.16
     !! Minimum temperature for rain
 
@@ -83,9 +82,11 @@ real, parameter :: tprmax = 283.16
 !     !! Maximum temperature for cloud ice, K
 
 ! Misc. microphysics variables
+! != unit 1 / K :: a_pr
 real, parameter :: a_pr = 1./(tprmax-tprmin)
     !! Misc. microphysics variables
 
+! != unit 1 / K :: a_bg
 ! real, parameter :: a_bg = 1./(tbgmax-tbgmin)
 !     !! Misc. microphysics variables
 
@@ -120,7 +121,7 @@ contains
                                   t, q, qn, precsfc, prec_xy)
         !! Interface to the neural net that applies physical constraints and reshaping
         !! of variables.
-        !! Operates on subcycle of timestep dtn to update tabs, q, qn, precsfc, and prec_xy
+        !! Operates on subcycle of timestep dtn to update t, q, qn, precsfc, and prec_xy
 
         ! -----------------------------------
         ! Input Variables
@@ -144,7 +145,7 @@ contains
         ! ---------------------
         ! Other fields from SAM
         ! ---------------------
-        != unit s :: tabs
+        != unit K :: tabs
         real, intent(in) :: tabs(:, :, :)
             !! absolute temperature
         
@@ -219,11 +220,13 @@ contains
         real :: rev_dz
             !! variable to store 1/dz factor
 
-        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, &
-                                  q_tendency_auto, q_tendency_sed
+        ! NN outputs
         real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
-                                  q_sed_flux, t_rad_rest_tend, &
-                                  omp, fac ! Do not predict surface adv flux
+                                  q_sed_flux, t_rad_rest_tend
+        ! Intermediate variables
+        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, &
+                                  q_tendency_auto, q_tendency_sed, &
+                                  omp, fac
         real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz
 
         ! -----------------------------------
