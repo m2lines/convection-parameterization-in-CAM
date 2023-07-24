@@ -118,10 +118,10 @@ contains
                                   tabs, &
                                   rho, adz, &
                                   dz, dtn, &
-                                  t, q, qn, precsfc, prec_xy)
+                                  t, q, precsfc, prec_xy)
         !! Interface to the neural net that applies physical constraints and reshaping
         !! of variables.
-        !! Operates on subcycle of timestep dtn to update t, q, qn, precsfc, and prec_xy
+        !! Operates on subcycle of timestep dtn to update t, q, precsfc, and prec_xy
 
         ! -----------------------------------
         ! Input Variables
@@ -195,10 +195,6 @@ contains
         ! Diagnostic variables:
         ! ---------------------
 
-        != unit 1 :: qn
-        real, intent(inout) :: qn(:, :, :)
-            !! cloud water+cloud ice
-        
         real, intent(inout) :: precsfc(:, :)
             !! surface precip. rate
         
@@ -435,18 +431,6 @@ contains
                 do k = 1,nrf
                     q(i,j,k) = max(0.,q(i,j,k))
                 end do
-
-                !-----------------------------------------------------
-                ! Update cloud water content (same as total q here)
-                where (qn(i,j,1:nrf) .gt. 0.0)
-                    ! cloud water and ice has autoconversion, advective, and sedimenting tendencies added
-                    qn(i,j,1:nrf) = qn(i,j,1:nrf) + q_tendency_auto(1:nrf) + q_tendency_adv(1:nrf) + q_tendency_sed(1:nrf)
-                end where
-
-                ! Enforce qn (cloud water+ice) must be >= 0.0
-                where (qn(i,j,:) .lt. 0.0)
-                    qn(i,j,:) = 0.0
-                end where
 
             end do
         end do
