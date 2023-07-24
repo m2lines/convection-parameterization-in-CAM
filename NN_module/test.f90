@@ -49,9 +49,6 @@ program run_tests
         !! moist static energy
     real q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
         !! total water
-    ! diagnostic variables:
-    real qn(nx, ny, nzm)
-        !! cloud water+cloud ice
     ! fluxes at the top and bottom of the domain:
     real precsfc(nx,ny)
         !! surface precip. rate
@@ -99,7 +96,6 @@ program run_tests
 
     t = 0.
     q = 0.4
-    qn = 0.4
     precsfc = 0.
     prec_xy = 0.
     rho = 1.
@@ -118,7 +114,7 @@ program run_tests
                             tabs, &
                             rho, adz, &
                             dz, dtn, &
-                            t, q, qn, precsfc, prec_xy)
+                            t, q, precsfc, prec_xy)
 
     call nn_convection_flux_finalize()
 
