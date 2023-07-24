@@ -220,8 +220,8 @@ contains
         real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
                                   q_sed_flux, t_rad_rest_tend
         ! Intermediate variables
-        real,   dimension(nrf) :: t_tendency_adv, q_tendency_adv, &
-                                  q_tendency_auto, q_tendency_sed, &
+        real,   dimension(nrf) :: t_delta_adv, q_delta_adv, &
+                                  q_delta_auto, q_delta_sed, &
                                   omp, fac
         real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz
 
@@ -258,12 +258,12 @@ contains
                 t_rad_rest_tend = 0.
                 t_flux_adv = 0.
                 q_flux_adv = 0.
-                t_tendency_adv = 0.
-                q_tendency_adv = 0.
+                t_delta_adv = 0.
+                q_delta_adv = 0.
                 q_tend_auto = 0.
-                q_tendency_auto = 0.
+                q_delta_auto = 0.
                 q_sed_flux = 0.
-                q_tendency_sed = 0.
+                q_delta_sed = 0.
                 omp = 0.
                 fac = 0.
 
@@ -346,39 +346,39 @@ contains
                     end if
                 end do
 
-                ! Convert advective fluxes to tendencies (multiplied by dtn, so really dt and dq)
+                ! Convert advective fluxes to deltas
                 do k=1,nrf-1
-                    t_tendency_adv(k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
-                    q_tendency_adv(k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
+                    t_delta_adv(k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
+                    q_delta_adv(k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
                 end do
                 ! Enforce boundary condition at top of column
-                t_tendency_adv(nrf) = - (0.0 - t_flux_adv(nrf)) * irhoadzdz(nrf)
-                q_tendency_adv(nrf) = - (0.0 - q_flux_adv(nrf)) * irhoadzdz(nrf)
-                ! q must be >= 0 so ensure tendency won't reduce it below zero
+                t_delta_adv(nrf) = - (0.0 - t_flux_adv(nrf)) * irhoadzdz(nrf)
+                q_delta_adv(nrf) = - (0.0 - q_flux_adv(nrf)) * irhoadzdz(nrf)
+                ! q must be >= 0 so ensure delta won't reduce it below zero
                 do k=1,nrf
-                    if (q(i,j,k) .lt. -q_tendency_adv(k)) then
-                        q_tendency_adv(k) = -q(i,j,k)
+                    if (q(i,j,k) .lt. -q_delta_adv(k)) then
+                        q_delta_adv(k) = -q(i,j,k)
                     end if
                 end do
 
-                ! Update q and t with advective tendency difference
-                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_adv(1:nrf)
-                t(i,j,1:nrf) = t(i,j,1:nrf) + t_tendency_adv(1:nrf)
+                ! Update q and t with delta values
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_adv(1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) + t_delta_adv(1:nrf)
 
                 ! ensure autoconversion tendency won't reduce q below 0
                 do k=1,nrf
                     omp(k) = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
                     fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
                     if (q_tend_auto(k).lt.0) then
-                        q_tendency_auto(k) = - min(-q_tend_auto(k) * dtn, q(i,j,k))
+                        q_delta_auto(k) = - min(-q_tend_auto(k) * dtn, q(i,j,k))
                     else
-                        q_tendency_auto(k) = q_tend_auto(k) * dtn
+                        q_delta_auto(k) = q_tend_auto(k) * dtn
                     endif
                 end do
 
-                ! Update with autoconversion tendency q and t (t = q*(latent_heat/cp))
-                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_auto(1:nrf)
-                t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_auto(1:nrf)*fac(1:nrf)
+                ! Update with autoconversion q and t deltas (dt = -dq*(latent_heat/cp))
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_auto(1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) - q_delta_auto(1:nrf)*fac(1:nrf)
 
                 ! Ensure sedimenting ice will not reduce q below zero anywhere
                 do k=2,nrf
@@ -395,36 +395,37 @@ contains
                     end if
                 end do
 
-                ! Convert sedimenting fluxes to tendencies (multiplied by dtn, so really dt and dq)
+                ! Convert sedimenting fluxes to deltas
                 do k=1,nrf-1 ! One level less than I actually use
-                    q_tendency_sed(k) = - (q_sed_flux(k+1) - q_sed_flux(k)) * irhoadzdz(k)
+                    q_delta_sed(k) = - (q_sed_flux(k+1) - q_sed_flux(k)) * irhoadzdz(k)
                 end do
                 ! Enforce boundary condition at top of column
-                q_tendency_sed(nrf) = - (0.0 - q_sed_flux(nrf)) * irhoadzdz(nrf)
-                ! q must be >= 0 so ensure tendency won't reduce it below zero
+                q_delta_sed(nrf) = - (0.0 - q_sed_flux(nrf)) * irhoadzdz(nrf)
+                ! q must be >= 0 so ensure delta won't reduce it below zero
                 do k=1,nrf
-                    if (q_tendency_sed(k).lt.0) then
-                        q_tendency_sed(k) = min(-q_tendency_sed(k), q(i,j,k))
-                        q_tendency_sed(k) = -q_tendency_sed(k)
+                    if (q_delta_sed(k).lt.0) then
+                        q_delta_sed(k) = min(-q_delta_sed(k), q(i,j,k))
+                        q_delta_sed(k) = -q_delta_sed(k)
                     end if
                 end do
 
-                ! Update q and t with sed tendency q and t (t = q*(latent_heat/cp))
-                q(i,j,1:nrf) = q(i,j,1:nrf) + q_tendency_sed(1:nrf)
-                t(i,j,1:nrf) = t(i,j,1:nrf) - q_tendency_sed(1:nrf)*(fac_fus+fac_cond)
+                ! Update q and t with sed q and t deltas (dt = -dq*(latent_heat/cp))
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_sed(1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) - q_delta_sed(1:nrf)*(fac_fus+fac_cond)
 
                 ! Apply radiation rest tendency to variables (multiply by dtn to get dt)
                 t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn
 
                 !-----------------------------------------------------
                 ! Calculate surface precipitation
-                ! Apply sedimenting flux at surface
+                ! Apply sedimenting flux at surface to get rho*dq
                 precsfc(i,j) = precsfc(i,j)  - q_sed_flux(1)*dtn*rev_dz ! For statistics
                 prec_xy(i,j) = prec_xy(i,j)  - q_sed_flux(1)*dtn*rev_dz ! For 2D output
-                ! Apply all autoconversion in the column (all precip. falls out on larger timescale)
+                ! Apply all autoconversion in the column and multiply by rho*adz for  
+                ! precip (rho*dq*adz) i.e. all precip. falls out on large model timescale 
                 do k=1, nrf
-                    precsfc(i,j) = precsfc(i,j) - q_tendency_auto(k)*adz(k)*rho(k)! removed the time step mult because q_tend_tot is already mult
-                    prec_xy(i,j) = prec_xy(i,j) - q_tendency_auto(k)*adz(k)*rho(k)
+                    precsfc(i,j) = precsfc(i,j) - q_delta_auto(k)*adz(k)*rho(k)
+                    prec_xy(i,j) = prec_xy(i,j) - q_delta_auto(k)*adz(k)*rho(k)
                 end do
 
                 ! As a final check enforce q must be >= 0.0
