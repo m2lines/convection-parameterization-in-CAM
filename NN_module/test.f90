@@ -42,7 +42,7 @@ program run_tests
     integer, parameter :: dimy1_s = 1-3*YES3D
     integer, parameter :: dimy2_s = nyp3
 
-
+    integer :: nrf
 
     != unit J :: t
     real t(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
@@ -71,7 +71,7 @@ program run_tests
         !! Temperature
     real q_i(nx,ny,nzm)
         !! Non-precipitating water mixing ratio
-    real :: y_in(ny)
+    real :: y_in(nx,ny)
         !! Distance of column from equator (proxy for insolation and sfc albedo)
     real adz(nzm)
         !! ratio of the grid spacing to dz for pressure levels
@@ -80,6 +80,13 @@ program run_tests
         !! current dynamical timestep (can be smaller than dt)
     real dz
         !! current dynamical timestep (can be smaller than dt)
+
+
+    real, dimension(nx,ny,30) :: t_rad_rest_tend, &
+                                 t_delta_adv, q_delta_adv, &
+                                 t_delta_auto, q_delta_auto, &
+                                 t_delta_sed, q_delta_sed
+    real, dimension(nx,ny) :: prec_sed
 
     ! Test NN routines
 
@@ -107,14 +114,26 @@ program run_tests
     dz = 1.
     dtn = 1.
 
+    nrf = 30
 
     call nn_convection_flux_init("./NN_weights_YOG_convection.nc")
 
     call nn_convection_flux(tabs_i, q_i, y_in, &
                             tabs, &
-                            rho, adz, &
-                            dz, dtn, &
-                            t, q, precsfc, prec_xy)
+                            t, q, &
+                            rho, adz, dz, dtn, &
+                            t_rad_rest_tend, &
+                            t_delta_adv, q_delta_adv, &
+                            t_delta_auto, q_delta_auto, &
+                            t_delta_sed, q_delta_sed, prec_sed)
+
+    q(:,:,1:nrf) = q(:,:,1:nrf) + q_delta_adv(:,:,:) &
+                                + q_delta_auto(:,:,:) &
+                                + q_delta_sed(:,:,:)
+    t(:,:,1:nrf) = t(:,:,1:nrf) + t_delta_adv(:,:,:) &
+                                + t_delta_auto(:,:,:) &
+                                + t_delta_sed(:,:,:) &
+                                + t_rad_rest_tend(:,:,:)*dtn
 
     call nn_convection_flux_finalize()
 

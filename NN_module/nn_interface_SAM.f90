@@ -24,6 +24,10 @@ integer :: it, jt
     !! indices corresponding to the start of the grid domain for
     !! current MPI rank
 
+! Copied from nn_convection_flux.f90
+! Outputs from NN are supplied at lowest 30 half-model levels
+integer, parameter :: nrf = 30
+    !! number of vertical levels the NN parameterisation uses
 
 !---------------------------------------------------------------------
 ! Functions and Subroutines
@@ -57,7 +61,8 @@ contains
     subroutine nn_convection_flux_SAM(tabs_i, q_i, &
                                       tabs, &
                                       rho, adz, &
-                                      dz, dtn, dy, ny, ny_gl, &
+                                      dz, dtn, dy, &
+                                      nx, ny, ny_gl, &
                                       nstep, nstatis, icycle, YES3D, &
                                       t, q, precsfc, prec_xy)
         !! Interface to the nn_convection parameterisation for the SAM model
@@ -67,13 +72,22 @@ contains
         real, dimension(:,:,:) :: tabs_i, q_i, tabs, t, q
         real, dimension(:, :) :: precsfc, prec_xy
         real, dimension(:) :: rho, adz
-        real, intent(in) :: dz, dtn
+        != unit m :: dz
+        real, intent(in) :: dz
+            !! grid spacing in z direction for the lowest grid layer
+        real, intent(in) :: dtn
         real, intent(in) :: dy
-        integer, intent(in) :: ny, ny_gl, nstep, nstatis, icycle, YES3D
+        integer, intent(in) :: nx, ny, ny_gl, nstep, nstatis, icycle, YES3D
 
-        real :: y_in(ny)
+        real :: y_in(nx, ny)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
+        real, dimension(nx, ny, nrf) :: t_rad_rest_tend, t_delta_adv, q_delta_adv, &
+                                        t_delta_auto, t_delta_sed, &
+                                        q_delta_auto, q_delta_sed
+        real, dimension(nx, ny)      :: prec_sed
+            !! Sedimenting precipitation at surface
+        
         ! Initialise precipitation to 0 if required and at start of cycle
         if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
             precsfc(:,:)=0.
@@ -100,15 +114,50 @@ contains
         ! distance to the equator
         ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM
         do j=1, ny
-            y_in(j) = real(abs(dy*(j+jt-(ny_gl+YES3D-1)/2-0.5)))
+            y_in(:,j) = real(abs(dy*(j+jt-(ny_gl+YES3D-1)/2-0.5)))
         enddo
 
-        ! Run the parameterization
-        call nn_convection_flux(tabs_i, q_i, y_in, &
-                                tabs, &
-                                rho, adz, &
-                                dz, dtn, &
-                                t, q, precsfc, prec_xy)
+        !-----------------------------------------------------
+        ! Run the neural net parameterisation
+        call nn_convection_flux(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
+                                tabs(:,:,1:nrf), &
+                                t(:,:,1:nrf), q(:,:,1:nrf), &
+                                rho, adz, dz, dtn, &
+                                t_rad_rest_tend, &
+                                t_delta_adv, q_delta_adv, &
+                                t_delta_auto, q_delta_auto, &
+                                t_delta_sed, q_delta_sed, prec_sed)
+        !-----------------------------------------------------
+        ! Update q and t with delta values
+        ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
+        ! sedimentation (dt = -dq*(latent_heat/cp)),
+        ! radiation rest tendency (multiply by dtn to get dt)
+        q(:,:,1:nrf) = q(:,:,1:nrf) + q_delta_adv(:,:,:) &
+                                    + q_delta_auto(:,:,:) &
+                                    + q_delta_sed(:,:,:)
+        t(:,:,1:nrf) = t(:,:,1:nrf) + t_delta_adv(:,:,:) &
+                                    + t_delta_auto(:,:,:) &
+                                    + t_delta_sed(:,:,:) &
+                                    + t_rad_rest_tend(:,:,:)*dtn
+
+        !-----------------------------------------------------
+        ! Calculate surface precipitation
+
+        ! Apply sedimentation at surface
+        precsfc(:,:) = precsfc(:,:) + prec_sed(:,:) ! For statistics
+        prec_xy(:,:) = prec_xy(:,:) + prec_sed(:,:) ! For 2D output
+        
+        ! Apply all autoconversion in the column and multiply by rho*adz for
+        ! precip (rho*dq*adz) i.e. all precip. falls out on large model timescale
+        do k=1, nrf
+            precsfc(:,:) = precsfc(:,:) - q_delta_auto(:,:,k)*adz(k)*rho(k)
+            prec_xy(:,:) = prec_xy(:,:) - q_delta_auto(:,:,k)*adz(k)*rho(k)
+        end do
+
+        ! As a final check enforce q must be >= 0.0 (should be redundant)
+        where (q(:,:,1:nrf) .lt. 0)
+          q = 0.0
+        end where
 
     end subroutine nn_convection_flux_SAM
 
