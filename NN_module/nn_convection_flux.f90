@@ -116,9 +116,12 @@ contains
 
     subroutine nn_convection_flux(tabs_i, q_i, y_in, &
                                   tabs, &
-                                  rho, adz, &
-                                  dz, dtn, &
-                                  t, q, precsfc, prec_xy)
+                                  t_0, q_0, &
+                                  rho, adz, dz, dtn, &
+                                  t_rad_rest_tend, &
+                                  t_delta_adv, q_delta_adv, &
+                                  t_delta_auto, q_delta_auto, &
+                                  t_delta_sed, q_delta_sed, prec_sed)
         !! Interface to the neural net that applies physical constraints and reshaping
         !! of variables.
         !! Operates on subcycle of timestep dtn to update t, q, precsfc, and prec_xy
@@ -139,7 +142,7 @@ contains
             !! Non-precipitating water mixing ratio
         
         != unit m :: y_in
-        real, intent(in) :: y_in(:)
+        real, intent(in) :: y_in(:, :)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
         ! ---------------------
@@ -170,7 +173,7 @@ contains
         != unit m :: dz
         real, intent(in) :: dz
             !! grid spacing in z direction for the lowest grid layer
-        
+
         != unit s :: dtn
         real, intent(in) :: dtn
             !! current dynamical timestep (can be smaller than dt due to subcycling)
@@ -184,22 +187,14 @@ contains
         ! ---------------------
 
         != unit K :: t
-        real, intent(inout) :: t(:, :, :)
+        real, intent(in) :: t_0(:, :, :)
             !! Liquid Ice static energy (cp*T + g*z − L(qliq + qice) − Lf*qice)
+        real, allocatable :: t(:, :, :)
         
         != unit 1 :: q
-        real, intent(inout) :: q(:, :, :)
+        real, intent(in) :: q_0(:, :, :)
             !! total water
-
-        ! ---------------------
-        ! Diagnostic variables:
-        ! ---------------------
-
-        real, intent(inout) :: precsfc(:, :)
-            !! surface precip. rate
-        
-        real, intent(inout) :: prec_xy(:, :)
-            !! surface precipitation rate
+        real, allocatable :: q(:, :, :)
 
         ! -----------------------------------
         ! Local Variables
@@ -213,16 +208,17 @@ contains
             !! Number of z points in a subdomain - 1
         ! real :: omn
         !     !! variable to store result of omegan function
-        real :: rev_dz
-            !! variable to store 1/dz factor
 
         ! NN outputs
         real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
-                                  q_sed_flux, t_rad_rest_tend
+                                  q_sed_flux
+        real, intent(out), dimension(:,:,:) :: t_rad_rest_tend
         ! Intermediate variables
-        real,   dimension(nrf) :: t_delta_adv, q_delta_adv, &
-                                  q_delta_auto, q_delta_sed, &
-                                  omp, fac
+        real, intent(out), dimension(:,:,:) :: t_delta_adv, q_delta_adv, &
+                                               t_delta_auto, q_delta_auto, &
+                                               t_delta_sed, q_delta_sed
+        real, intent(out), dimension(:,:)   :: prec_sed
+        real,   dimension(nrf) :: omp, fac
         real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz
 
         ! -----------------------------------
@@ -232,16 +228,19 @@ contains
             !! Vector of input features for the NN
         real(4), dimension(n_outputs) :: outputs
             !! vector of output features from the NN
-
         nx = size(tabs_i, 1)
         ny = size(tabs_i, 2)
         nzm = size(tabs_i, 3)
+
+        allocate(t(nx,ny,nrf))
+        allocate(q(nx,ny,nrf))
+        q = q_0
+        t = t_0
 
         ! Check that we have initialised all of the variables.
         if (do_init) call error_mesg('NN has not yet been initialised using nn_convection_flux_init.')
 
         ! Define useful variables relating to grid spacing to convert fluxes to tendencies
-        rev_dz = 1/dz
         do k=1,nzm
             irhoadz(k) = dtn/(rho(k)*adz(k)) !  Temporary factor for below
             irhoadzdz(k) = irhoadz(k)/dz ! 2.0 * dtn / (rho(k)*(z(k+1) - z(k-1))) [(kg.m/s)^-1]
@@ -250,20 +249,22 @@ contains
         ! The NN operates on atmospheric columns, so loop over x and y coordinates in turn
         do j=1,ny
             do i=1,nx
-
                 ! Initialize variables
                 features = 0.
                 dim_counter = 0
                 outputs = 0.
-                t_rad_rest_tend = 0.
+                t_rad_rest_tend(i,j,:) = 0.
                 t_flux_adv = 0.
                 q_flux_adv = 0.
-                t_delta_adv = 0.
-                q_delta_adv = 0.
+                t_delta_adv(i,j,:) = 0.
+                q_delta_adv(i,j,:) = 0.
                 q_tend_auto = 0.
-                q_delta_auto = 0.
+                t_delta_auto(i,j,:) = 0.
+                q_delta_auto(i,j,:) = 0.
                 q_sed_flux = 0.
-                q_delta_sed = 0.
+                t_delta_sed(i,j,:) = 0.
+                q_delta_sed(i,j,:) = 0.
+                prec_sed(i,j) = 0.
                 omp = 0.
                 fac = 0.
 
@@ -292,7 +293,7 @@ contains
 
                 ! Add distance to the equator as input feature
                 ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM
-                features(dim_counter+1) = y_in(j)
+                features(dim_counter+1) = y_in(i,j)
                 dim_counter = dim_counter+1
 
                 !-----------------------------------------------------
@@ -305,7 +306,7 @@ contains
                 ! Separate physical outputs from NN output vector
 
                 ! Moist Static Energy radiative + rest(microphysical changes) tendency
-                t_rad_rest_tend(1:nrf) = outputs(1:nrf)
+                t_rad_rest_tend(i,j,1:nrf) = outputs(1:nrf)
                 out_dim_counter = nrf
 
                 ! Moist Static Energy advective subgrid flux
@@ -348,37 +349,38 @@ contains
 
                 ! Convert advective fluxes to deltas
                 do k=1,nrf-1
-                    t_delta_adv(k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
-                    q_delta_adv(k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
+                    t_delta_adv(i,j,k) = - (t_flux_adv(k+1) - t_flux_adv(k)) * irhoadzdz(k)
+                    q_delta_adv(i,j,k) = - (q_flux_adv(k+1) - q_flux_adv(k)) * irhoadzdz(k)
                 end do
                 ! Enforce boundary condition at top of column
-                t_delta_adv(nrf) = - (0.0 - t_flux_adv(nrf)) * irhoadzdz(nrf)
-                q_delta_adv(nrf) = - (0.0 - q_flux_adv(nrf)) * irhoadzdz(nrf)
+                t_delta_adv(i,j,nrf) = - (0.0 - t_flux_adv(nrf)) * irhoadzdz(nrf)
+                q_delta_adv(i,j,nrf) = - (0.0 - q_flux_adv(nrf)) * irhoadzdz(nrf)
                 ! q must be >= 0 so ensure delta won't reduce it below zero
                 do k=1,nrf
-                    if (q(i,j,k) .lt. -q_delta_adv(k)) then
-                        q_delta_adv(k) = -q(i,j,k)
+                    if (q(i,j,k) .lt. -q_delta_adv(i,j,k)) then
+                        q_delta_adv(i,j,k) = -q(i,j,k)
                     end if
                 end do
 
                 ! Update q and t with delta values
-                q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_adv(1:nrf)
-                t(i,j,1:nrf) = t(i,j,1:nrf) + t_delta_adv(1:nrf)
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_adv(i,j,1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) + t_delta_adv(i,j,1:nrf)
 
                 ! ensure autoconversion tendency won't reduce q below 0
                 do k=1,nrf
                     omp(k) = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
                     fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
                     if (q_tend_auto(k).lt.0) then
-                        q_delta_auto(k) = - min(-q_tend_auto(k) * dtn, q(i,j,k))
+                        q_delta_auto(i,j,k) = - min(-q_tend_auto(k) * dtn, q(i,j,k))
                     else
-                        q_delta_auto(k) = q_tend_auto(k) * dtn
+                        q_delta_auto(i,j,k) = q_tend_auto(k) * dtn
                     endif
                 end do
 
                 ! Update with autoconversion q and t deltas (dt = -dq*(latent_heat/cp))
-                q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_auto(1:nrf)
-                t(i,j,1:nrf) = t(i,j,1:nrf) - q_delta_auto(1:nrf)*fac(1:nrf)
+                q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_auto(i,j,1:nrf)
+                t_delta_auto(i,j,1:nrf) = - q_delta_auto(i,j,1:nrf)*fac(1:nrf)
+                t(i,j,1:nrf) = t(i,j,1:nrf) + t_delta_auto(i,j,1:nrf)
 
                 ! Ensure sedimenting ice will not reduce q below zero anywhere
                 do k=2,nrf
@@ -397,45 +399,42 @@ contains
 
                 ! Convert sedimenting fluxes to deltas
                 do k=1,nrf-1 ! One level less than I actually use
-                    q_delta_sed(k) = - (q_sed_flux(k+1) - q_sed_flux(k)) * irhoadzdz(k)
+                    q_delta_sed(i,j,k) = - (q_sed_flux(k+1) - q_sed_flux(k)) * irhoadzdz(k)
                 end do
                 ! Enforce boundary condition at top of column
-                q_delta_sed(nrf) = - (0.0 - q_sed_flux(nrf)) * irhoadzdz(nrf)
+                q_delta_sed(i,j,nrf) = - (0.0 - q_sed_flux(nrf)) * irhoadzdz(nrf)
                 ! q must be >= 0 so ensure delta won't reduce it below zero
                 do k=1,nrf
-                    if (q_delta_sed(k).lt.0) then
-                        q_delta_sed(k) = min(-q_delta_sed(k), q(i,j,k))
-                        q_delta_sed(k) = -q_delta_sed(k)
+                    if (q_delta_sed(i,j,k).lt.0) then
+                        q_delta_sed(i,j,k) = min(-q_delta_sed(i,j,k), q(i,j,k))
+                        q_delta_sed(i,j,k) = -q_delta_sed(i,j,k)
                     end if
                 end do
 
-                ! Update q and t with sed q and t deltas (dt = -dq*(latent_heat/cp))
-                q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_sed(1:nrf)
-                t(i,j,1:nrf) = t(i,j,1:nrf) - q_delta_sed(1:nrf)*(fac_fus+fac_cond)
+                ! These final updates are now redundant as t and q updated in interface
+                ! ! Update q and t with sed q and t deltas (dt = -dq*(latent_heat/cp))
+                ! q(i,j,1:nrf) = q(i,j,1:nrf) + q_delta_sed(i,j,1:nrf)
+                ! t(i,j,1:nrf) = t(i,j,1:nrf) - q_delta_sed(i,j,1:nrf)*(fac_fus+fac_cond)
+                t_delta_sed(i,j,1:nrf) = - q_delta_sed(i,j,1:nrf)*(fac_fus+fac_cond)
+                !
+                ! ! Apply radiation rest tendency to variables (multiply by dtn to get dt)
+                ! t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(i,j,1:nrf)*dtn
 
-                ! Apply radiation rest tendency to variables (multiply by dtn to get dt)
-                t(i,j,1:nrf) = t(i,j,1:nrf) + t_rad_rest_tend(1:nrf)*dtn
-
-                !-----------------------------------------------------
                 ! Calculate surface precipitation
-                ! Apply sedimenting flux at surface to get rho*dq
-                precsfc(i,j) = precsfc(i,j)  - q_sed_flux(1)*dtn*rev_dz ! For statistics
-                prec_xy(i,j) = prec_xy(i,j)  - q_sed_flux(1)*dtn*rev_dz ! For 2D output
-                ! Apply all autoconversion in the column and multiply by rho*adz for  
-                ! precip (rho*dq*adz) i.e. all precip. falls out on large model timescale 
-                do k=1, nrf
-                    precsfc(i,j) = precsfc(i,j) - q_delta_auto(k)*adz(k)*rho(k)
-                    prec_xy(i,j) = prec_xy(i,j) - q_delta_auto(k)*adz(k)*rho(k)
-                end do
-
-                ! As a final check enforce q must be >= 0.0
-                do k = 1,nrf
-                    q(i,j,k) = max(0.,q(i,j,k))
-                end do
-
+                ! Apply sedimenting flux at surface to get rho*dq term
+                prec_sed(i,j) = - q_sed_flux(1)*dtn/dz
+                
+                ! This has been moved outside to interface routine
+                ! ! As a final check enforce q must be >= 0.0
+                ! do k = 1,nrf
+                !     q(i,j,k) = max(0.,q(i,j,k))
+                ! end do
             end do
         end do
         ! End of loops over x, y, columns
+
+    deallocate(t)
+    deallocate(q)
 
     end subroutine nn_convection_flux
 
