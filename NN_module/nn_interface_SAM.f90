@@ -85,6 +85,9 @@ contains
         real, dimension(nx, ny, nrf) :: t_rad_rest_tend, t_delta_adv, q_delta_adv, &
                                         t_delta_auto, t_delta_sed, &
                                         q_delta_auto, q_delta_sed
+            !! deltas/tendencies returned by the parameterisation:
+            !! radiation rest tendency, advective, autoconversion, sedimentation
+
         real, dimension(nx, ny)      :: prec_sed
             !! Sedimenting precipitation at surface
         

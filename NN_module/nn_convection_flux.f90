@@ -152,6 +152,20 @@ contains
         real, intent(in) :: tabs(:, :, :)
             !! absolute temperature
         
+        != unit (J / kg) :: t
+        real, intent(in) :: t_0(:, :, :)
+            !! Liquid Ice static energy (cp*T + g*z − L(qliq + qice) − Lf*qice)
+        != unit (J / kg) :: t
+        real, allocatable :: t(:, :, :)
+            !! Copy of t_0 to ensure that t_0 is not modified by this routine for SAM
+        
+        != unit 1 :: q
+        real, intent(in) :: q_0(:, :, :)
+            !! total water
+        != unit 1 :: q
+        real, allocatable :: q(:, :, :)
+            !! Copy of q_0 to ensure that q_0 is not modified by this routine for SAM
+
         ! ---------------------
         ! reference vertical profiles:
         ! ---------------------
@@ -181,20 +195,20 @@ contains
         ! -----------------------------------
         ! Output Variables
         ! -----------------------------------
-        ! Taken from vars.f90 in SAM
-        ! ---------------------
-        ! Prognostic variables:
-        ! ---------------------
+        != unit (J / kg) :: t_delta_adv, t_delta_auto, t_delta_sed
+        != unit 1 :: q_delta_adv, q_delta_auto, q_delta_sed
+        real, intent(out), dimension(:,:,:) :: t_delta_adv, q_delta_adv, &
+                                               t_delta_auto, q_delta_auto, &
+                                               t_delta_sed, q_delta_sed
+            !! delta values of t and q to be returned by the scheme
 
-        != unit K :: t
-        real, intent(in) :: t_0(:, :, :)
-            !! Liquid Ice static energy (cp*T + g*z − L(qliq + qice) − Lf*qice)
-        real, allocatable :: t(:, :, :)
+        != unit kg :: t_rad_rest_tend
+        real, intent(out), dimension(:,:,:) :: t_rad_rest_tend
+            !! tendency of t to be returned by the scheme
         
-        != unit 1 :: q
-        real, intent(in) :: q_0(:, :, :)
-            !! total water
-        real, allocatable :: q(:, :, :)
+        != unit kg :: prec_sed
+        real, intent(out), dimension(:,:)   :: prec_sed
+            !! Surface precipitation due to sedimentation
 
         ! -----------------------------------
         ! Local Variables
@@ -209,15 +223,7 @@ contains
         ! real :: omn
         !     !! variable to store result of omegan function
 
-        ! NN outputs
-        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
-                                  q_sed_flux
-        real, intent(out), dimension(:,:,:) :: t_rad_rest_tend
-        ! Intermediate variables
-        real, intent(out), dimension(:,:,:) :: t_delta_adv, q_delta_adv, &
-                                               t_delta_auto, q_delta_auto, &
-                                               t_delta_sed, q_delta_sed
-        real, intent(out), dimension(:,:)   :: prec_sed
+        ! Other variables
         real,   dimension(nrf) :: omp, fac
         real,   dimension(size(tabs_i, 3)) :: qsat, irhoadz, irhoadzdz
 
@@ -231,6 +237,11 @@ contains
         nx = size(tabs_i, 1)
         ny = size(tabs_i, 2)
         nzm = size(tabs_i, 3)
+        ! NN outputs
+        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
+                                  q_sed_flux
+        ! Output variable t_rad_rest_tend is also an output from the NN (defined above)
+
 
         allocate(t(nx,ny,nrf))
         allocate(q(nx,ny,nrf))
