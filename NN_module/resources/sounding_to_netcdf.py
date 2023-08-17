@@ -7,7 +7,7 @@ import numpy as np
 import netCDF4 as nc4
 
 
-VERSION = "1.0"
+VERSION = "1.1"
 
 
 def read_sounding(filename: str) -> np.ndarray:
@@ -25,7 +25,7 @@ def read_sounding(filename: str) -> np.ndarray:
         array of altitudes in [m] as floats
     var_1 : np.ndarray
         array of floats corrresponding to altitudes, alt
-        air densities [kg/m^3] or pressures [hPa]
+        may be air densities [kg/m^3] or pressures [hPa] depending on sounding
     """
     alt, var_1, _ = np.loadtxt(
         filename,
@@ -35,7 +35,8 @@ def read_sounding(filename: str) -> np.ndarray:
         unpack=True,
     )
 
-    return alt, var_1
+    # Flip the arrays before returning as soundings are given in descending altitude:
+    return np.flip(alt), np.flip(var_1)
 
 
 def read_grid(filename: str) -> np.ndarray:
@@ -90,10 +91,8 @@ def grid_calcs(alt: np.ndarray) -> Tuple[float, np.ndarray]:
 
 def save_to_netcdf(
     filename: str,
-    alt_r: np.ndarray,
+    alt: np.ndarray,
     rho_a: np.ndarray,
-    alt_p: np.ndarray,
-    pres_a: np.ndarray,
     dz: float,
     adz: np.ndarray,
 ):
@@ -104,14 +103,10 @@ def save_to_netcdf(
     ----------
     filename : str
         name of NetCFD file to save to
-    alt_r : np.ndarray
-        array of altitudes in [m] as floats correspondig to densities
+    alt : np.ndarray
+        array of altitudes in [m] as floats corresponding to variables
     rho_a : np.ndarray
         array of air densities [kg/m^3] as floats corrresponding to altitudes, alt
-    alt_p : np.ndarray
-        array of altitudes in [m] as floats correspondig to pressures
-    pres_a : np.ndarray
-        array of air pressures [hPa] as floats corrresponding to altitudes, alt
     dz : float
         dz at bottom of grid
     adz : np.ndarray
@@ -128,36 +123,23 @@ def save_to_netcdf(
         f"Generated using sounding_to_netcdf.py v {VERSION} by Jack Atkinson (ICCS)"
     )
     ncfile.software = (
-        f"Generated using sounding_to_netcdf.py v {VERSION} by Jack Atkinson (ICCS)"
+        f"Generated using sounding_to_netcdf.py v{VERSION} by Jack Atkinson (ICCS)"
     )
 
-    alt_r_dim = ncfile.createDimension("z_r", len(alt_r))
-    alt_p_dim = ncfile.createDimension("z_p", len(alt_p))
-    alt_dz_dim = ncfile.createDimension("dz", 1)
+    alt_dim = ncfile.createDimension("z", len(alt))
+    dz_dim = ncfile.createDimension("dz", 1)
 
-    alt_r_var = ncfile.createVariable("z_r", np.float64, ("z_r",))
-    alt_r_var.units = "metres"
-    alt_r_var.long_name = "air density altitudes"
-    alt_r_var.standard_name = "altitude"
-    alt_r_var[:] = alt_r
+    alt_var = ncfile.createVariable("z", np.float64, ("z",))
+    alt_var.units = "m"
+    alt_var.long_name = "altitudes"
+    alt_var.standard_name = "altitude"
+    alt_var[:] = alt
 
-    rho_a_var = ncfile.createVariable("rho", np.float64, ("z_r"))
+    rho_a_var = ncfile.createVariable("rho", np.float64, ("z"))
     rho_a_var.units = "kg m-3"
     rho_a_var.long_name = "air density"
     rho_a_var.standard_name = "air_density"
     rho_a_var[:] = rho_a
-
-    alt_p_var = ncfile.createVariable("z_p", np.float64, ("z_p",))
-    alt_p_var.units = "metres"
-    alt_p_var.long_name = "air pressure altitudes"
-    alt_p_var.standard_name = "altitude"
-    alt_p_var[:] = alt_p
-
-    pres_var = ncfile.createVariable("pres", np.float64, ("z_p"))
-    pres_var.units = "Pa"
-    pres_var.long_name = "air pressure"
-    pres_var.standard_name = "air_pressure"
-    pres_var[:] = 100.0 * pres_a
 
     dz_var = ncfile.createVariable("dz", np.float64, ("dz"))
     dz_var.units = "m"
@@ -165,7 +147,7 @@ def save_to_netcdf(
     dz_var.standard_name = "magnitude_of_derivative_of_position_wrt_model_level_number"
     dz_var[:] = dz
 
-    adz_var = ncfile.createVariable("adz", np.float64, ("z_p"))
+    adz_var = ncfile.createVariable("adz", np.float64, ("z"))
     adz_var.units = "1"
     adz_var.long_name = "delta_z for all cells scaled by lowest delta_z (dz)"
     adz_var[:] = adz
@@ -174,18 +156,17 @@ def save_to_netcdf(
 
 
 if __name__ == "__main__":
-    # File to read
+    # Files to read/save
     RHO_SOUNDING_FILE = "sounding_z_rho_rhow.txt"
-    PRES_SOUNDING_FILE = "sounding_z_pres0_tabs0.txt"
     GRD_FILE = "grd"
     NC_FILE = "SAM_sounding.nc"
 
     # Extract data from files as columns of z, rho, pres
     altitude_r, rho = read_sounding(RHO_SOUNDING_FILE)
-    altitude_p, pres = read_sounding(PRES_SOUNDING_FILE)
     altitude_g = read_grid(GRD_FILE)
 
-    dz, adz = grid_calcs(altitude_g)
+    # Perform grid calculations
+    dz_g, adz_g = grid_calcs(altitude_g)
 
     # Save data to NetCDF file
-    save_to_netcdf(NC_FILE, altitude_r, rho, altitude_p, pres, dz, adz)
+    save_to_netcdf(NC_FILE, altitude_g, rho, dz_g, adz_g)
