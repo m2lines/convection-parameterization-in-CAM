@@ -236,12 +236,12 @@ contains
             !! vector of output features from the NN
         real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
                                   q_sed_flux
-        nx = size(tabs_i, 1)
-        ny = size(tabs_i, 2)
-        nzm = size(tabs_i, 3)
         ! NN outputs
         ! Output variable t_rad_rest_tend is also an output from the NN (defined above)
 
+        nx = size(tabs_i, 1)
+        ny = size(tabs_i, 2)
+        nzm = size(tabs_i, 3)
 
         allocate(t(nx,ny,nrf))
         allocate(q(nx,ny,nrf))
