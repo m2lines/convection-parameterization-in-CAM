@@ -3,8 +3,16 @@ module nn_interface_CAM_mod
     !! Reference: https://doi.org/10.1029/2020GL091363
     !! Also see YOG20: https://doi.org/10.1038/s41467-020-17142-3
 
+    ! TODO: Check if CAM needs to allocate MPI Subdomains in some way
+    
+    ! TODO: Check for redundant variables once refactored (icycle, nstatis, precip etc.)
+
+    ! TODO: Remove commented lines for variables not required from SAM Sounding
+    ! TODO: Check precisions when defined in python, saved as netcdf, and read to Fortran
+
 !---------------------------------------------------------------------
 ! Libraries to use
+use netcdf
 use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize
 implicit none
@@ -25,6 +33,11 @@ public  nn_convection_flux_CAM, &
 integer, parameter :: nrf = 30
     !! number of vertical levels the NN parameterisation uses
 
+real, allocatable, dimension(:) :: rho, adz
+!= unit m :: dz
+real :: dz
+    !! grid spacing in z direction for the lowest grid layer
+
 !---------------------------------------------------------------------
 ! Functions and Subroutines
 
@@ -33,22 +46,26 @@ contains
     !-----------------------------------------------------------------
     ! Public Subroutines
 
-    subroutine nn_convection_flux_CAM_init(nn_filename)
+    subroutine nn_convection_flux_CAM_init(nn_filename, sounding_filename)
         !! Initialise the NN module
 
         character(len=1024), intent(in) :: nn_filename
             !! NetCDF filename from which to read model weights
+        character(len=1024), intent(in) :: sounding_filename
+            !! NetCDF filename from which to read SAM sounding and grid data
 
         ! Initialise the Neural Net from file and get info
         call nn_convection_flux_init(nn_filename)
+
+        ! Read in the SAM sounding and grid data required
+        call sam_sounding_init(sounding_filename)
 
     end subroutine nn_convection_flux_CAM_init
 
 
     subroutine nn_convection_flux_CAM(tabs_i, q_i, &
                                       tabs, &
-                                      rho, adz, &
-                                      dz, dtn, dy, &
+                                      dtn, dy, &
                                       nx, ny, ny_gl, &
                                       nstep, nstatis, icycle, &
                                       t, q, precsfc, prec_xy)
@@ -58,10 +75,6 @@ contains
 
         real, dimension(:,:,:) :: tabs_i, q_i, tabs, t, q
         real, dimension(:, :) :: precsfc, prec_xy
-        real, dimension(:) :: rho, adz
-        != unit m :: dz
-        real, intent(in) :: dz
-            !! grid spacing in z direction for the lowest grid layer
         real, intent(in) :: dtn
         real, intent(in) :: dy
         integer, intent(in) :: nx, ny, ny_gl, nstep, nstatis, icycle
@@ -128,6 +141,7 @@ contains
         !! Finalize the module deallocating arrays
 
         call nn_convection_flux_finalize()
+        call sam_sounding_finalize()
 
     end subroutine nn_convection_flux_CAM_finalize
     
@@ -135,8 +149,76 @@ contains
     !-----------------------------------------------------------------
     ! Private Subroutines
     
-    ! TODO: Check if CAM needs to allocate MPI Subdomains in some way
-    
-    ! TODO: Check for redundant variables once refactored (icycle, nstatis, precip etc.)
+    subroutine sam_sounding_init(filename)
+        !! Read various profiles in from SAM sounding file
 
-end module nn_interface_SAM_mod
+        ! This will be the netCDF ID for the file and data variable.
+        integer :: ncid
+        integer :: z_dimid, dz_dimid
+        integer :: nz
+        integer :: z_varid, dz_varid, rho_varid, adz_varid
+
+        character(len=1024), intent(in) :: filename
+            !! NetCDF filename from which to read data
+
+
+        !-------------allocate arrays and read data-------------------
+
+        ! Open the file. NF90_NOWRITE tells netCDF we want read-only
+        ! access
+        ! Get the varid or dimid for each variable or dimension based
+        ! on its name.
+
+        call check( nf90_open(trim(filename),NF90_NOWRITE,ncid ))
+
+        call check( nf90_inq_dimid(ncid, 'z', z_dimid))
+        call check( nf90_inquire_dimension(ncid, z_dimid, len=nz))
+        ! call check( nf90_inq_dimid(ncid, 'dz', dz_dimid))
+        ! call check( nf90_inquire_dimension(ncid, dz_dimid, len=ndz))
+
+        ! Note that nz of sounding may be longer than nrf
+        allocate(rho(nz))
+        allocate(adz(nz))
+
+        ! Read data in from nc file
+        ! call check( nf90_inq_varid(ncid, "z", z_varid))
+        ! call check( nf90_get_var(ncid, z_varid, z))
+        call check( nf90_inq_varid(ncid, "rho", rho_varid))
+        call check( nf90_get_var(ncid, rho_varid, rho))
+        call check( nf90_inq_varid(ncid, "adz", adz_varid))
+        call check( nf90_get_var(ncid, adz_varid, adz))
+        call check( nf90_inq_varid(ncid, "dz", dz_varid))
+        call check( nf90_get_var(ncid, dz_varid, dz))
+
+        ! Close the nc file
+        call check( nf90_close(ncid))
+
+        write(*,*) 'Finished reading SAM sounding file.'
+
+    end subroutine sam_sounding_init
+
+
+    subroutine sam_sounding_finalize()
+        !! Deallocate module variables read from sounding
+
+        deallocate(rho, adz)
+
+    end subroutine sam_sounding_finalize
+
+
+    ! TODO Duplicated from nn_cf_net.f90 - consider placing 1 copy in shared location?
+    subroutine check(err_status)
+        !! Check error status after netcdf call and print message for
+        !! error codes.
+
+        integer, intent(in) :: err_status
+            !! error status from nf90 function
+
+        if(err_status /= nf90_noerr) then
+             write(*, *) trim(nf90_strerror(err_status))
+        end if
+
+    end subroutine check
+
+
+end module nn_interface_CAM_mod
