@@ -3,10 +3,13 @@ program run_cam_tests
 
     use nn_convection_flux_mod, only: nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
 
-    use nn_interface_CAM_mod, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize
+    use nn_interface_CAM_mod, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
+    interp_to_sam
+
     implicit none
 
     call nn_convection_flux_CAM_init(trim("NN_weights_YOG_convection.nc"), trim("resources/SAM_sounding.nc"))
+    call interp_to_sam(reshape((/ 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0 /), (/ 4, 3, 1 /)))
     call nn_convection_flux_CAM_finalize()
 
 

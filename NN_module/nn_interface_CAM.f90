@@ -24,6 +24,8 @@ private
 public  nn_convection_flux_CAM, &
         nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize
 
+! TODO Make routines public for purposes of testing
+public interp_to_sam
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -33,7 +35,14 @@ public  nn_convection_flux_CAM, &
 integer, parameter :: nrf = 30
     !! number of vertical levels the NN parameterisation uses
 
+!= unit 1 :: nz_sam
+integer :: nz_sam
+    !! number of vertical values in the SAM sounding profiles
+!= unit hPa :: pres, presi
+!= unit kg m-3 :: rho
+!= unit 1 :: adz
 real, allocatable, dimension(:) :: pres, presi, rho, adz
+    !! SAM sounding variables
 != unit m :: dz
 real :: dz
     !! grid spacing in z direction for the lowest grid layer
@@ -63,7 +72,8 @@ contains
     end subroutine nn_convection_flux_CAM_init
 
 
-    subroutine nn_convection_flux_CAM(tabs_i, q_i, &
+    subroutine nn_convection_flux_CAM(pres_cam, &
+                                      tabs_i, q_i, &
                                       tabs, &
                                       dtn, dy, &
                                       nx, ny, ny_gl, &
@@ -73,6 +83,8 @@ contains
 
         integer :: j, k
 
+        real, dimension(:,:,:) :: pres_cam
+            !! pressure [hPa] from the CAM model
         real, dimension(:,:,:) :: tabs_i, q_i, tabs, t, q
         real, dimension(:, :) :: precsfc, prec_xy
         real, intent(in) :: dtn
@@ -107,6 +119,9 @@ contains
         !-----------------------------------------------------
         
         ! TODO: Formulate the input variables to the parameterisation as required.
+
+        ! Interpolate CAM variables to the SAM pressure levels
+        call interp_to_sam(pres_cam)
 
         !-----------------------------------------------------
         
@@ -149,13 +164,34 @@ contains
     !-----------------------------------------------------------------
     ! Private Subroutines
     
+    subroutine interp_to_sam(p_cam)
+        !! Interpolate from the CAM pressure grid to the SAM pressure grid.
+
+        != unit Pa :: p_sam, p_cam
+        real, dimension(:,:,:) :: p_cam
+            !! pressure from CAM
+        real, dimension(3) :: shape_cam
+            !! shape of CAM grid
+        != unit 1 :: p_norm_sam, p_norm_cam
+        real, dimension(:), allocatable :: p_norm_sam
+        real, dimension(:,:,:), allocatable :: p_norm_cam
+
+        allocate(p_norm_sam(nz_sam))
+
+        ! Normalise pressures by surface value
+        p_norm_sam(:) = pres(:) / presi(1)
+        write(*,*) pres
+        write(*,*) p_norm_sam
+        ! p_norm_cam = 
+
+    end subroutine interp_to_sam
+
     subroutine sam_sounding_init(filename)
         !! Read various profiles in from SAM sounding file
 
         ! This will be the netCDF ID for the file and data variable.
         integer :: ncid
         integer :: z_dimid, dz_dimid
-        integer :: nz
         integer :: z_varid, dz_varid, pres_varid, presi_varid, rho_varid, adz_varid
 
         character(len=1024), intent(in) :: filename
@@ -172,23 +208,25 @@ contains
         call check( nf90_open(trim(filename),NF90_NOWRITE,ncid ))
 
         call check( nf90_inq_dimid(ncid, 'z', z_dimid))
-        call check( nf90_inquire_dimension(ncid, z_dimid, len=nz))
+        call check( nf90_inquire_dimension(ncid, z_dimid, len=nz_sam))
         ! call check( nf90_inq_dimid(ncid, 'dz', dz_dimid))
         ! call check( nf90_inquire_dimension(ncid, dz_dimid, len=ndz))
 
         ! Note that nz of sounding may be longer than nrf
-        allocate(pres(nz))
-        allocate(presi(nz))
-        allocate(rho(nz))
-        allocate(adz(nz))
+        allocate(pres(nz_sam))
+        allocate(presi(nz_sam))
+        allocate(rho(nz_sam))
+        allocate(adz(nz_sam))
 
-        ! Read data in from nc file
+        ! Read data in from nc file - convert pressures to hPa
         ! call check( nf90_inq_varid(ncid, "z", z_varid))
         ! call check( nf90_get_var(ncid, z_varid, z))
         call check( nf90_inq_varid(ncid, "pressure", pres_varid))
         call check( nf90_get_var(ncid, pres_varid, pres))
+        pres(:) = pres / 100.0
         call check( nf90_inq_varid(ncid, "interface_pressure", presi_varid))
         call check( nf90_get_var(ncid, presi_varid, presi))
+        presi(:) = presi(:) / 100.0
         call check( nf90_inq_varid(ncid, "rho", rho_varid))
         call check( nf90_get_var(ncid, rho_varid, rho))
         call check( nf90_inq_varid(ncid, "adz", adz_varid))
