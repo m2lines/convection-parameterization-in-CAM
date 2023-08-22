@@ -33,7 +33,7 @@ public  nn_convection_flux_CAM, &
 integer, parameter :: nrf = 30
     !! number of vertical levels the NN parameterisation uses
 
-real, allocatable, dimension(:) :: rho, adz
+real, allocatable, dimension(:) :: pres, presi, rho, adz
 != unit m :: dz
 real :: dz
     !! grid spacing in z direction for the lowest grid layer
@@ -156,7 +156,7 @@ contains
         integer :: ncid
         integer :: z_dimid, dz_dimid
         integer :: nz
-        integer :: z_varid, dz_varid, rho_varid, adz_varid
+        integer :: z_varid, dz_varid, pres_varid, presi_varid, rho_varid, adz_varid
 
         character(len=1024), intent(in) :: filename
             !! NetCDF filename from which to read data
@@ -177,12 +177,18 @@ contains
         ! call check( nf90_inquire_dimension(ncid, dz_dimid, len=ndz))
 
         ! Note that nz of sounding may be longer than nrf
+        allocate(pres(nz))
+        allocate(presi(nz))
         allocate(rho(nz))
         allocate(adz(nz))
 
         ! Read data in from nc file
         ! call check( nf90_inq_varid(ncid, "z", z_varid))
         ! call check( nf90_get_var(ncid, z_varid, z))
+        call check( nf90_inq_varid(ncid, "pressure", pres_varid))
+        call check( nf90_get_var(ncid, pres_varid, pres))
+        call check( nf90_inq_varid(ncid, "interface_pressure", presi_varid))
+        call check( nf90_get_var(ncid, presi_varid, presi))
         call check( nf90_inq_varid(ncid, "rho", rho_varid))
         call check( nf90_get_var(ncid, rho_varid, rho))
         call check( nf90_inq_varid(ncid, "adz", adz_varid))
@@ -201,7 +207,7 @@ contains
     subroutine sam_sounding_finalize()
         !! Deallocate module variables read from sounding
 
-        deallocate(rho, adz)
+        deallocate(pres, presi, rho, adz)
 
     end subroutine sam_sounding_finalize
 
