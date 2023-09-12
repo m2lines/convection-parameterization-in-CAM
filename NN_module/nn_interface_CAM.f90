@@ -72,7 +72,7 @@ contains
     end subroutine nn_convection_flux_CAM_init
 
 
-    subroutine nn_convection_flux_CAM(pres_cam, &
+    subroutine nn_convection_flux_CAM(pres_cam, pint_or_ps, &
                                       tabs_i, q_i, &
                                       tabs, &
                                       dtn, dy, &
@@ -83,8 +83,10 @@ contains
 
         integer :: j, k
 
-        real, dimension(:,:,:) :: pres_cam
+        real, dimension(:,:) :: pres_cam
             !! pressure [hPa] from the CAM model
+        real, dimension(:) :: pint_or_ps
+            !! surface pressure [hPa] from the CAM model
         real, dimension(:,:,:) :: tabs_i, q_i, tabs, t, q
         real, dimension(:, :) :: precsfc, prec_xy
         real, intent(in) :: dtn
@@ -121,7 +123,7 @@ contains
         ! TODO: Formulate the input variables to the parameterisation as required.
 
         ! Interpolate CAM variables to the SAM pressure levels
-        call interp_to_sam(pres_cam)
+        ! call interp_to_sam(pres_cam, pint_or_ps, var_cam, var_sam)
 
         !-----------------------------------------------------
         
@@ -164,25 +166,76 @@ contains
     !-----------------------------------------------------------------
     ! Private Subroutines
     
-    subroutine interp_to_sam(p_cam)
+    subroutine interp_to_sam(p_cam, ps_cam, var_cam, var_sam)
         !! Interpolate from the CAM pressure grid to the SAM pressure grid.
 
-        != unit Pa :: p_sam, p_cam
-        real, dimension(:,:,:) :: p_cam
-            !! pressure from CAM
-        real, dimension(3) :: shape_cam
-            !! shape of CAM grid
+        != unit hPa :: p_cam, ps_cam
+        real, dimension(:,:), intent(in) :: p_cam
+            !! pressure [hPa] from the CAM model
+        real, dimension(:), intent(in) :: ps_cam
+            !! surface pressure [hPa] for each column in CAM
+        != unit 1 :: var_cam, var_sam
+        real, dimension(:,:), intent(in) :: var_cam
+            !! variable from CAM grid to be interpolated from
+        real, dimension(:,:), intent(out) :: var_sam
+            !! variable from SAM grid to be interpolated to
         != unit 1 :: p_norm_sam, p_norm_cam
-        real, dimension(:), allocatable :: p_norm_sam
-        real, dimension(:,:,:), allocatable :: p_norm_cam
+        real, dimension(nrf) :: p_norm_sam
+        real, dimension(:,:), allocatable :: p_norm_cam
 
-        allocate(p_norm_sam(nz_sam))
+        integer :: i, k, nz_cam, ncol_cam, kc_u, kc_l
+        real :: pc_u, pc_l
+
+        ncol_cam = size(p_cam, 1)
+        nz_cam = size(p_cam, 2)
+        allocate(p_norm_cam(size(p_cam, 1), nz_cam))
 
         ! Normalise pressures by surface value
         p_norm_sam(:) = pres(:) / presi(1)
-        write(*,*) pres
-        write(*,*) p_norm_sam
-        ! p_norm_cam = 
+        do k = 1,nz_cam
+            p_norm_cam(:,k) = p_cam(:,k) / ps_cam(:)
+        end do
+
+        ! Loop over columns and SAM levels and interpolate each column
+        do k = 1, nrf
+        do i = 1, ncol_cam
+            ! Check we are within array:
+            ! Checking every iterating is a waste!
+            ! If not then bottom of SAM is below CAM surface!
+            if (p_norm_sam(k) > p_norm_cam(i, 1)) then
+                write(*,*) "Interpolating below CAM range: Stopping."
+                stop
+            endif
+            ! Also check the top
+            if (p_norm_cam(i, nz_cam) > p_norm_sam(nrf)) then
+                write(*,*) "CAM top pressure is lower than SAM: Stopping."
+                stop
+            endif
+
+            ! Locate the neighbouring CAM indices to interpolate between
+            ! This will be slow - speed up later
+            kc_u = 1
+            pc_u = p_norm_cam(i, kc_u)
+            do while (pc_u > p_norm_sam(k))
+                kc_u = kc_u + 1
+                pc_u = p_norm_cam(i, kc_u)
+            end do
+            kc_l = kc_u - 1
+            pc_l = p_norm_cam(i, kc_l)
+            do while (pc_l < p_norm_sam(k))
+                kc_l = kc_l - 1
+                pc_l = p_norm_cam(i, kc_l)
+            end do
+
+            ! interpolate variables - Repeat for as many variables as need interpolating
+            var_sam(i, k) = var_cam(i, kc_l) &
+                            + (p_norm_sam(k)-pc_l) &
+                            *(var_cam(i, kc_u)-var_cam(i, kc_l))/(pc_u-pc_l)
+        end do
+        end do
+
+        ! Clean up
+        deallocate(p_norm_cam)
 
     end subroutine interp_to_sam
 
