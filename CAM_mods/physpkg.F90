@@ -53,6 +53,7 @@ module physpkg
   character(len=16) :: macrop_scheme
   character(len=16) :: microp_scheme
   character(len=16) :: subcol_scheme
+  character(len=16) :: deep_scheme    ! default set in phys_control.F90, use namelist to change
   character(len=32) :: cam_take_snapshot_before ! Physics routine to take a snapshot "before"
   character(len=32) :: cam_take_snapshot_after  ! Physics routine to take a snapshot "after"
   integer           :: cld_macmic_num_steps    ! Number of macro/micro substeps
@@ -160,6 +161,7 @@ contains
 
     ! Get physics options
     call phys_getopts(shallow_scheme_out          = shallow_scheme, &
+                      deep_scheme_out             = deep_scheme, &
                       macrop_scheme_out           = macrop_scheme,   &
                       microp_scheme_out           = microp_scheme,   &
                       cld_macmic_num_steps_out    = cld_macmic_num_steps, &
@@ -2127,7 +2129,7 @@ contains
            flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
-    select case()
+    select case(deep_scheme)
     case('ZM')
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
@@ -2139,8 +2141,8 @@ contains
     ! jwa34 We want to overwrite ptend with our code
          ! Nudging.F90 ll 1362 -> 1367
          ! ptend is phys_tend variable but chuncked for one node/core (?)
-         ptend%s(:ncol,:pver) = phys_tend_yog_temperature  ! Beware s should be dry static energy, not temperature (multiply T_abs by specific heat)
-         ptend%q(:ncol,:pver,1) = = phys_tend_yog_q_state  ! indw has 4 components, ice, liquid, vapour, snow. NN only provides q => set indw to 1
+         ! ptend%s(:ncol,:pver) = phys_tend_yog_temperature  ! Beware s should be dry static energy, not temperature (multiply T_abs by specific heat)
+         ! ptend%q(:ncol,:pver,1) = phys_tend_yog_q_state  ! indw has 4 components, ice, liquid, vapour, snow. NN only provides q => set indw to 1
     end select
 
     if ( (trim(cam_take_snapshot_after) == "convect_deep_tend") .and. &
