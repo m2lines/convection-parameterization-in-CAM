@@ -29,11 +29,11 @@ module yog_conv_intr
    ! Public methods
 
    public ::&
-      zm_conv_register,           &! register fields in physics buffer
-      zm_conv_readnl,             &! read namelist
-      zm_conv_init,               &! initialize donner_deep module
-      zm_conv_tend,               &! return tendencies
-      zm_conv_tend_2               ! return tendencies
+      ! zm_conv_register,           &! register fields in physics buffer
+      ! zm_conv_readnl,             &! read namelist
+      yog_conv_init,               &! initialize donner_deep module
+      yog_conv_tend !,               &! return tendencies
+      ! zm_conv_tend_2               ! return tendencies
 
    public :: zmconv_microp
 
@@ -91,136 +91,136 @@ module yog_conv_intr
 contains
 !=========================================================================================
 
-subroutine zm_conv_register
+! subroutine zm_conv_register
+! 
+! !----------------------------------------
+! ! Purpose: register fields with the physics buffer
+! !----------------------------------------
+! 
+!   use physics_buffer, only : pbuf_add_field, dtype_r8, dtype_i4
+! 
+!   implicit none
+! 
+!   integer idx
+! 
+!    call pbuf_add_field('ZM_MU', 'physpkg', dtype_r8, (/pcols,pver/), zm_mu_idx) 
+!    call pbuf_add_field('ZM_EU', 'physpkg', dtype_r8, (/pcols,pver/), zm_eu_idx) 
+!    call pbuf_add_field('ZM_DU', 'physpkg', dtype_r8, (/pcols,pver/), zm_du_idx) 
+!    call pbuf_add_field('ZM_MD', 'physpkg', dtype_r8, (/pcols,pver/), zm_md_idx) 
+!    call pbuf_add_field('ZM_ED', 'physpkg', dtype_r8, (/pcols,pver/), zm_ed_idx) 
+! 
+!    ! wg layer thickness in mbs (between upper/lower interface).
+!    call pbuf_add_field('ZM_DP', 'physpkg', dtype_r8, (/pcols,pver/), zm_dp_idx) 
+! 
+!    ! wg layer thickness in mbs between lcl and maxi.
+!    call pbuf_add_field('ZM_DSUBCLD', 'physpkg', dtype_r8, (/pcols/), zm_dsubcld_idx) 
+! 
+!    ! wg top level index of deep cumulus convection.
+!    call pbuf_add_field('ZM_JT', 'physpkg', dtype_i4, (/pcols/), zm_jt_idx) 
+! 
+!    ! wg gathered values of maxi.
+!    call pbuf_add_field('ZM_MAXG', 'physpkg', dtype_i4, (/pcols/), zm_maxg_idx) 
+! 
+!    ! map gathered points to chunk index
+!    call pbuf_add_field('ZM_IDEEP', 'physpkg', dtype_i4, (/pcols/), zm_ideep_idx) 
+! 
+! ! Flux of precipitation from deep convection (kg/m2/s)
+!    call pbuf_add_field('DP_FLXPRC','global',dtype_r8,(/pcols,pverp/),dp_flxprc_idx) 
+! 
+! ! Flux of snow from deep convection (kg/m2/s) 
+!    call pbuf_add_field('DP_FLXSNW','global',dtype_r8,(/pcols,pverp/),dp_flxsnw_idx) 
+! 
+! ! deep gbm cloud liquid water (kg/kg)
+!    call pbuf_add_field('DP_CLDLIQ','global',dtype_r8,(/pcols,pver/), dp_cldliq_idx)  
+! 
+! ! deep gbm cloud liquid water (kg/kg)    
+!    call pbuf_add_field('DP_CLDICE','global',dtype_r8,(/pcols,pver/), dp_cldice_idx)  
+! 
+!    call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
+!    call pbuf_add_field('RPRDDP',     'physpkg',dtype_r8,(/pcols,pver/),rprddp_idx)
+!    call pbuf_add_field('NEVAPR_DPCU','physpkg',dtype_r8,(/pcols,pver/),nevapr_dpcu_idx)
+!    call pbuf_add_field('PREC_DP',    'physpkg',dtype_r8,(/pcols/),     prec_dp_idx)
+!    call pbuf_add_field('SNOW_DP',    'physpkg',dtype_r8,(/pcols/),     snow_dp_idx)
+! 
+!    ! detrained convective cloud water mixing ratio.
+!    call pbuf_add_field('DLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dlfzm_idx)
+!    ! detrained convective cloud ice mixing ratio.
+!    call pbuf_add_field('DIFZM', 'physpkg', dtype_r8, (/pcols,pver/), difzm_idx)
+! 
+!    if (zmconv_microp) then
+!       ! Only add the number conc fields if the microphysics is active.
+! 
+!       ! detrained convective cloud water num concen.
+!       call pbuf_add_field('DNLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dnlfzm_idx)
+!       ! detrained convective cloud ice num concen.
+!       call pbuf_add_field('DNIFZM', 'physpkg', dtype_r8, (/pcols,pver/), dnifzm_idx)
+!    end if
+! 
+!    if (zmconv_org) then
+!       call cnst_add('ZM_ORG',0._r8,0._r8,0._r8,ixorg,longname='organization parameter')
+!    endif
+! 
+! end subroutine zm_conv_register
 
-!----------------------------------------
-! Purpose: register fields with the physics buffer
-!----------------------------------------
+! !=========================================================================================
+! 
+! subroutine zm_conv_readnl(nlfile)
+! 
+!    use spmd_utils,      only: mpicom, masterproc, masterprocid, mpi_real8, mpi_integer, mpi_logical
+!    use namelist_utils,  only: find_group_name
+!    use units,           only: getunit, freeunit
+! 
+!    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+! 
+!    ! Local variables
+!    integer :: unitn, ierr
+!    character(len=*), parameter :: subname = 'zm_conv_readnl'
+! 
+!    namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_num_cin, &
+!                         zmconv_ke, zmconv_ke_lnd, zmconv_org, &
+!                         zmconv_momcu, zmconv_momcd, zmconv_microp
+!    !-----------------------------------------------------------------------------
+! 
+!    if (masterproc) then
+!       unitn = getunit()
+!       open( unitn, file=trim(nlfile), status='old' )
+!       call find_group_name(unitn, 'zmconv_nl', status=ierr)
+!       if (ierr == 0) then
+!          read(unitn, zmconv_nl, iostat=ierr)
+!          if (ierr /= 0) then
+!             call endrun(subname // ':: ERROR reading namelist')
+!          end if
+!       end if
+!       close(unitn)
+!       call freeunit(unitn)
+! 
+!    end if
+! 
+!    ! Broadcast namelist variables
+!    call mpi_bcast(zmconv_num_cin,           1, mpi_integer, masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_num_cin")
+!    call mpi_bcast(zmconv_c0_lnd,            1, mpi_real8,   masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_c0_lnd")
+!    call mpi_bcast(zmconv_c0_ocn,            1, mpi_real8,   masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_c0_ocn")
+!    call mpi_bcast(zmconv_ke,                1, mpi_real8,   masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_ke")
+!    call mpi_bcast(zmconv_ke_lnd,            1, mpi_real8,   masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_ke_lnd")
+!    call mpi_bcast(zmconv_momcu,             1, mpi_real8,   masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_momcu")
+!    call mpi_bcast(zmconv_momcd,             1, mpi_real8,   masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_momcd")
+!    call mpi_bcast(zmconv_org,               1, mpi_logical, masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_org")
+!    call mpi_bcast(zmconv_microp,            1, mpi_logical, masterprocid, mpicom, ierr)
+!    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_microp")
+! 
+! end subroutine zm_conv_readnl
+! 
+! !=========================================================================================
 
-  use physics_buffer, only : pbuf_add_field, dtype_r8, dtype_i4
-
-  implicit none
-
-  integer idx
-
-   call pbuf_add_field('ZM_MU', 'physpkg', dtype_r8, (/pcols,pver/), zm_mu_idx) 
-   call pbuf_add_field('ZM_EU', 'physpkg', dtype_r8, (/pcols,pver/), zm_eu_idx) 
-   call pbuf_add_field('ZM_DU', 'physpkg', dtype_r8, (/pcols,pver/), zm_du_idx) 
-   call pbuf_add_field('ZM_MD', 'physpkg', dtype_r8, (/pcols,pver/), zm_md_idx) 
-   call pbuf_add_field('ZM_ED', 'physpkg', dtype_r8, (/pcols,pver/), zm_ed_idx) 
-
-   ! wg layer thickness in mbs (between upper/lower interface).
-   call pbuf_add_field('ZM_DP', 'physpkg', dtype_r8, (/pcols,pver/), zm_dp_idx) 
-
-   ! wg layer thickness in mbs between lcl and maxi.
-   call pbuf_add_field('ZM_DSUBCLD', 'physpkg', dtype_r8, (/pcols/), zm_dsubcld_idx) 
-
-   ! wg top level index of deep cumulus convection.
-   call pbuf_add_field('ZM_JT', 'physpkg', dtype_i4, (/pcols/), zm_jt_idx) 
-
-   ! wg gathered values of maxi.
-   call pbuf_add_field('ZM_MAXG', 'physpkg', dtype_i4, (/pcols/), zm_maxg_idx) 
-
-   ! map gathered points to chunk index
-   call pbuf_add_field('ZM_IDEEP', 'physpkg', dtype_i4, (/pcols/), zm_ideep_idx) 
-
-! Flux of precipitation from deep convection (kg/m2/s)
-   call pbuf_add_field('DP_FLXPRC','global',dtype_r8,(/pcols,pverp/),dp_flxprc_idx) 
-
-! Flux of snow from deep convection (kg/m2/s) 
-   call pbuf_add_field('DP_FLXSNW','global',dtype_r8,(/pcols,pverp/),dp_flxsnw_idx) 
-
-! deep gbm cloud liquid water (kg/kg)
-   call pbuf_add_field('DP_CLDLIQ','global',dtype_r8,(/pcols,pver/), dp_cldliq_idx)  
-
-! deep gbm cloud liquid water (kg/kg)    
-   call pbuf_add_field('DP_CLDICE','global',dtype_r8,(/pcols,pver/), dp_cldice_idx)  
-
-   call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
-   call pbuf_add_field('RPRDDP',     'physpkg',dtype_r8,(/pcols,pver/),rprddp_idx)
-   call pbuf_add_field('NEVAPR_DPCU','physpkg',dtype_r8,(/pcols,pver/),nevapr_dpcu_idx)
-   call pbuf_add_field('PREC_DP',    'physpkg',dtype_r8,(/pcols/),     prec_dp_idx)
-   call pbuf_add_field('SNOW_DP',    'physpkg',dtype_r8,(/pcols/),     snow_dp_idx)
-
-   ! detrained convective cloud water mixing ratio.
-   call pbuf_add_field('DLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dlfzm_idx)
-   ! detrained convective cloud ice mixing ratio.
-   call pbuf_add_field('DIFZM', 'physpkg', dtype_r8, (/pcols,pver/), difzm_idx)
-
-   if (zmconv_microp) then
-      ! Only add the number conc fields if the microphysics is active.
-
-      ! detrained convective cloud water num concen.
-      call pbuf_add_field('DNLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dnlfzm_idx)
-      ! detrained convective cloud ice num concen.
-      call pbuf_add_field('DNIFZM', 'physpkg', dtype_r8, (/pcols,pver/), dnifzm_idx)
-   end if
-
-   if (zmconv_org) then
-      call cnst_add('ZM_ORG',0._r8,0._r8,0._r8,ixorg,longname='organization parameter')
-   endif
-
-end subroutine zm_conv_register
-
-!=========================================================================================
-
-subroutine zm_conv_readnl(nlfile)
-
-   use spmd_utils,      only: mpicom, masterproc, masterprocid, mpi_real8, mpi_integer, mpi_logical
-   use namelist_utils,  only: find_group_name
-   use units,           only: getunit, freeunit
-
-   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-
-   ! Local variables
-   integer :: unitn, ierr
-   character(len=*), parameter :: subname = 'zm_conv_readnl'
-
-   namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_num_cin, &
-                        zmconv_ke, zmconv_ke_lnd, zmconv_org, &
-                        zmconv_momcu, zmconv_momcd, zmconv_microp
-   !-----------------------------------------------------------------------------
-
-   if (masterproc) then
-      unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
-      call find_group_name(unitn, 'zmconv_nl', status=ierr)
-      if (ierr == 0) then
-         read(unitn, zmconv_nl, iostat=ierr)
-         if (ierr /= 0) then
-            call endrun(subname // ':: ERROR reading namelist')
-         end if
-      end if
-      close(unitn)
-      call freeunit(unitn)
-
-   end if
-
-   ! Broadcast namelist variables
-   call mpi_bcast(zmconv_num_cin,           1, mpi_integer, masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_num_cin")
-   call mpi_bcast(zmconv_c0_lnd,            1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_c0_lnd")
-   call mpi_bcast(zmconv_c0_ocn,            1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_c0_ocn")
-   call mpi_bcast(zmconv_ke,                1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_ke")
-   call mpi_bcast(zmconv_ke_lnd,            1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_ke_lnd")
-   call mpi_bcast(zmconv_momcu,             1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_momcu")
-   call mpi_bcast(zmconv_momcd,             1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_momcd")
-   call mpi_bcast(zmconv_org,               1, mpi_logical, masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_org")
-   call mpi_bcast(zmconv_microp,            1, mpi_logical, masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_microp")
-
-end subroutine zm_conv_readnl
-
-!=========================================================================================
-
-subroutine zm_conv_init(pref_edge)
+subroutine yog_conv_init(pref_edge)
 
 !----------------------------------------
 ! Purpose:  declare output fields, initialize variables needed by convection
@@ -359,11 +359,11 @@ subroutine zm_conv_init(pref_edge)
 
     if (zmconv_microp) call zm_conv_micro_init()
 
-end subroutine zm_conv_init
+end subroutine yog_conv_init
 !=========================================================================================
 !subroutine zm_conv_tend(state, ptend, tdt)
 
-subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
+subroutine yog_conv_tend(pblh    ,mcon    ,cme     , &
      tpert   ,pflx    ,zdu      , &
      rliq    ,rice    ,ztodt    , &
      jctop   ,jcbot , &
@@ -916,84 +916,84 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    end if
 
-end subroutine zm_conv_tend
+end subroutine yog_conv_tend
 !=========================================================================================
 
 
-subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
-
-   use physics_types, only: physics_state, physics_ptend, physics_ptend_init
-   use time_manager,  only: get_nstep
-   use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
-   use constituents,   only: pcnst, cnst_is_convtran2
- 
-! Arguments
-   type(physics_state), intent(in )   :: state          ! Physics state variables
-   type(physics_ptend), intent(out)   :: ptend          ! indivdual parameterization tendencies
-   
-   type(physics_buffer_desc), pointer :: pbuf(:)
-
-   real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
-
-! Local variables
-   integer :: i, lchnk, istat
-   integer :: lengath          ! number of columns with deep convection
-   integer :: nstep
-
-   real(r8), dimension(pcols,pver) :: dpdry
-
-   ! physics buffer fields 
-   real(r8), pointer :: fracis(:,:,:)  ! fraction of transported species that are insoluble
-   real(r8), pointer :: mu(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: eu(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: du(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: md(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: ed(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: dp(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: dsubcld(:) ! (pcols) 
-   integer,  pointer :: jt(:)      ! (pcols) 
-   integer,  pointer :: maxg(:)    ! (pcols) 
-   integer,  pointer :: ideep(:)   ! (pcols) 
-   !-----------------------------------------------------------------------------------
-
-
-   call physics_ptend_init(ptend, state%psetcols, 'convtran2', lq=cnst_is_convtran2 )
-
-   call pbuf_get_field(pbuf, fracis_idx,     fracis)
-   call pbuf_get_field(pbuf, zm_mu_idx,      mu)
-   call pbuf_get_field(pbuf, zm_eu_idx,      eu)
-   call pbuf_get_field(pbuf, zm_du_idx,      du)
-   call pbuf_get_field(pbuf, zm_md_idx,      md)
-   call pbuf_get_field(pbuf, zm_ed_idx,      ed)
-   call pbuf_get_field(pbuf, zm_dp_idx,      dp)
-   call pbuf_get_field(pbuf, zm_dsubcld_idx, dsubcld)
-   call pbuf_get_field(pbuf, zm_jt_idx,      jt)
-   call pbuf_get_field(pbuf, zm_maxg_idx,    maxg)
-   call pbuf_get_field(pbuf, zm_ideep_idx,   ideep)
-
-   lengath = count(ideep > 0)
-
-   lchnk = state%lchnk
-   nstep = get_nstep()
-
-   if (any(ptend%lq(:))) then
-      ! initialize dpdry for call to convtran
-      ! it is used for tracers of dry mixing ratio type
-      dpdry = 0._r8
-      do i = 1, lengath
-         dpdry(i,:) = state%pdeldry(ideep(i),:)/100._r8
-      end do
-
-      call t_startf ('convtran2')
-      call convtran (lchnk,                                        &
-                     ptend%lq,state%q, pcnst,  mu, md,   &
-                     du, eu, ed, dp, dsubcld,  &
-                     jt, maxg, ideep, 1, lengath,  &
-                     nstep,   fracis,  ptend%q, dpdry, ztodt)
-      call t_stopf ('convtran2')
-   end if
-
-end subroutine zm_conv_tend_2
+! subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
+! 
+!    use physics_types, only: physics_state, physics_ptend, physics_ptend_init
+!    use time_manager,  only: get_nstep
+!    use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
+!    use constituents,   only: pcnst, cnst_is_convtran2
+!  
+! ! Arguments
+!    type(physics_state), intent(in )   :: state          ! Physics state variables
+!    type(physics_ptend), intent(out)   :: ptend          ! indivdual parameterization tendencies
+!    
+!    type(physics_buffer_desc), pointer :: pbuf(:)
+! 
+!    real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
+! 
+! ! Local variables
+!    integer :: i, lchnk, istat
+!    integer :: lengath          ! number of columns with deep convection
+!    integer :: nstep
+! 
+!    real(r8), dimension(pcols,pver) :: dpdry
+! 
+!    ! physics buffer fields 
+!    real(r8), pointer :: fracis(:,:,:)  ! fraction of transported species that are insoluble
+!    real(r8), pointer :: mu(:,:)    ! (pcols,pver) 
+!    real(r8), pointer :: eu(:,:)    ! (pcols,pver) 
+!    real(r8), pointer :: du(:,:)    ! (pcols,pver) 
+!    real(r8), pointer :: md(:,:)    ! (pcols,pver) 
+!    real(r8), pointer :: ed(:,:)    ! (pcols,pver) 
+!    real(r8), pointer :: dp(:,:)    ! (pcols,pver) 
+!    real(r8), pointer :: dsubcld(:) ! (pcols) 
+!    integer,  pointer :: jt(:)      ! (pcols) 
+!    integer,  pointer :: maxg(:)    ! (pcols) 
+!    integer,  pointer :: ideep(:)   ! (pcols) 
+!    !-----------------------------------------------------------------------------------
+! 
+! 
+!    call physics_ptend_init(ptend, state%psetcols, 'convtran2', lq=cnst_is_convtran2 )
+! 
+!    call pbuf_get_field(pbuf, fracis_idx,     fracis)
+!    call pbuf_get_field(pbuf, zm_mu_idx,      mu)
+!    call pbuf_get_field(pbuf, zm_eu_idx,      eu)
+!    call pbuf_get_field(pbuf, zm_du_idx,      du)
+!    call pbuf_get_field(pbuf, zm_md_idx,      md)
+!    call pbuf_get_field(pbuf, zm_ed_idx,      ed)
+!    call pbuf_get_field(pbuf, zm_dp_idx,      dp)
+!    call pbuf_get_field(pbuf, zm_dsubcld_idx, dsubcld)
+!    call pbuf_get_field(pbuf, zm_jt_idx,      jt)
+!    call pbuf_get_field(pbuf, zm_maxg_idx,    maxg)
+!    call pbuf_get_field(pbuf, zm_ideep_idx,   ideep)
+! 
+!    lengath = count(ideep > 0)
+! 
+!    lchnk = state%lchnk
+!    nstep = get_nstep()
+! 
+!    if (any(ptend%lq(:))) then
+!       ! initialize dpdry for call to convtran
+!       ! it is used for tracers of dry mixing ratio type
+!       dpdry = 0._r8
+!       do i = 1, lengath
+!          dpdry(i,:) = state%pdeldry(ideep(i),:)/100._r8
+!       end do
+! 
+!       call t_startf ('convtran2')
+!       call convtran (lchnk,                                        &
+!                      ptend%lq,state%q, pcnst,  mu, md,   &
+!                      du, eu, ed, dp, dsubcld,  &
+!                      jt, maxg, ideep, 1, lengath,  &
+!                      nstep,   fracis,  ptend%q, dpdry, ztodt)
+!       call t_stopf ('convtran2')
+!    end if
+! 
+! end subroutine zm_conv_tend_2
 
 !=========================================================================================
 
