@@ -1,0 +1,6 @@
+nn_interface_CAM.f90
+SAM_sounding.nc
+nn_cf_net.f90
+NN_weights_YOG_convection.nc
+README
+nn_convection_flux.f90
