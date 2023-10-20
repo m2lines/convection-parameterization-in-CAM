@@ -67,6 +67,37 @@ def load_torchscript(filename: Optional[str] = "saved_model.pt") -> torch.nn.Mod
     return model
 
 
+def weights_nc_to_pkl(nc_file: str, pkl_file: str = "weights.pkl") -> None:
+    """Converts weights stored in a netCDF file to a .pkl file.
+
+    Parameters
+    ----------
+        nc_file : str
+            Name of netCDF file containing model weights.
+        pkl_file: str
+            Name of pkl file to save weights to. Default is "weights.pkl".
+    """
+    import pickle
+
+    trained_model = models.ANN()
+    # for name, layer in trained_model.named_children():
+    #     print(layer.weight)
+    #     break
+    models.endow_with_netcdf_params(trained_model, nc_file)
+    with open(pkl_file, "wb") as f:
+        pickle.dump(trained_model.state_dict(), f)
+
+    # Check weights have been saved correctly
+    test_model = models.ANN()
+    with open("weights.pkl", "rb") as f:
+        weights = pickle.load(f)
+    test_model.load_state_dict(weights)
+    for key in trained_model.state_dict().keys():
+        assert torch.equal(
+            trained_model.state_dict()[key], test_model.state_dict()[key]
+        )
+
+
 if __name__ == "__main__":
     # =====================================================
     # Load model and prepare for saving
