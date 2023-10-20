@@ -82,6 +82,27 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
         return batch
 
 
+    def initialize(self, weights_file: str, use_pkl: bool = True):
+        """_summary_
+
+        Parameters
+        ----------
+        weights_file : str
+            File name for saved weights
+        use_pkl : bool
+            Whether to read weights from a .pkl file (if `True`)
+            or netCDF file (if `False`). Defaults is `True`.
+        """
+        import pickle
+        if use_pkl:
+            with open(weights_file, "rb") as f:
+                weights = pickle.load(f)
+            self.load_state_dict(weights)
+        else:
+            endow_with_netcdf_params(self, weights_file)
+        return self
+
+
 @no_grad()
 def endow_with_netcdf_params(model: Module, nc_file: str):
     """Endow the model with weights and biases in the netcdf file.
