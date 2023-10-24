@@ -15,6 +15,7 @@ program run_cam_tests
     real, dimension(4) :: var_cam_surface
     real, dimension(4) :: ps_cam
     real, dimension(4, 30) :: var_sam
+    integer :: k
 
     real, dimension(48) :: pres_sam, presi_sam
 
