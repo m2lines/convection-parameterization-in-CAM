@@ -1,7 +1,7 @@
 program run_tests
-    use nn_cf_net_mod, only: relu, nn_cf_net_init, nn_cf_net_finalize
+    use nn_cf_net, only: relu, nn_cf_net_init, nn_cf_net_finalize
 
-    use nn_convection_flux_mod, only: nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
+    use nn_convection_flux, only: nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
 
     implicit none
 
