@@ -35,7 +35,7 @@ module physpkg
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
-  use nn_interface_CAM_mod, only: nn_convection_flux_CAM_init
+  use nn_interface_CAM, only: nn_convection_flux_CAM_init
 
   implicit none
   private
@@ -166,6 +166,8 @@ contains
     ! Get physics options
     call phys_getopts(shallow_scheme_out          = shallow_scheme, &
                       deep_scheme_out             = deep_scheme, &
+                      nn_weights_out              = nn_weights, &
+                      SAM_sounding_out            = SAM_sounding, &
                       macrop_scheme_out           = macrop_scheme,   &
                       microp_scheme_out           = microp_scheme,   &
                       cld_macmic_num_steps_out    = cld_macmic_num_steps, &
@@ -890,6 +892,9 @@ contains
     call cldfrc2m_init()
 
     call convect_deep_init(pref_edge)
+    ! Call the neural net initialisation
+    ! TODO: Need the filepaths from the namelist.
+    call nn_convection_flux_CAM_init(nn_weights, SAM_sounding)
 
     if( microp_scheme == 'RK' ) then
        call rk_stratiform_init()

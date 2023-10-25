@@ -67,8 +67,9 @@ editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `
 
 ## Questions:
 
-- Where should we place NN weights?
-  - In the SourceMods, and provide absolute path in the namelist
 - There is a namelist group for ZM - `zmconv_nl` consider creating a YOG namelist?
 - At the moment we still use `zm_conv_readnl` and `zm_conv_register` as nothing different from ZM but some variables still required.
 - There is a call to `zm_convect_deep_tend_2` in `physpkg.F90` called when `if ( .not. deep_scheme_does_scav_trans() ) then` But the call has different arguments, so how should YOG handle this?
+
+! jwa34 - this writes to outfield - i.e. diaganostics to file
+call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
