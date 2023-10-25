@@ -46,6 +46,11 @@ After you [create a case](https://ncar.github.io/CAM/doc/build/html/CAM6.0_users
 
 An example `user_nl_cam` is provided in this repo.
 
+**Note:**  
+By default CESM will place output in `/glade/scratch/user/case/`
+and logs/restart files in `/glade/scratch/user/archive/case/`.
+To place all output with logs in `archive/case` switch 'short term archiving' on by
+editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `TRUE`.
 
 ## Details of the changes
 
