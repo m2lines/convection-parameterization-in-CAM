@@ -122,7 +122,6 @@ subroutine convect_deep_init(pref_edge)
   use pmgrid,         only: plevp
   use spmd_utils,     only: masterproc
   use zm_conv_intr,   only: zm_conv_init
-  use yog_conv_intr,   only: yog_conv_init
   use cam_abortutils, only: endrun
   
   use physics_buffer, only: physics_buffer_desc, pbuf_get_index
@@ -146,7 +145,7 @@ subroutine convect_deep_init(pref_edge)
      return
   case('YOG')
      if (masterproc) write(iulog,*)'convect_deep: deep convection done by YOG'
-     call yog_conv_init(pref_edge)
+     call zm_conv_init(pref_edge)
   case default
      if (masterproc) write(iulog,*)'WARNING: convect_deep: no deep convection scheme. May fail.'
   end select
@@ -184,7 +183,6 @@ subroutine convect_deep_tend( &
    use cam_history,    only: outfld
    use constituents,   only: pcnst
    use zm_conv_intr,   only: zm_conv_tend
-   use yog_conv_intr,  only: yog_conv_tend
    use cam_history,    only: outfld
    use physconst,      only: cpair
    use physics_buffer, only: physics_buffer_desc, pbuf_get_field
@@ -267,22 +265,11 @@ subroutine convect_deep_tend( &
     fracis = 0
     evapcdp = 0
 
-  case('ZM') !    1 ==> Zhang-McFarlane (default)
+  case('ZM', 'YOG') !    1 ==> Zhang-McFarlane (default)
      call pbuf_get_field(pbuf, pblh_idx,  pblh)
      call pbuf_get_field(pbuf, tpert_idx, tpert)
 
      call zm_conv_tend( pblh    ,mcon    ,cme     , &
-          tpert   ,pflx    ,zdu      , &
-          rliq    ,rice    , &
-          ztodt   , &
-          jctop, jcbot , &
-          state   ,ptend   ,landfrac, pbuf)
-
-  case('YOG') !    1 ==> Zhang-McFarlane (default)
-     call pbuf_get_field(pbuf, pblh_idx,  pblh)
-     call pbuf_get_field(pbuf, tpert_idx, tpert)
-
-     call yog_conv_tend( pblh    ,mcon    ,cme     , &
           tpert   ,pflx    ,zdu      , &
           rliq    ,rice    , &
           ztodt   , &
@@ -311,7 +298,6 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
    use physics_buffer,  only: physics_buffer_desc
    use constituents, only: pcnst
    use zm_conv_intr, only: zm_conv_tend_2
-   use yog_conv_intr, only: yog_conv_tend
 
 ! Arguments
    type(physics_state), intent(in ) :: state          ! Physics state variables
@@ -325,7 +311,7 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
    if ( deep_scheme .eq. 'ZM' ) then  ! Zhang-McFarlane
       call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
    else if ( deep_scheme .eq. 'YOG' ) then  ! Yanni O'Gorman
-      ! TODO Do nothing for now as seems to be a saparate scheme
+      ! TODO Do nothing for now as seems to be a separate scheme
    else
       call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
    end if
