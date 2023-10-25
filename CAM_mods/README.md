@@ -12,12 +12,9 @@ The modifications here consist of:
 
 - Adding a select case structure to
 
-- `yog_conv_intr.F90` - based on `zm_intr.F90`, interface file for parameterisation scheme.
-- `yog_conv.F90` - based on `zm_conv.F90`, contains code for the parameterisation scheme.
 - `physpkg.F90` - modified to provide a select case structure for `'YOG'` to call the parameterisation scheme.
-- `phys_control.F90` - modified to provide a select case structure for `'YOG'` to call the parameterisation scheme.
-- `convect_deep.F90` - Modified to call yog routines when required by select case structure.
-
+- `phys_control.F90` - modified to read filenames from namelist and broadcast.
+- `convect_deep.F90` - modified to account for `'YOG'` being an option for `convect_deep` but still call ZM.
 
 ## Building and Running in CAM
 After you [create a case](https://ncar.github.io/CAM/doc/build/html/CAM6.0_users_guide/building-and-running-cam.html) in CESM you need to follow the following instructions:
@@ -58,7 +55,7 @@ editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `
 
 - Add `deep_scheme` as a module variable and read in during the `phys_register` subroutine through calling `phys_getopts()`
 - Adapt `tphysbc` subroutine which applies physical atmospheric processes in CAM before coupling to other models.  
-  Add a `select_case()` structure so that `convect_deep_tend` is now called for `'ZM'`, with new calls to our routined for `'YOG'`.
+  Add a `select_case()` structure so that `convect_deep_tend` is now called for `'ZM'`, with new calls to our routines for `'YOG'`.
 
 ### `phys_control.F90`
 
