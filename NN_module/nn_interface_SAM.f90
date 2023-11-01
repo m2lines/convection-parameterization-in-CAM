@@ -1,11 +1,11 @@
-module nn_interface_SAM_mod
+module nn_interface_SAM
     !! Interface to convection parameterisation for the SAM model
     !! Reference: https://doi.org/10.1029/2020GL091363
     !! Also see YOG20: https://doi.org/10.1038/s41467-020-17142-3
 
 !---------------------------------------------------------------------
 ! Libraries to use
-use nn_convection_flux_mod, only: nn_convection_flux, &
+use nn_convection_flux, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize
 implicit none
 private
@@ -195,4 +195,4 @@ contains
 
     end subroutine task_rank_to_index
 
-end module nn_interface_SAM_mod
+end module nn_interface_SAM
