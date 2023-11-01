@@ -25,7 +25,7 @@ public  nn_convection_flux_CAM, &
         nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize
 
 ! TODO Make routines public for purposes of testing
-public interp_to_sam
+public interp_to_sam, interp_to_cam, fetch_sam_data
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -52,6 +52,15 @@ real :: dz
 
 contains
 
+    subroutine fetch_sam_data(pressam, presisam)
+        !! Temporary subroutine to extract SAM pressure profile
+        real, dimension(48), intent(out) :: pressam, presisam
+        pressam(:) = pres(:)
+        presisam(:) = presi(:)
+
+    end subroutine fetch_sam_data
+
+
     !-----------------------------------------------------------------
     ! Public Subroutines
 
@@ -72,7 +81,7 @@ contains
     end subroutine nn_convection_flux_CAM_init
 
 
-    subroutine nn_convection_flux_CAM(pres_cam, pint_or_ps, &
+    subroutine nn_convection_flux_CAM(pres_cam, pres_int_cam, &
                                       tabs_i, q_i, &
                                       tabs, &
                                       dtn, dy, &
@@ -85,8 +94,8 @@ contains
 
         real, dimension(:,:) :: pres_cam
             !! pressure [hPa] from the CAM model
-        real, dimension(:) :: pint_or_ps
-            !! surface pressure [hPa] from the CAM model
+        real, dimension(:) :: pres_int_cam
+            !! interface pressure [hPa] from the CAM model (element 1 is surface pressure)
         real, dimension(:,:,:) :: tabs_i, q_i, tabs, t, q
         real, dimension(:, :) :: precsfc, prec_xy
         real, intent(in) :: dtn
@@ -122,8 +131,11 @@ contains
         
         ! TODO: Formulate the input variables to the parameterisation as required.
 
+        !-----------------------------------------------------
+        
+        ! TODO
         ! Interpolate CAM variables to the SAM pressure levels
-        ! call interp_to_sam(pres_cam, pint_or_ps, var_cam, var_sam)
+        ! call interp_to_sam(pres_cam, pres_int_cam(1), var_cam, var_sam)
 
         !-----------------------------------------------------
         
@@ -150,6 +162,15 @@ contains
 
         ! TODO: Update precipitation if required
 
+        
+        ! TODO: Formulate the output variables to CAM as required.
+
+        !-----------------------------------------------------
+        
+        ! TODO
+        ! Interpolate SAM variables to the CAM pressure levels
+        ! call interp_to_cam(pres_cam, pres_int_cam, var_sam, var_cam)
+
 
     end subroutine nn_convection_flux_CAM
 
@@ -166,8 +187,9 @@ contains
     !-----------------------------------------------------------------
     ! Private Subroutines
     
-    subroutine interp_to_sam(p_cam, ps_cam, var_cam, var_sam)
+    subroutine interp_to_sam(p_cam, ps_cam, var_cam, var_sam, var_cam_surface)
         !! Interpolate from the CAM pressure grid to the SAM pressure grid.
+        !! Uses linear interpolation between grid points.
 
         != unit hPa :: p_cam, ps_cam
         real, dimension(:,:), intent(in) :: p_cam
@@ -177,6 +199,8 @@ contains
         != unit 1 :: var_cam, var_sam
         real, dimension(:,:), intent(in) :: var_cam
             !! variable from CAM grid to be interpolated from
+        real, dimension(:), intent(in) :: var_cam_surface
+            !! Surface value of CAM variable for interpolation/boundary condition
         real, dimension(:,:), intent(out) :: var_sam
             !! variable from SAM grid to be interpolated to
         != unit 1 :: p_norm_sam, p_norm_cam
@@ -199,38 +223,42 @@ contains
         ! Loop over columns and SAM levels and interpolate each column
         do k = 1, nrf
         do i = 1, ncol_cam
-            ! Check we are within array:
-            ! Checking every iterating is a waste!
-            ! If not then bottom of SAM is below CAM surface!
+            ! Check we are within array
+
+            ! If lowest SAM is below lowest CAM - interpolate to surface value
             if (p_norm_sam(k) > p_norm_cam(i, 1)) then
-                write(*,*) "Interpolating below CAM range: Stopping."
+                ! TODO Remove warning and interpolate to boundary
+                ! TODO Add boundary conditions for any input variables as required.
+                write(*,*) "Interpolating to surface."
+                var_sam(i, k) = var_cam_surface(i) &
+                                + (p_norm_sam(k)-1.0) &
+                                *(var_cam(i, 1)-var_cam_surface(i))/(p_norm_cam(i, 1)-1.0)
+            elseif (p_norm_cam(i, nz_cam) > p_norm_sam(nrf)) then
+                ! Also check the top
+                ! This should not happen as CAM grid extends to higher altitudes than SAM
+                write(*,*) "CAM upper pressure level is lower than that of SAM: Stopping."
                 stop
-            endif
-            ! Also check the top
-            if (p_norm_cam(i, nz_cam) > p_norm_sam(nrf)) then
-                write(*,*) "CAM top pressure is lower than SAM: Stopping."
-                stop
-            endif
-
-            ! Locate the neighbouring CAM indices to interpolate between
-            ! This will be slow - speed up later
-            kc_u = 1
-            pc_u = p_norm_cam(i, kc_u)
-            do while (pc_u > p_norm_sam(k))
-                kc_u = kc_u + 1
+            else
+                ! Locate the neighbouring CAM indices to interpolate between
+                ! This will be slow - speed up later
+                kc_u = 1
                 pc_u = p_norm_cam(i, kc_u)
-            end do
-            kc_l = kc_u - 1
-            pc_l = p_norm_cam(i, kc_l)
-            do while (pc_l < p_norm_sam(k))
-                kc_l = kc_l - 1
+                do while (pc_u > p_norm_sam(k))
+                    kc_u = kc_u + 1
+                    pc_u = p_norm_cam(i, kc_u)
+                end do
+                kc_l = kc_u - 1
                 pc_l = p_norm_cam(i, kc_l)
-            end do
+                do while (pc_l < p_norm_sam(k))
+                    kc_l = kc_l - 1
+                    pc_l = p_norm_cam(i, kc_l)
+                end do
 
-            ! interpolate variables - Repeat for as many variables as need interpolating
-            var_sam(i, k) = var_cam(i, kc_l) &
-                            + (p_norm_sam(k)-pc_l) &
-                            *(var_cam(i, kc_u)-var_cam(i, kc_l))/(pc_u-pc_l)
+                ! interpolate variables - Repeat for as many variables as need interpolating
+                var_sam(i, k) = var_cam(i, kc_l) &
+                                + (p_norm_sam(k)-pc_l) &
+                                *(var_cam(i, kc_u)-var_cam(i, kc_l))/(pc_u-pc_l)
+            endif
         end do
         end do
 
@@ -238,6 +266,128 @@ contains
         deallocate(p_norm_cam)
 
     end subroutine interp_to_sam
+
+    subroutine interp_to_cam(p_cam, p_int_cam, var_sam, var_cam)
+      ! TODO This would seriously benefit from a refactor to add the top interface to p_sam_int and p_cam_int
+        !! Interpolate from the SAM NN pressure grid to the CAM pressure grid.
+        !! Uses conservative regridding between grids.
+        !! Requires dealing in interfaces rather than centres.
+
+        != unit hPa :: p_cam, p_int_cam
+        real, dimension(:,:), intent(in) :: p_cam
+            !! pressure [hPa] from the CAM model
+        real, dimension(:,:), intent(in) :: p_int_cam
+            !! interface pressures [hPa] for each column in CAM
+        != unit 1 :: var_cam, var_sam
+        real, dimension(:,:), intent(out) :: var_cam
+            !! variable from CAM grid to be interpolated from
+        real, dimension(:,:), intent(in) :: var_sam
+            !! variable from SAM grid to be interpolated to
+        != unit 1 :: p_norm_sam, p_norm_cam
+        real, dimension(nrf) :: p_norm_sam
+        real, dimension(nrf) :: p_int_norm_sam
+        real, dimension(:,:), allocatable :: p_norm_cam
+        real, dimension(:,:), allocatable :: p_int_norm_cam
+
+        integer :: i, k, nz_cam, ncol_cam, ks, ks_u, ks_l
+        real :: ps_u, ps_l, pc_u, pc_l
+        real :: p_sam_min
+
+        ncol_cam = size(p_cam, 1)
+        nz_cam = size(p_cam, 2)
+        allocate(p_norm_cam(size(p_cam, 1), nz_cam))
+        allocate(p_int_norm_cam(size(p_int_cam, 1), nz_cam))
+
+        ! Normalise pressures by surface value
+        p_norm_sam(:) = pres(:) / presi(1)
+        p_int_norm_sam(:) = presi(:) / presi(1)
+        do k = 1,nz_cam
+            p_norm_cam(:,k) = p_cam(:,k) / p_int_cam(:, 1)
+            !! TODO Check size of CAM column interfaces.
+            p_int_norm_cam(:,k) = p_int_cam(:,k) / p_int_cam(:, 1)
+        end do
+
+        ! Loop over columns and SAM levels and interpolate each column
+        ! TODO Revert indices
+        do k = 1, nz_cam
+        do i = 1, ncol_cam
+            ! Check we are within array overlap:
+            ! No need to compare bottom end as pressure is normalised.
+
+            ! Set top of column values
+            p_sam_min = 2.0*p_norm_sam(nrf) - p_int_norm_sam(nrf)
+!            write(*,*) p_norm_sam(nrf), p_int_norm_sam(nrf), p_sam_min
+
+            if (p_int_norm_cam(i, k) < p_sam_min) then
+                ! Anything above the SAM NN grid should be set to 0.0
+                write(*,*) "CAM pressure is lower than SAM top: set tend to 0.0."
+                var_cam(i, k) = 0.0
+
+            else
+                ! Get the pressures at the top and bottom of the CAM cell
+                if (k == nz_cam) then
+                    pc_u = 2.0*p_norm_cam(i, k) - p_int_norm_cam(i, k)
+                else
+                    pc_u = p_int_norm_cam(i,k+1)
+                endif
+                pc_l = p_int_norm_cam(i,k)
+
+                ! Locate the SAM indices to interpolate between
+                ! This will be slow - speed up later
+                ! ks_u is the SAM block with an upper interface above the CAM block
+                ks_u = 1
+                ps_u = p_int_norm_sam(ks_u+1)
+                do while ((ps_u > pc_u) .and. (ks_u < nrf))
+                    ks_u = ks_u + 1
+                    if (ks_u == nrf) then
+                        ps_u = p_sam_min
+                    else
+                        ps_u = p_int_norm_sam(ks_u+1)
+                    endif
+                end do
+                ! ks_l is the SAM block with a lower interface below the CAM block
+                ks_l = ks_u
+                ps_l = p_int_norm_sam(ks_l)
+                do while ((ps_l < pc_l) .and. (ks_l > 1))
+                    ks_l = ks_l - 1
+                    ps_l = p_int_norm_sam(ks_l)
+                end do
+!                write(*,*) "ks_u = ", ks_u, ps_u, "ks_l = ", ks_l, ps_l, "CAM = ", pc_u, pc_l
+
+                ! Combine all SAM cells that this CAM_CELL(i, k) overlaps
+                var_cam(i,k) = 0.0
+!                write(*,*) "pre: Var_Cam = ", var_cam(i,k)/(pc_u-pc_l)
+                
+                if (pc_l < p_int_norm_sam(ks_u)) then
+                    ! CAM cell fully enclosed by SAM cell
+                    var_cam(i,k) = var_cam(i,k) + (max(pc_u, ps_u) - pc_l)*var_sam(i, ks_u)/(ps_u-p_int_norm_sam(ks_u))
+                else
+                    ! Top cell if CAM and SAM cells intermesh
+                    var_cam(i,k) = var_cam(i,k) + (pc_u - p_int_norm_sam(ks_u))*var_sam(i, ks_u)/(ps_u-p_int_norm_sam(ks_u))
+                endif
+!                write(*,*) "upp: Var_Cam = ", var_cam(i,k)/(pc_u-pc_l)
+                ! Lower cell
+                if (ks_l /= ks_u) then
+                    var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks_l+1)-pc_l)*var_sam(i,ks_l)/(p_int_norm_sam(ks_l+1)-ps_l)
+                endif
+!                write(*,*) "low: Var_Cam = ", var_cam(i,k)/(pc_u-pc_l)
+                ! Intermediate cells
+                if (ks_u > ks_l+1) then
+                    ! TODO Look at index labelling as currently moving 2, 0 here
+                    do ks = ks_l+1, ks_u-1
+                        var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks+1)-p_int_norm_sam(ks))*var_sam(i,ks)/(p_int_norm_sam(ks+1)-p_int_norm_sam(ks))
+                    enddo
+                endif
+!                write(*,*) "int: Var_Cam = ", var_cam(i,k)/(pc_u-pc_l)
+            endif
+        end do
+        end do
+
+        ! Clean up
+        deallocate(p_norm_cam)
+        deallocate(p_int_norm_cam)
+
+    end subroutine interp_to_cam
 
     subroutine sam_sounding_init(filename)
         !! Read various profiles in from SAM sounding file
