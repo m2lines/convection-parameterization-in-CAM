@@ -61,6 +61,13 @@ editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `
 
 - Add `nn_weights` and `SAM_sounding` as namelist variables.
 
+### `Test case`
+
+On cheyenne we have been running a case generated from:
+```
+./create_newcase --case test_scam_gateIII_clean --compset FSCAM --res T42_T42 --user-mods-dir ../../components/cam/cime_config/usermods_dirs/scam_gateIII --project NCGD0054
+```
+
 
 ## Questions:
 
