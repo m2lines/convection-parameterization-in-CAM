@@ -1,6 +1,6 @@
 program run_tests
     use nn_cf_net, only: relu, nn_cf_net_init, nn_cf_net_finalize
-
+    use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_finalize
     use nn_convection_flux, only: nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
 
     implicit none
@@ -8,8 +8,7 @@ program run_tests
     real(4), dimension(4) :: test_array = (/ -1.0, 0.0, 0.5, 1.0 /)
     integer :: nin, nout
 
-
-
+    character(len=1024) :: nn_filename = "./NN_weights_YOG_convection.nc"
 
     ! Parameters from SAM that are used here
     ! From domain.f90
@@ -92,15 +91,13 @@ program run_tests
 
     call relu(test_array)
 
-    write (*,*) test_array
+    write (*,*) "Test array", test_array
 
-    call nn_cf_net_init("./NN_weights_YOG_convection.nc", nin, nout, 30)
+    call nn_cf_net_init(nn_filename, nin, nout, 30)
+    call nn_cf_net_torch_init(nn_filename, nin, nout, 30)
     call nn_cf_net_finalize()
 
-
     ! Test convection flux routines
-
-
     t = 0.
     q = 0.4
     precsfc = 0.
@@ -116,7 +113,7 @@ program run_tests
 
     nrf = 30
 
-    call nn_convection_flux_init("./NN_weights_YOG_convection.nc")
+    call nn_convection_flux_init(nn_filename)
 
     call nn_convection_flux(tabs_i, q_i, y_in, &
                             tabs, &
@@ -136,7 +133,6 @@ program run_tests
                                 + t_rad_rest_tend(:,:,:)*dtn
 
     call nn_convection_flux_finalize()
-
     
     write (*,*) t(-2:2, 0, 1)
     write (*,*) t(0, -2:2, 1)

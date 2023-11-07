@@ -20,7 +20,7 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
     n_out : int
         Number of output features.
     neurons : int
-        The number of neurons in the bhidden layers.
+        The number of neurons in the hidden layers.
     dropout : float
         The dropout probability to apply in the hidden layers.
 
@@ -83,7 +83,7 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
 
 
     def initialize(self, weights_file: str, use_pkl: bool = True):
-        """_summary_
+        """Initialise model with with saved weights.
 
         Parameters
         ----------
