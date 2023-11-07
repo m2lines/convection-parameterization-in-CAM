@@ -4,8 +4,8 @@ module tests
   !--------------------------------------------------------------------------
   ! Libraries to use
   use netcdf
-  use nn_cf_net_mod, only: relu, net_forward, nn_cf_net_init, nn_cf_net_finalize
-  use nn_convection_flux_mod, only:   nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
+  use nn_cf_net, only: relu, net_forward, nn_cf_net_init, nn_cf_net_finalize
+    use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_finalize  use nn_convection_flux, only:   nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
   use test_utils, only: assert_array_equal
 
   implicit none
@@ -125,7 +125,6 @@ module tests
                                   t_delta_sed, q_delta_sed, prec_sed)
 
       call nn_convection_flux_finalize()
-
       nn_filename = "param_test.txt"
 
       ! Writing data out to file from original code runniing
