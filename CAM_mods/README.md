@@ -71,8 +71,10 @@ On cheyenne we have been running a case generated from:
 
 ## Questions:
 
-- There is a namelist group for ZM - `zmconv_nl` consider creating a YOG namelist?
-- At the moment we still use `zm_conv_readnl` and `zm_conv_register` as nothing different from ZM but some variables still required.
+- Useful link: [adding variables to output](https://ncar.github.io/CESM-Tutorial/README.html)
+- NB: `zm_conv_intr.F90` has details of the ZM tendencies that can be added to output.
+- Useful link: [CAM phys docs](https://www2.cesm.ucar.edu/models/atm-cam/docs/phys-interface/)
+
 - There is a call to `zm_convect_deep_tend_2` in `physpkg.F90` called when `if ( .not. deep_scheme_does_scav_trans() ) then` But the call has different arguments, so how should YOG handle this?
 
 ! jwa34 - this writes to outfield - i.e. diaganostics to file
