@@ -1,5 +1,6 @@
 # compiler
-FC = ifort
+#FC = ifort
+FC = gfortran
 
 # compile flags
 # Set free length and include netcdf-fortran
@@ -21,9 +22,18 @@ LDFLAGS = $(shell nf-config --flibs)
 # LDFLAGS = -L/opt/netcdf-c/lib -lnetcdf -L/opt/netcdf-fortran/lib -lnetcdff -lm
 
 
-PROGRAM = test_cam
+# PROGRAM = test_cam
 # SRC = nn_cf_net.f90 nn_convection_flux.f90 nn_interface_SAM.f90 test.f90 nn_interface_CAM.f90 test_cam_interface.f90
-SRC = nn_cf_net.f90 nn_convection_flux.f90 nn_interface_CAM.f90 test_cam_interface.f90
+# SRC = nn_cf_net.f90 nn_convection_flux.f90 nn_interface_CAM.f90 test_cam_interface.f90
+
+
+LDFLAGS += -L/home/ek/lib/lib/lib -lftorch
+FCFLAGS += -I/home/ek/lib/lib/include/ftorch
+$(shell export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/ek/lib/lib/lib)
+
+PROGRAM = test_nn
+SRC = nn_cf_net.f90 nn_cf_net_torch.f90 nn_convection_flux.f90 nn_convection_flux_torch.f90 test.f90
+
 OBJECTS = $(SRC:.f90=.o)
 
 

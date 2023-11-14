@@ -5,7 +5,7 @@ module nn_interface_SAM
 
 !---------------------------------------------------------------------
 ! Libraries to use
-use nn_convection_flux, only: nn_convection_flux, &
+use nn_convection_flux, only: nn_convection_flux_forward, &
                                   nn_convection_flux_init, nn_convection_flux_finalize
 implicit none
 private
@@ -122,7 +122,7 @@ contains
 
         !-----------------------------------------------------
         ! Run the neural net parameterisation
-        call nn_convection_flux(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
+        call nn_convection_flux_forward(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
                                 tabs(:,:,1:nrf), &
                                 t(:,:,1:nrf), q(:,:,1:nrf), &
                                 rho, adz, dz, dtn, &

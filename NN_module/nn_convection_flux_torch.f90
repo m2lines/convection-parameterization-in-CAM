@@ -1,4 +1,4 @@
-module nn_convection_flux
+module nn_convection_flux_torch
     !! Code to perform the Convection Flux parameterisation
     !! and interface to the nn_cf_net Neural Net
     !! Reference: https://doi.org/10.1029/2020GL091363
@@ -6,14 +6,14 @@ module nn_convection_flux
 
 !---------------------------------------------------------------------
 ! Libraries to use
-use nn_cf_net, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
+use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_forward, nn_cf_net_torch_finalize
 implicit none
 private
 
 
 !---------------------------------------------------------------------
 ! public interfaces
-public  nn_convection_flux_forward, nn_convection_flux_init, nn_convection_flux_finalize
+public  nn_convection_flux_forward_torch, nn_convection_flux_init_torch, nn_convection_flux_finalize_torch
 
 
 !---------------------------------------------------------------------
@@ -99,22 +99,22 @@ contains
     !-----------------------------------------------------------------
     ! Public Subroutines
 
-    subroutine nn_convection_flux_init(nn_filename)
+    subroutine nn_convection_flux_init_torch(nn_filename)
         !! Initialise the NN module
 
         character(len=1024), intent(in) :: nn_filename
-            !! NetCDF filename from which to read model weights
+            !! Filename of torchscript
 
         ! Initialise the Neural Net from file and get info
-        call nn_cf_net_init(nn_filename, n_inputs, n_outputs, nrf)
+        call nn_cf_net_torch_init(nn_filename, n_inputs, n_outputs, nrf)
 
         ! Set init flag as complete
         do_init = .false.
 
-    end subroutine nn_convection_flux_init
+    end subroutine nn_convection_flux_init_torch
 
 
-    subroutine nn_convection_flux_forward(tabs_i, q_i, y_in, &
+    subroutine nn_convection_flux_forward_torch(tabs_i, q_i, y_in, &
                                   tabs, &
                                   t_0, q_0, &
                                   rho, adz, dz, dtn, &
@@ -129,18 +129,18 @@ contains
         ! -----------------------------------
         ! Input Variables
         ! -----------------------------------
-        
+
         ! ---------------------
         ! Fields from beginning of time step used as NN inputs
         ! ---------------------
         != unit s :: tabs_i
         real, intent(in) :: tabs_i(:, :, :)
             !! Temperature
-        
+
         != unit 1 :: q_i
         real, intent(in) :: q_i(:, :, :)
             !! Non-precipitating water mixing ratio
-        
+
         != unit m :: y_in
         real, intent(in) :: y_in(:, :)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
@@ -151,14 +151,14 @@ contains
         != unit K :: tabs
         real, intent(in) :: tabs(:, :, :)
             !! absolute temperature
-        
+
         != unit (J / kg) :: t
         real, intent(in) :: t_0(:, :, :)
             !! Liquid Ice static energy (cp*T + g*z − L(qliq + qice) − Lf*qice)
         != unit (J / kg) :: t
         real, allocatable :: t(:, :, :)
             !! Copy of t_0 to ensure that t_0 is not modified by this routine for SAM
-        
+
         != unit 1 :: q
         real, intent(in) :: q_0(:, :, :)
             !! total water
@@ -172,15 +172,15 @@ contains
         != unit (kg / m**3) :: rho
         real, intent(in) :: rho(:)
             !! air density at pressure levels
-        
+
         ! != unit mb :: pres
         ! real, intent(in) pres(nzm)
         !     !! pressure,mb at scalar levels
-        
+
         != unit 1 :: adz
         real, intent(in) :: adz(:)
             !! ratio of the pressure level grid height spacing [m] to dz (lowest dz spacing)
-        
+
         ! ---------------------
         ! Single value parameters from model/grid
         ! ---------------------
@@ -205,7 +205,7 @@ contains
         != unit kg :: t_rad_rest_tend
         real, intent(out), dimension(:,:,:) :: t_rad_rest_tend
             !! tendency of t to be returned by the scheme
-        
+
         != unit kg :: prec_sed
         real, intent(out), dimension(:,:)   :: prec_sed
             !! Surface precipitation due to sedimentation
@@ -311,7 +311,7 @@ contains
                 ! Call the forward method of the NN on the input features
                 ! Scaling and normalisation done as layers in NN
 
-                call net_forward(features, outputs)
+                call nn_cf_net_torch_forward(features, outputs)
 
                 !-----------------------------------------------------
                 ! Separate physical outputs from NN output vector
@@ -338,7 +338,7 @@ contains
 
                 ! total non-precip. water mix. ratio ice-sedimenting flux
                 q_sed_flux(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
-                
+
                 !-----------------------------------------------------
                 ! Apply physical constraints and update q and t
 
@@ -434,7 +434,7 @@ contains
                 ! Calculate surface precipitation
                 ! Apply sedimenting flux at surface to get rho*dq term
                 prec_sed(i,j) = - q_sed_flux(1)*dtn/dz
-                
+
                 ! This has been moved outside to interface routine
                 ! ! As a final check enforce q must be >= 0.0
                 ! do k = 1,nrf
@@ -444,24 +444,24 @@ contains
         end do
         ! End of loops over x, y, columns
 
-        deallocate(t)
-        deallocate(q)
+    deallocate(t)
+    deallocate(q)
 
-    end subroutine nn_convection_flux_forward
+    end subroutine nn_convection_flux_forward_torch
 
 
-    subroutine nn_convection_flux_finalize()
+    subroutine nn_convection_flux_finalize_torch()
         !! Finalize the NN module
 
         ! Finalize the Neural Net deallocating arrays
-        call nn_cf_net_finalize()
+        call nn_cf_net_torch_finalize()
 
-    end subroutine nn_convection_flux_finalize
+    end subroutine nn_convection_flux_finalize_torch
 
-    
+
     !-----------------------------------------------------------------
     ! Private Subroutines
-    
+
     subroutine error_mesg (message)
       character(len=*), intent(in) :: message
           !! message to be written to output   (character string)
@@ -473,147 +473,4 @@ contains
 
     end subroutine error_mesg
 
-
-!     !-----------------------------------------------------------------
-!     ! Need omegan function to run with rf_uses_rh option (currently unused)
-!     ! Ripped from SAM model:
-!     ! https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
-! 
-!     != unit 1 :: omegan
-!     real function omegan(tabs)
-!         != unit K :: tabs
-!         real, intent(in) :: tabs
-!             !! Absolute temperature
-! 
-!         omegan = max(0., min(1., (tabs-tbgmin)*a_bg))
-! 
-!         return
-! 
-!     end function omegan
-! 
-! 
-!     !-----------------------------------------------------------------
-!     ! Need qsatw functions to run with rf_uses_rh option (currently unused)
-!     ! Ripped from SAM model:
-!     ! https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/sat.f90
-! 
-!     ! Saturation vapor pressure and mixing ratio.
-!     ! Based on Flatau et.al, (JAM, 1992:1507)
-! 
-!     != unit mb :: esatw
-!     real function esatw(t)
-!       implicit none
-!       != unit K :: t
-!       real :: t  ! temperature (K)
-! 
-!       != unit :: a0
-!       != unit :: mb / k :: a1, a2, a3, a4, a5, a6, a7, a8
-!       real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!       data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
-!               6.105851, 0.4440316, 0.1430341e-1, &
-!               0.2641412e-3, 0.2995057e-5, 0.2031998e-7, &
-!               0.6936113e-10, 0.2564861e-13,-0.3704404e-15/
-!       !       6.11239921, 0.443987641, 0.142986287e-1, &
-!       !       0.264847430e-3, 0.302950461e-5, 0.206739458e-7, &
-!       !       0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
-! 
-!       != unit K :: dt
-!       real :: dt
-!       dt = max(-80.,t-273.16)
-!       esatw = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     end function esatw
-! 
-
-!     != unit 1 :: qsatw
-!     real function qsatw(t,p)
-!       implicit none
-!       != unit K :: t
-!       real :: t  ! temperature
-! 
-!       != unit mb :: p, esat
-!       real :: p  ! pressure
-!       real :: esat
-! 
-!       esat = esatw(t)
-!       qsatw = 0.622 * esat/max(esat, p-esat)
-!     end function qsatw
-! 
-! 
-!     ! real function dtesatw(t)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!     !   data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
-!     !             0.443956472, 0.285976452e-1, 0.794747212e-3, &
-!     !             0.121167162e-4, 0.103167413e-6, 0.385208005e-9, &
-!     !            -0.604119582e-12, -0.792933209e-14, -0.599634321e-17/
-!     !   real :: dt
-!     !   dt = max(-80.,t-273.16)
-!     !   dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     ! end function dtesatw
-!     !
-!     ! real function dtqsatw(t,p)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: p  ! pressure    (mb)
-!     !   real :: dtesatw
-!     !   dtqsatw=0.622*dtesatw(t)/p
-!     ! end function dtqsatw
-! 
-! 
-!     real function esati(t)
-!       implicit none
-!       != unit K :: t
-!       real :: t  ! temperature
-!       real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!       data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
-!               6.11147274, 0.503160820, 0.188439774e-1, &
-!               0.420895665e-3, 0.615021634e-5,0.602588177e-7, &
-!               0.385852041e-9, 0.146898966e-11, 0.252751365e-14/
-!       real :: dt
-!       dt = max(-80.0, t-273.16)
-!       esati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     end function esati
-! 
-! 
-!     != unit 1 :: qsati
-!     real function qsati(t,p)
-!       implicit none
-!       != unit t :: K
-!       real :: t  ! temperature
-! 
-!       != unit mb :: p
-!       real :: p  ! pressure
-! 
-!       != unit mb :: esat
-!       real :: esat
-!       esat = esati(t)
-!       qsati = 0.622 * esat/max(esat,p-esat)
-!     end function qsati
-! 
-! 
-!     ! function dtesati(t)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!     !   data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
-!     !           0.503223089, 0.377174432e-1,0.126710138e-2, &
-!     !           0.249065913e-4, 0.312668753e-6, 0.255653718e-8, &
-!     !           0.132073448e-10, 0.390204672e-13, 0.497275778e-16/
-!     !   real :: dtesati, dt
-!     !   dt = max(-800. ,t-273.16)
-!     !   dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     !   return
-!     ! end function dtesati
-!     !
-!     !
-!     ! real function dtqsati(t,p)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: p  ! pressure    (mb)
-!     !   real :: dtesati
-!     !   dtqsati = 0.622 * dtesati(t) / p
-!     ! end function dtqsati
-
-
-end module nn_convection_flux
+end module nn_convection_flux_torch

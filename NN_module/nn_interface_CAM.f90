@@ -13,7 +13,7 @@ module nn_interface_CAM
 !---------------------------------------------------------------------
 ! Libraries to use
 use netcdf
-use nn_convection_flux, only: nn_convection_flux, &
+use nn_convection_flux, only: nn_convection_flux_forward, &
                                   nn_convection_flux_init, nn_convection_flux_finalize
 implicit none
 private
@@ -140,7 +140,7 @@ contains
         !-----------------------------------------------------
         
         ! Run the neural net parameterisation
-        call nn_convection_flux(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
+        call nn_convection_flux_forward(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
                                 tabs(:,:,1:nrf), &
                                 t(:,:,1:nrf), q(:,:,1:nrf), &
                                 rho, adz, dz, dtn, &
@@ -375,7 +375,8 @@ contains
                 if (ks_u > ks_l+1) then
                     ! TODO Look at index labelling as currently moving 2, 0 here
                     do ks = ks_l+1, ks_u-1
-                        var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks+1)-p_int_norm_sam(ks))*var_sam(i,ks)/(p_int_norm_sam(ks+1)-p_int_norm_sam(ks))
+                        var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks+1) - p_int_norm_sam(ks)) * var_sam(i,ks) / &
+                                (p_int_norm_sam(ks+1) - p_int_norm_sam(ks))
                     enddo
                 endif
 !                write(*,*) "int: Var_Cam = ", var_cam(i,k)/(pc_u-pc_l)
