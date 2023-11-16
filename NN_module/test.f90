@@ -1,12 +1,11 @@
 program run_tests
-    use nn_cf_net, only: relu, nn_cf_net_init, nn_cf_net_finalize
-    use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_finalize
+    use nn_cf_net, only: relu, nn_cf_net_init, net_forward, nn_cf_net_finalize
+    use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_forward, nn_cf_net_torch_finalize
     use nn_convection_flux, only: nn_convection_flux_forward, nn_convection_flux_init, nn_convection_flux_finalize
     use nn_convection_flux_torch, only: nn_convection_flux_forward_torch, nn_convection_flux_init_torch, nn_convection_flux_finalize_torch
 
     implicit none
 
-    real(4), dimension(4) :: test_array = (/ -1.0, 0.0, 0.5, 1.0 /)
     integer :: nin, nout
 
     character(len=1024) :: nn_filename = "../NN_weights_YOG_convection.nc"
@@ -46,8 +45,10 @@ program run_tests
 
     != unit J :: t
     real t(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+    real t_torch(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
         !! moist static energy
     real q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+    real q_torch(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
         !! total water
     ! fluxes at the top and bottom of the domain:
     real precsfc(nx,ny)
@@ -88,7 +89,8 @@ program run_tests
                                  t_delta_sed, q_delta_sed
     real, dimension(nx,ny) :: prec_sed
 
-    write (*,*) "Test array", test_array
+    real(4), allocatable, dimension(:) :: features, features_torch
+    real(4), allocatable, dimension(:) :: logits, logits_torch
 
     write(*,*) "=== Testing routines from nn_cf_net ==="
     call test_nn_net_routines()
@@ -106,9 +108,16 @@ program run_tests
     call test_nn_flux_torch_routines()
     write(*,*) "======================================================"
 
+    deallocate(features)
+    deallocate(features_torch)
+    deallocate(logits)
+    deallocate(logits_torch)
+
     contains
 
         subroutine test_nn_net_routines()
+
+            real(4), dimension(4) :: test_array = (/ -1.0, 0.0, 0.5, 1.0 /)
 
             write (*,*) "Testing relu"
             call relu(test_array)
@@ -117,6 +126,14 @@ program run_tests
             write (*,*) "Testing neural network initialisation"
             call nn_cf_net_init(nn_filename, nin, nout, 30)
             write (*,*) "nn_cf_net_init ok"
+
+            write (*,*) "Testing neural network forward pass"
+            allocate(features(nin))
+            allocate(logits(nout))
+            features = 1.
+            logits = 0.
+            call net_forward(features, logits)
+            write (*,*) "net_forward ok"
 
             write (*,*) "Testing neural network finalisation"
             call nn_cf_net_finalize()
@@ -129,6 +146,15 @@ program run_tests
             write (*,*) "Testing FTorch neural network initialisation"
             call nn_cf_net_torch_init(nn_filename, nin, nout, 30)
             write (*,*) "nn_cf_net_torch_init ok"
+
+            write (*,*) "Testing FTorch neural network forward pass"
+            allocate(features_torch(nin))
+            allocate(logits_torch(nout))
+            features_torch = 1.
+            logits_torch = 0.
+            call nn_cf_net_torch_forward(features_torch, logits_torch)
+            call assert_real_1d(logits, logits_torch, "Test NN output",  rtol_opt=1.0e-4)
+            write (*,*) "nn_cf_net_torch_forward ok"
 
             write (*,*) "Testing FTorch neural network finalisation"
             call nn_cf_net_torch_finalize()
@@ -177,12 +203,6 @@ program run_tests
                                         + t_delta_sed(:,:,:) &
                                         + t_rad_rest_tend(:,:,:)*dtn
 
-            write(*,*) "Example output: "
-            write (*,*) t(-2:2, 0, 1)
-            write (*,*) t(0, -2:2, 1)
-            write (*,*) t(-2, -2, 1:nz_gl)
-            write (*,*) t(-1, -1, 1:nz_gl)
-
             write (*,*) "Testing convection flux finalisation"
             call nn_convection_flux_finalize()
             write (*,*) "nn_convection_flux_finalise ok"
@@ -195,8 +215,8 @@ program run_tests
             call nn_convection_flux_init_torch(nn_filename)
             write (*,*) "nn_convection_flux_init ok"
 
-            t = 0.
-            q = 0.4
+            t_torch = 0.
+            q_torch = 0.4
             precsfc = 0.
             prec_xy = 0.
             rho = 1.
@@ -213,32 +233,83 @@ program run_tests
             write (*,*) "Testing convection flux forward"
             call nn_convection_flux_forward_torch(tabs_i, q_i, y_in, &
                                     tabs, &
-                                    t, q, &
+                                    t_torch, q_torch, &
                                     rho, adz, dz, dtn, &
                                     t_rad_rest_tend, &
                                     t_delta_adv, q_delta_adv, &
                                     t_delta_auto, q_delta_auto, &
                                     t_delta_sed, q_delta_sed, prec_sed)
-            write (*,*) "nn_convection_flux_forward_torch ok"
 
-            q(:, :, 1:nrf) = q(:, :, 1:nrf) + q_delta_adv(:,:,:) &
+            q_torch(:, :, 1:nrf) = q_torch(:, :, 1:nrf) + q_delta_adv(:,:,:) &
                                         + q_delta_auto(:,:,:) &
                                         + q_delta_sed(:,:,:)
-            t(:, :, 1:nrf) = t(:, :, 1:nrf) + t_delta_adv(:,:,:) &
+            t_torch(:, :, 1:nrf) = t_torch(:, :, 1:nrf) + t_delta_adv(:,:,:) &
                                         + t_delta_auto(:,:,:) &
                                         + t_delta_sed(:,:,:) &
                                         + t_rad_rest_tend(:,:,:)*dtn
 
-            write(*,*) "Example output: "
-            write (*,*) t(-2:2, 0, 1)
-            write (*,*) t(0, -2:2, 1)
-            write (*,*) t(-2, -2, 1:nz_gl)
-            write (*,*) t(-1, -1, 1:nz_gl)
+            call assert_real_3d(t, t_torch, "Test t", rtol_opt=1.0e-4)
+            call assert_real_3d(q, q_torch, "Test q", rtol_opt=1.0e-4)
+            write (*,*) "nn_convection_flux_forward_torch ok"
 
             write (*,*) "Testing FTorch convection flux finalization"
             call nn_convection_flux_finalize_torch()
             write (*,*) "nn_convection_flux_finalize ok"
 
         end subroutine test_nn_flux_torch_routines
+
+        subroutine assert_real_1d(a, b, test_name, rtol_opt)
+
+            character(len=*), intent(in) :: test_name
+            real(4), dimension(:), intent(in) :: a, b
+            real(4), intent(in), optional :: rtol_opt
+            real(4) :: relative_error, rtol
+
+            if (.not. present(rtol_opt)) then
+                rtol = 1.0e-5
+            else
+                rtol = rtol_opt
+            end if
+
+            relative_error = maxval(abs(a/b - 1.0))
+            call print_assert_real(test_name, (rtol > relative_error), relative_error)
+
+        end subroutine assert_real_1d
+
+        subroutine assert_real_3d(a, b, test_name, rtol_opt)
+
+            character(len=*), intent(in) :: test_name
+            real(4), dimension(:, :, :), intent(in) :: a, b
+            real(4), intent(in), optional :: rtol_opt
+            real(4) :: relative_error, rtol
+
+            if (.not. present(rtol_opt)) then
+                rtol = 1.0e-5
+            else
+                rtol = rtol_opt
+            end if
+
+            relative_error = maxval(abs(a/b - 1.0))
+            call print_assert_real(test_name, (rtol > relative_error), relative_error)
+
+        end subroutine assert_real_3d
+
+        subroutine print_assert_real(test_name, is_close, relative_error)
+
+            character(len=*), intent(in) :: test_name
+            logical, intent(in) :: is_close
+            real(4), intent(in) :: relative_error
+            character(len=15) :: pass, fail
+
+            fail = char(27)//'[31m'//'FAILED'//char(27)//'[0m'
+            pass = char(27)//'[32m'//'PASSED'//char(27)//'[0m'
+
+            if (is_close) then
+              write(*, '(A, " :: [", A, "] maximum relative error = ", E11.4)') pass, trim(test_name), relative_error
+            else
+              write(*, '(A, " :: [", A, "] maximum relative error = ", E11.4)') fail, trim(test_name), relative_error
+            end if
+
+          end subroutine print_assert_real
 
 end program run_tests
