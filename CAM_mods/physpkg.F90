@@ -131,6 +131,7 @@ contains
     use ghg_data,           only: ghg_data_register
     use vertical_diffusion, only: vd_register
     use convect_deep,       only: convect_deep_register
+    use yog_mod,            only: yog_register
     use convect_shallow,    only: convect_shallow_register
     use radiation,          only: radiation_register
     use co2_cycle,          only: co2_register
@@ -305,6 +306,7 @@ contains
 
        ! deep convection
        call convect_deep_register
+       call yog_register
 
        !  shallow convection
        call convect_shallow_register
@@ -893,7 +895,6 @@ contains
 
     call convect_deep_init(pref_edge)
     ! Call the neural net initialisation
-    ! TODO: Need the filepaths from the namelist.
     call nn_convection_flux_CAM_init(nn_weights, SAM_sounding)
 
     if( microp_scheme == 'RK' ) then
@@ -1873,6 +1874,7 @@ contains
     use physconst,       only: cpair, latvap
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
+    use yog_mod     ,    only: convect_deep_tend_yog
     use time_manager,    only: is_first_step, get_nstep
     use convect_shallow, only: convect_shallow_tend
     use check_energy,    only: check_energy_chng, check_energy_fix, check_energy_timestep_init
@@ -2140,18 +2142,33 @@ contains
 
     select case(deep_scheme)
     case('ZM')
-    call convect_deep_tend(  &
-         cmfmc,      cmfcme,             &
-         pflx,    zdu,       &
-         rliq,    rice,      &
-         ztodt,   &
-         state,   ptend, cam_in%landfrac, pbuf)
+      call convect_deep_tend(  &
+           cmfmc,      cmfcme,             &
+           pflx,    zdu,       &
+           rliq,    rice,      &
+           ztodt,   &
+           state,   ptend, cam_in%landfrac, pbuf)
     case('YOG')
-    ! jwa34 We want to overwrite ptend with our code
-         ! Nudging.F90 ll 1362 -> 1367
-         ! ptend is phys_tend variable but chuncked for one node/core (?)
-         ! ptend%s(:ncol,:pver) = phys_tend_yog_temperature  ! Beware s should be dry static energy, not temperature (multiply T_abs by specific heat)
-         ! ptend%q(:ncol,:pver,1) = phys_tend_yog_q_state  ! indw has 4 components, ice, liquid, vapour, snow. NN only provides q => set indw to 1
+
+      call convect_deep_tend_yog(  &
+           cmfmc,      cmfcme,             &
+           pflx,    zdu,       &
+           rliq,    rice,      &
+           ztodt,   &
+           state,   ptend, cam_in%landfrac, pbuf)
+      
+!      ! jwa34 We want to overwrite ptend with our code
+!      call nn_convection_flux_CAM(state%pmid, state%ps, &
+!                                        state%t, state%q, &
+!                                        state%s, &
+!                                        ztodt, dy, &  ! Is ztodt the correct variable to pass here?
+!                                        ncol, 1, &  ! TODO: check ncol and 1 in correct order
+!                                        nstep, nstatis, icycle, &  ! Can these variables be removed - meaningles sin CAM?
+!                                        precsfc, prec_xy)
+!         ! Nudging.F90 ll 1362 -> 1367
+!         ! ptend is phys_tend variable but chuncked for one node/core (?)
+!         ptend_yog%s(:ncol,:pver) = phys_tend_yog_temperature  ! Beware s should be dry static energy, not temperature (multiply T_abs by specific heat)
+!         ptend_yog%q(:ncol,:pver,1) = phys_tend_yog_q_state  ! indw has 4 components, ice, liquid, vapour, snow. NN only provides q => set indw to 1
     end select
 
     if ( (trim(cam_take_snapshot_after) == "convect_deep_tend") .and. &

@@ -265,6 +265,8 @@ subroutine convect_deep_tend( &
     fracis = 0
     evapcdp = 0
 
+  ! If doing YOG we call NN and get tendencies in phys_bc. Here we run ZM for
+  ! comparison
   case('ZM', 'YOG') !    1 ==> Zhang-McFarlane (default)
      call pbuf_get_field(pbuf, pblh_idx,  pblh)
      call pbuf_get_field(pbuf, tpert_idx, tpert)
@@ -311,7 +313,8 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
    if ( deep_scheme .eq. 'ZM' ) then  ! Zhang-McFarlane
       call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
    else if ( deep_scheme .eq. 'YOG' ) then  ! Yanni O'Gorman
-      ! TODO Do nothing for now as seems to be a separate scheme
+      ! TODO Do nothing extra for now as seems to be a separate scheme
+      call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
    else
       call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
    end if
