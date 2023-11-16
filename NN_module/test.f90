@@ -2,7 +2,8 @@ program run_tests
     use nn_cf_net, only: relu, nn_cf_net_init, net_forward, nn_cf_net_finalize
     use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_forward, nn_cf_net_torch_finalize
     use nn_convection_flux, only: nn_convection_flux_forward, nn_convection_flux_init, nn_convection_flux_finalize
-    use nn_convection_flux_torch, only: nn_convection_flux_forward_torch, nn_convection_flux_init_torch, nn_convection_flux_finalize_torch
+    use nn_convection_flux_torch, only: nn_convection_flux_forward_torch, nn_convection_flux_init_torch, &
+        nn_convection_flux_finalize_torch
 
     implicit none
 
