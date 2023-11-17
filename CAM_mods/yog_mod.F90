@@ -57,7 +57,7 @@ end subroutine yog_register
 
 !=========================================================================================
 
-subroutine yog_init
+subroutine yog_init(nn_weights, SAM_sounding)
 
 !----------------------------------------
 ! Purpose: declare output fields, initialise variables needed for YOG
@@ -68,12 +68,19 @@ subroutine yog_init
   
   use physics_buffer, only : pbuf_get_index
   use cam_history,    only: addfld, horiz_only
+  use nn_interface_CAM, only: nn_convection_flux_CAM_init
+
 
   implicit none
+
+  character(len=1024) :: nn_weights    ! location of weights for the YOG NN, set in namelist
+  character(len=1024) :: SAM_sounding  ! location of SAM sounding profile for the YOG NN, set in namelist
 
   call addfld('PRECYOG',  horiz_only,  'A', 'ms', 'total precipitation from YOG moist convection')
   call addfld('YOGDQ',    (/ 'lev' /), 'A', 'kg/kg/s', 'Q tendency - YOG moist convection')
   call addfld('YOGDT',    (/ 'lev' /), 'A', 'K/s','T tendency - YOG moist convection')
+
+  call nn_convection_flux_CAM_init(nn_weights, SAM_sounding)
 
 end subroutine yog_init
 
@@ -88,6 +95,7 @@ subroutine convect_deep_tend_yog( &
 
 
    use physics_types, only: physics_state, physics_ptend, physics_tend, physics_ptend_init
+   use phys_control,  only: use_gw_convect_dp
    
    use cam_history,    only: outfld
    use constituents,   only: pcnst
@@ -158,10 +166,12 @@ subroutine convect_deep_tend_yog( &
 
   ! If we added temperature tendency to pbuf, set it now.
 
-  ttend_dp_idx  = pbuf_get_index('ttend_dp')
+  if (use_gw_convect_dp) then
+  ttend_dp_idx  = pbuf_get_index('TTEND_DP')
   if (ttend_dp_idx > 0) then
      call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
      ttend_dp(:state%ncol,:pver) = ptend%s(:state%ncol,:pver)/cpair
+  end if
   end if
 
   call outfld( 'ICWMRDP ', ql  , pcols, state%lchnk )
