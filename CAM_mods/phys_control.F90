@@ -39,8 +39,8 @@ character(len=16) :: cam_physpkg          = unset_str  ! CAM physics package
 character(len=32) :: cam_chempkg          = unset_str  ! CAM chemistry package 
 character(len=16) :: waccmx_opt           = unset_str  ! WACCMX run option [ionosphere | neutral | off
 character(len=16) :: deep_scheme          = unset_str  ! deep convection package
-character(len=132) :: nn_weights          = unset_str  ! location of weights for the YOG NN, set in namelist
-character(len=132) :: SAM_sounding        = unset_str  ! location of SAM sounding profile for the YOG NN, set in namelist
+character(len=1024) :: nn_weights          = unset_str  ! location of weights for the YOG NN, set in namelist
+character(len=1024) :: SAM_sounding        = unset_str  ! location of SAM sounding profile for the YOG NN, set in namelist
 character(len=16) :: shallow_scheme       = unset_str  ! shallow convection package
 character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion package
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
@@ -310,8 +310,8 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
 !-----------------------------------------------------------------------
 
    character(len=16), intent(out), optional :: deep_scheme_out
-   character(len=132), intent(out), optional  :: nn_weights_out
-   character(len=132), intent(out), optional  :: SAM_sounding_out
+   character(len=1024), intent(out), optional  :: nn_weights_out
+   character(len=1024), intent(out), optional  :: SAM_sounding_out
    character(len=16), intent(out), optional :: shallow_scheme_out
    character(len=16), intent(out), optional :: eddy_scheme_out
    character(len=16), intent(out), optional :: microp_scheme_out

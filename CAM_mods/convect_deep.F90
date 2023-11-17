@@ -105,6 +105,9 @@ subroutine convect_deep_register
   if (use_gw_convect_dp .and. deep_scheme == 'ZM') then
      call pbuf_add_field('TTEND_DP','physpkg',dtype_r8,(/pcols,pver/),ttend_dp_idx)
   end if
+  if (use_gw_convect_dp .and. deep_scheme == 'YOG') then
+     call pbuf_add_field('TTEND_DP','physpkg',dtype_r8,(/pcols,pver/),ttend_dp_idx)
+  end if
 
 end subroutine convect_deep_register
 
