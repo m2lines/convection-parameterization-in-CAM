@@ -8,7 +8,6 @@ module nn_cf_net_torch
 use netcdf
 ! Import our library for interfacing with PyTorch
 use :: ftorch
-use, intrinsic :: iso_c_binding, only: c_int, c_int64_t, c_loc, c_wp=>c_float
 
 implicit none
 private
@@ -47,17 +46,12 @@ type(torch_module) :: model
 type(torch_tensor), dimension(1) :: in_tensor
 type(torch_tensor) :: out_tensor
 
-integer(c_int), parameter :: n_tensor_inputs = 1
+integer, parameter :: n_tensor_inputs = 1
 
-integer(c_int), parameter :: in_dims = 1
-integer(c_int) :: in_layout(in_dims) = [1]
-integer(c_int), parameter :: out_dims = 1
-integer(c_int) :: out_layout(out_dims) = [1]
-
-integer(c_int64_t) :: in_shape(in_dims)
-integer(c_int64_t) :: out_shape(out_dims)
-
-integer, parameter :: torch_wp = torch_kFloat32
+integer, parameter :: in_dims = 1
+integer :: in_layout(in_dims) = [1]
+integer, parameter :: out_dims = 1
+integer :: out_layout(out_dims) = [1]
 
 !---------------------------------------------------------------------
 ! Functions and Subroutines
@@ -77,30 +71,15 @@ contains
         integer :: out_pos, feature_size, f, i
             !!
 
-        real(c_wp), dimension(:), allocatable, target :: in_data
-        real(c_wp), dimension(:), allocatable, target :: out_data
-
         ! Normalize features
         features = (features - xscale_mean) / xscale_stnd
 
-        allocate(in_data(in_shape(1)))
-        allocate(out_data(out_shape(1)))
-
-        ! Cast from input type to C type required
-        in_data = real(features, kind=c_wp)
-
         ! Create tensors
-        in_tensor(1) = torch_tensor_from_blob(c_loc(in_data), in_dims, in_shape, torch_wp, torch_kCPU, in_layout)
-        out_tensor = torch_tensor_from_blob(c_loc(out_data), out_dims, out_shape, torch_wp, torch_kCPU, out_layout)
+        in_tensor(1) = torch_tensor_from_array(features, in_layout, torch_kCPU)
+        out_tensor = torch_tensor_from_array(logits, out_layout, torch_kCPU)
 
         ! Run forward pass
         call torch_module_forward(model, in_tensor, n_tensor_inputs, out_tensor)
-
-        ! Cast back from C type to Fortran type
-        logits = real(out_data, kind=4)
-
-        deallocate(in_data)
-        deallocate(out_data)
 
         ! Apply scaling and normalisation of each output feature in logits
         out_pos = 0
@@ -122,7 +101,7 @@ contains
     subroutine nn_cf_net_torch_init(nn_filename, n_inputs, n_outputs, nrf)
         !! Initialise the neural net
 
-        integer(c_int), intent(out) :: n_inputs, n_outputs
+        integer, intent(out) :: n_inputs, n_outputs
         integer, intent(in) :: nrf
             !! number of atmospheric layers in each input
 
@@ -191,9 +170,6 @@ contains
 
         ! Load model
         model = torch_module_load("../../torch_nets/saved_model.pt")
-
-        in_shape(1) = n_inputs
-        out_shape(1) = n_outputs
 
     end subroutine nn_cf_net_torch_init
 
