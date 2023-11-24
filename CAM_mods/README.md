@@ -2,7 +2,7 @@
 
 This directory contains the modifications to the CESM/CAM source code that need to be made in order to run the NN parameterisation in CAM.
 
-They should be placed in 
+They should be placed in
 ```
 my_cesm_sandbox/cime/scripts/<testcase>/SourceMods/src.cam/
 ```
@@ -16,18 +16,37 @@ The modifications here consist of:
 - `phys_control.F90` - modified to read filenames from namelist and broadcast.
 - `convect_deep.F90` - modified to account for `'YOG'` being an option for `convect_deep` but still call ZM.
 
+## Download and setting up the correct version of CESM
+
+1. Follow the CESM Quick start guide on [Downloaded CESM 2](https://escomp.github.io/CESM/versions/master/html/downloading_cesm.html). At the stage where it suggests to checkout a particular version of CESM, you should get 2.1.0, i.e., `git checkout release-cesm2.1.0`.
+Make sure you also follow the "checkout_externals" step.
+
+2. From `my_cesm_sandbox` directory, create a test case:
+
+    cime/scripts/create_newcase --case test_scam_gateIII_clean --compset FSCAM --res T42_T42 --user-mods-dir components/cam/cime_config/usermods_dirs/scam_gateIII --project NCGD0054
+
+This will create the directory `test_scam_gateIII_clean` in the present location.
+
+3. Inside `test_scam_gateIII_clean`, create a temporary directory to clone this repo, and then move the relevant CAM source modifications into the right place:
+
+   cd test_scam_gateIII_clean
+   git clone https://github.com/m2lines/convection-parameterization-in-CAM --branch cam-interface
+   ln -s convection-parameterization-in-CAM/CAM_mods SourceMods/src.cam
+
+4. Following the instructions below on setting up CAM (TODO: WIP)
+
 ## Building and Running in CAM
 After you [create a case](https://ncar.github.io/CAM/doc/build/html/CAM6.0_users_guide/building-and-running-cam.html) in CESM you need to follow the following instructions:
 
-1. Edit `user_nl_cam`  
-   This is a CAM namelist generated from `my_cesm_sandbox/components/cam/cime_config/usermods_dirs/scam_gateIII/user_nl_cam`  
+1. Edit `user_nl_cam`
+   This is a CAM namelist generated from `my_cesm_sandbox/components/cam/cime_config/usermods_dirs/scam_gateIII/user_nl_cam`
    We need to add the following lines:
-   1. `deep_scheme = 'YOG'`  
+   1. `deep_scheme = 'YOG'`
       This will be the identifier for our new convection scheme.
-   2. `nn_weights = '<PATH/TO/WEIGHTS.nc>'`  
+   2. `nn_weights = '<PATH/TO/WEIGHTS.nc>'`
       The path to the nn weights.
-   3. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`  
-      The path to the SAM sounding for the NN.  
+   3. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`
+      The path to the SAM sounding for the NN.
       This file is generated using the `sounding_to_netcdf.py` script in the resources of the NN code.
 2. The latter two are new variables so we need to add the following lines to `my_cesm_sandbox/components/cam/bld/namelist_files/namelist_defaults_cam.xml`:
    ```
@@ -43,7 +62,7 @@ After you [create a case](https://ncar.github.io/CAM/doc/build/html/CAM6.0_users
 
 An example `user_nl_cam` is provided in this repo.
 
-**Note:**  
+**Note:**
 By default CESM will place output in `/glade/scratch/user/case/`
 and logs/restart files in `/glade/scratch/user/archive/case/`.
 To place all output with logs in `archive/case` switch 'short term archiving' on by
