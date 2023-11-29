@@ -15,10 +15,10 @@ module nn_interface_CAM
 use netcdf
 use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize, &
-                                  esati, qsati, qsatw
-use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, &
-                          fac1, fac2, fac_cond, fac_sub, &
-                          an, bn
+                                  esati, qsati, qsatw, dtqsatw, dtqsati
+use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
+                          fac1, fac2, fac_cond, fac_sub, fac_fus, &
+                          an, bn, ap, bp
 implicit none
 private
 
@@ -475,7 +475,8 @@ contains
 
     end subroutine check
 
-    subroutine t_q_conversion(tabs, qn, qp, t)
+    subroutine t_q_conversion(t, q, tabs, qn, qp)
+        !! Convert SAM t and q to tabs, qn, and qp used by CAM
 
         integer :: nx, ny
             !! array sizes
@@ -493,36 +494,32 @@ contains
         real, allocatable :: tabs1
             !! Temporary variable for tabs
 
-        != unit 1 :: q, qp, qn0, q
+        != unit 1 :: q, qp, q
         real, intent(inout) :: qn(:, :, :)
             !! Total water
         real, intent(inout) :: qp(:, :, :)
             !! Precipitable water (rain+snow)
-        real :: qn0
-            !! Temporary variable for q
-        real, allocatable :: q(:, :, :)
+        real :: q(:, :, :)
             !! Copy
 
         != unit  :: t
         real, intent(in) :: t(:, :, :)
             !! t
 
-        real :: qsat, om, dtabs, dqsat
+        real :: qsat, om, omp, dtabs, dqsat, lstarn, dlstarn, lstarp, dlstarp, fff, dfff
 
         nx = size(tabs, 1)
         ny = size(tabs, 2)
         nzm = size(tabs, 3)
 
-        allocate(q(nx,ny,nrf))
-
         do k = 1, nzm
         do j = 1, ny
         do i = 1, nx
         
+!              TODO Confirm with PAOGORMAN if microscaling used
 !              if(domicroscaling) dtn = dtn_scaled(i, j, k)
         
-            qn0 = qn(i,j,k)
-        
+            ! Enforce q >= 0.0
             q(i,j,k)=max(0.,q(i,j,k))
         
         
@@ -552,43 +549,45 @@ contains
                  niter=0
                  dtabs = 100.
                  do while(abs(dtabs).gt.0.01.and.niter.lt.10)
-!                    	if(tabs1.ge.tbgmax) then
-!                    	   om=1.
-!                    	   lstarn=fac_cond
-!                    	   dlstarn=0.
-!                    	   qsat=qsatw(tabs1,pres(k))
-!                    	   dqsat=dtqsatw(tabs1,pres(k))
-!                            else if(tabs1.le.tbgmin) then
-!                    	   om=0.
-!                    	   lstarn=fac_sub
-!                    	   dlstarn=0.
-!                    	   qsat=qsati(tabs1,pres(k))
-!                    	   dqsat=dtqsati(tabs1,pres(k))
-!                    	else
-!                    	   om=an*tabs1-bn
-!                    	   lstarn=fac_cond+(1.-om)*fac_fus
-!                    	   dlstarn=an
-!                    	   qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
-!                    	   dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
-!                    	endif
-!                    	if(tabs1.ge.tprmax) then
-!                    	   omp=1.
-!                    	   lstarp=fac_cond
-!                    	   dlstarp=0.
-!                            else if(tabs1.le.tprmin) then
-!                    	   omp=0.
-!                    	   lstarp=fac_sub
-!                    	   dlstarp=0.
-!                    	else
-!                    	   omp=ap*tabs1-bp
-!                    	   lstarp=fac_cond+(1.-omp)*fac_fus
-!                    	   dlstarp=ap
-!                    	endif
-!                    	fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)+lstarp*qp(i,j,k)
-!                    	dfff=dlstarn*(q(i,j,k)-qsat)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
-!                    	dtabs=-fff/dfff
-!                    	niter=niter+1
-!                    	tabs1=tabs1+dtabs
+                     if(tabs1.ge.tbgmax) then
+                         om=1.
+                         lstarn=fac_cond
+                         dlstarn=0.
+                         qsat=qsatw(tabs1,pres(k))
+                         dqsat=dtqsatw(tabs1,pres(k))
+                            else if(tabs1.le.tbgmin) then
+                         om=0.
+                         lstarn=fac_sub
+                         dlstarn=0.
+                         qsat=qsati(tabs1,pres(k))
+                         dqsat=dtqsati(tabs1,pres(k))
+                     else
+                         om=an*tabs1-bn
+                         lstarn=fac_cond+(1.-om)*fac_fus
+                         dlstarn=an
+                         qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
+                         dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
+                     endif
+
+                     if(tabs1.ge.tprmax) then
+                        omp=1.
+                        lstarp=fac_cond
+                        dlstarp=0.
+                           else if(tabs1.le.tprmin) then
+                        omp=0.
+                        lstarp=fac_sub
+                        dlstarp=0.
+                     else
+                        omp=ap*tabs1-bp
+                        lstarp=fac_cond+(1.-omp)*fac_fus
+                        dlstarp=ap
+                     endif
+
+                     fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)+lstarp*qp(i,j,k)
+                     dfff=dlstarn*(q(i,j,k)-qsat)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
+                     dtabs=-fff/dfff
+                     niter=niter+1
+                     tabs1=tabs1+dtabs
                 end do   
 
                 qsat = qsat + dqsat * dtabs
@@ -608,8 +607,6 @@ contains
         end do
         end do
         end do
-
-        deallocate(q)
 
     end subroutine t_q_conversion
 

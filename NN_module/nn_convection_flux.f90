@@ -17,7 +17,7 @@ private
 !---------------------------------------------------------------------
 ! public interfaces
 public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize, &
-        esati, qsati, qsatw
+        esati, qsati, qsatw, dtqsatw, dtqsati
 
 
 !---------------------------------------------------------------------
@@ -401,7 +401,6 @@ contains
 
     
     !-----------------------------------------------------------------
-    ! Private Subroutines
     
     subroutine error_mesg (message)
       character(len=*), intent(in) :: message
@@ -481,28 +480,28 @@ contains
       qsatw = 0.622 * esat/max(esat, p-esat)
     end function qsatw
 
-! 
-!     ! real function dtesatw(t)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!     !   data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
-!     !             0.443956472, 0.285976452e-1, 0.794747212e-3, &
-!     !             0.121167162e-4, 0.103167413e-6, 0.385208005e-9, &
-!     !            -0.604119582e-12, -0.792933209e-14, -0.599634321e-17/
-!     !   real :: dt
-!     !   dt = max(-80.,t-273.16)
-!     !   dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     ! end function dtesatw
-!     !
-!     ! real function dtqsatw(t,p)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: p  ! pressure    (mb)
-!     !   real :: dtesatw
-!     !   dtqsatw=0.622*dtesatw(t)/p
-!     ! end function dtqsatw
-! 
+
+    real function dtesatw(t)
+      implicit none
+      real :: t  ! temperature (K)
+      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
+      data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+                0.443956472, 0.285976452e-1, 0.794747212e-3, &
+                0.121167162e-4, 0.103167413e-6, 0.385208005e-9, &
+               -0.604119582e-12, -0.792933209e-14, -0.599634321e-17/
+      real :: dt
+      dt = max(-80.,t-273.16)
+      dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
+    end function dtesatw
+
+
+    real function dtqsatw(t,p)
+      implicit none
+      real :: t  ! temperature (K)
+      real :: p  ! pressure    (mb)
+      dtqsatw=0.622*dtesatw(t)/p
+    end function dtqsatw
+
 
     real function esati(t)
       implicit none
@@ -534,29 +533,28 @@ contains
       qsati = 0.622 * esat/max(esat,p-esat)
     end function qsati
 
-! 
-!     ! function dtesati(t)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!     !   data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
-!     !           0.503223089, 0.377174432e-1,0.126710138e-2, &
-!     !           0.249065913e-4, 0.312668753e-6, 0.255653718e-8, &
-!     !           0.132073448e-10, 0.390204672e-13, 0.497275778e-16/
-!     !   real :: dtesati, dt
-!     !   dt = max(-800. ,t-273.16)
-!     !   dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     !   return
-!     ! end function dtesati
-!     !
-!     !
-!     ! real function dtqsati(t,p)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: p  ! pressure    (mb)
-!     !   real :: dtesati
-!     !   dtqsati = 0.622 * dtesati(t) / p
-!     ! end function dtqsati
+
+    real function dtesati(t)
+      implicit none
+      real :: t  ! temperature (K)
+      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
+      data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
+              0.503223089, 0.377174432e-1,0.126710138e-2, &
+              0.249065913e-4, 0.312668753e-6, 0.255653718e-8, &
+              0.132073448e-10, 0.390204672e-13, 0.497275778e-16/
+      real :: dt
+      dt = max(-800. ,t-273.16)
+      dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
+      return
+    end function dtesati
+
+
+    real function dtqsati(t,p)
+      implicit none
+      real :: t  ! temperature (K)
+      real :: p  ! pressure    (mb)
+      dtqsati = 0.622 * dtesati(t) / p
+    end function dtqsati
 
 
 end module nn_convection_flux_mod
