@@ -7,6 +7,8 @@ module nn_convection_flux_mod
 !---------------------------------------------------------------------
 ! Libraries to use
 use nn_cf_net_mod, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
+use SAM_consts_mod, only: fac_cond, fac_fus, tprmin, a_pr
+
 implicit none
 private
 
@@ -36,59 +38,6 @@ integer, parameter :: nrfq = nrf - 1
 
 logical :: do_init=.true.
     !! model initialisation is yet to be performed
-
-
-! From params.f90 in SAM
-! These are constants used in equations as part of the parameterisation.
-! Since the net is trained with them they should be left as defined here, rather than
-! forced to match the external model
-
-! Physical Constants:
-
-!= unit J / kg :: lfus
-real, parameter :: lfus = 0.3336e+06
-    !! Latent heat of fusion
-
-!= unit J / kg :: lcond
-real, parameter :: lcond = 2.5104e+06
-    !! Latent heat of condensation
-
-!= unit (J / kg) / K :: cp
-real, parameter :: cp = 1004.
-    !! Specific heat of air
-
-! unit K - not checkable yet
-real, parameter :: fac_cond = lcond/cp
-    !!
-
-! unit K - not checkable yet
-real, parameter :: fac_fus = lfus/cp
-    !!
-! Temperatures limits for various hydrometeors
-!= unit K :: tprmin
-real, parameter :: tprmin = 268.16
-    !! Minimum temperature for rain
-
-!= unit K :: tprmax
-real, parameter :: tprmax = 283.16
-    !! Maximum temperature for snow+graupel, K
-
-! != unit K :: tbgmin
-! real, parameter :: tbgmin = 253.16
-!     !! Minimum temperature for cloud water.
-!
-! != unit K :: tbgmin
-! real, parameter :: tbgmax = 273.16
-!     !! Maximum temperature for cloud ice, K
-
-! Misc. microphysics variables
-! != unit 1 / K :: a_pr
-real, parameter :: a_pr = 1./(tprmax-tprmin)
-    !! Misc. microphysics variables
-
-! != unit 1 / K :: a_bg
-! real, parameter :: a_bg = 1./(tbgmax-tbgmin)
-!     !! Misc. microphysics variables
 
 
 !---------------------------------------------------------------------
