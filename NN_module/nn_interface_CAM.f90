@@ -475,8 +475,11 @@ contains
 
     end subroutine check
 
-    subroutine t_q_conversion(t, q, tabs, qn, qp)
+    subroutine t_q_conversion(t, q, tabs, qn, qp, qv)
         !! Convert SAM t and q to tabs, qn, and qp used by CAM
+        !! t is normalised liquid ice static energy, q is total water
+        !! tabs is absolute temperature, qn is cloud liquid + cloud ice,
+        !! qp is precipitation (0.0 in SAM parameterisation)
 
         integer :: nx, ny
             !! array sizes
@@ -494,17 +497,19 @@ contains
         real, allocatable :: tabs1
             !! Temporary variable for tabs
 
-        != unit 1 :: q, qp, q
-        real, intent(inout) :: qn(:, :, :)
-            !! Total water
-        real, intent(inout) :: qp(:, :, :)
-            !! Precipitable water (rain+snow)
+        != unit 1 :: q, qp, qn, qv
         real :: q(:, :, :)
-            !! Copy
+            !! Total non-precipitating water mixing ratio from SAM
+        real, intent(out) :: qn(:, :, :)
+            !! Cloud liquid + cloud ice
+        real, intent(out) :: qp(:, :, :)
+            !! Precipitable water (rain+snow)
+        real, intent(out) :: qv(:, :, :)
+            !! Cloud water vapour
 
         != unit  :: t
         real, intent(in) :: t(:, :, :)
-            !! t
+            !! normalised liquid ice static energy
 
         real :: qsat, om, omp, dtabs, dqsat, lstarn, dlstarn, lstarp, dlstarp, fff, dfff
 
@@ -545,58 +550,60 @@ contains
             endif
 
             !  Test if condensation is possible and iterate:
-             if(q(i,j,k) .gt. qsat) then
-                 niter=0
-                 dtabs = 100.
-                 do while(abs(dtabs).gt.0.01.and.niter.lt.10)
-                     if(tabs1.ge.tbgmax) then
-                         om=1.
-                         lstarn=fac_cond
-                         dlstarn=0.
-                         qsat=qsatw(tabs1,pres(k))
-                         dqsat=dtqsatw(tabs1,pres(k))
-                            else if(tabs1.le.tbgmin) then
-                         om=0.
-                         lstarn=fac_sub
-                         dlstarn=0.
-                         qsat=qsati(tabs1,pres(k))
-                         dqsat=dtqsati(tabs1,pres(k))
-                     else
-                         om=an*tabs1-bn
-                         lstarn=fac_cond+(1.-om)*fac_fus
-                         dlstarn=an
-                         qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
-                         dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
-                     endif
+            if(q(i,j,k) .gt. qsat) then
+                niter=0
+                dtabs = 100.
+                do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+                    if(tabs1.ge.tbgmax) then
+                        om=1.
+                        lstarn=fac_cond
+                        dlstarn=0.
+                        qsat=qsatw(tabs1,pres(k))
+                        dqsat=dtqsatw(tabs1,pres(k))
+                           else if(tabs1.le.tbgmin) then
+                        om=0.
+                        lstarn=fac_sub
+                        dlstarn=0.
+                        qsat=qsati(tabs1,pres(k))
+                        dqsat=dtqsati(tabs1,pres(k))
+                    else
+                        om=an*tabs1-bn
+                        lstarn=fac_cond+(1.-om)*fac_fus
+                        dlstarn=an
+                        qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
+                        dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
+                    endif
 
-                     if(tabs1.ge.tprmax) then
-                        omp=1.
-                        lstarp=fac_cond
-                        dlstarp=0.
-                           else if(tabs1.le.tprmin) then
-                        omp=0.
-                        lstarp=fac_sub
-                        dlstarp=0.
-                     else
-                        omp=ap*tabs1-bp
-                        lstarp=fac_cond+(1.-omp)*fac_fus
-                        dlstarp=ap
-                     endif
+                    if(tabs1.ge.tprmax) then
+                       omp=1.
+                       lstarp=fac_cond
+                       dlstarp=0.
+                          else if(tabs1.le.tprmin) then
+                       omp=0.
+                       lstarp=fac_sub
+                       dlstarp=0.
+                    else
+                       omp=ap*tabs1-bp
+                       lstarp=fac_cond+(1.-omp)*fac_fus
+                       dlstarp=ap
+                    endif
 
-                     fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)+lstarp*qp(i,j,k)
-                     dfff=dlstarn*(q(i,j,k)-qsat)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
-                     dtabs=-fff/dfff
-                     niter=niter+1
-                     tabs1=tabs1+dtabs
-                end do   
+                    fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)+lstarp*qp(i,j,k)
+                    dfff=dlstarn*(q(i,j,k)-qsat)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
+                    dtabs=-fff/dfff
+                    niter=niter+1
+                    tabs1=tabs1+dtabs
+               end do
 
-                qsat = qsat + dqsat * dtabs
-                qn(i,j,k) = max(0.,q(i,j,k)-qsat)
+               qsat = qsat + dqsat * dtabs
+               qn(i,j,k) = max(0., q(i,j,k)-qsat)
+               qv(i,j,k) = max(0., q(i,j,k)-qn(i,j,k))
 
             ! If condensation not possible qn is 0.0
             else
 
               qn(i,j,k) = 0.
+              qv(i,j,k) = q(i,j,k)
 
             endif
 
