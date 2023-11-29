@@ -23,7 +23,7 @@ LDFLAGS = $(shell nf-config --flibs)
 
 PROGRAM = test_cam
 # SRC = nn_cf_net.f90 nn_convection_flux.f90 nn_interface_SAM.f90 test.f90 nn_interface_CAM.f90 test_cam_interface.f90
-SRC = nn_cf_net.f90 nn_convection_flux.f90 nn_interface_CAM.f90 test_cam_interface.f90
+SRC = SAM_consts.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_CAM.f90 test_cam_interface.f90
 OBJECTS = $(SRC:.f90=.o)
 
 
