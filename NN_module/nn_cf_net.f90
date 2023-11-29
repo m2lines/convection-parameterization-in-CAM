@@ -1,4 +1,4 @@
-module nn_cf_net
+module nn_cf_net_mod
     !! neural_net convection emulator
     !! Module containing code pertaining only to the Neural Net functionalities of
     !! the M2LiNES Convection Flux parameterisation.
@@ -283,4 +283,4 @@ contains
     end subroutine check
 
 
-end module nn_cf_net
+end module nn_cf_net_mod

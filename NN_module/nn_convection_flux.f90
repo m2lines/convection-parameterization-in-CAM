@@ -1,4 +1,4 @@
-module nn_convection_flux
+module nn_convection_flux_mod
     !! Code to perform the Convection Flux parameterisation
     !! and interface to the nn_cf_net Neural Net
     !! Reference: https://doi.org/10.1029/2020GL091363
@@ -6,7 +6,7 @@ module nn_convection_flux
 
 !---------------------------------------------------------------------
 ! Libraries to use
-use nn_cf_net, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
+use nn_cf_net_mod, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
 implicit none
 private
 
@@ -616,4 +616,4 @@ contains
 !     ! end function dtqsati
 
 
-end module nn_convection_flux
+end module nn_convection_flux_mod
