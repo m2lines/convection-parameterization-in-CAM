@@ -13,7 +13,7 @@ module nn_interface_CAM
 !---------------------------------------------------------------------
 ! Libraries to use
 use netcdf
-use nn_convection_flux, only: nn_convection_flux, &
+use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize
 implicit none
 private
@@ -85,9 +85,9 @@ contains
                                       tabs_i, q_i, &
                                       tabs, &
                                       dtn, dy, &
-                                      nx, ny, ny_gl, &
+                                      nx, ny, &
                                       nstep, nstatis, icycle, &
-                                      t, q, precsfc, prec_xy)
+                                      precsfc, prec_xy)
         !! Interface to the nn_convection parameterisation for the SAM model
 
         integer :: j, k
@@ -96,11 +96,12 @@ contains
             !! pressure [hPa] from the CAM model
         real, dimension(:) :: pres_int_cam
             !! interface pressure [hPa] from the CAM model (element 1 is surface pressure)
-        real, dimension(:,:,:) :: tabs_i, q_i, tabs, t, q
+        real, dimension(:,:) :: tabs_i, tabs!, t
+        real, dimension(:,:,:) :: q_i!, q
         real, dimension(:, :) :: precsfc, prec_xy
         real, intent(in) :: dtn
         real, intent(in) :: dy
-        integer, intent(in) :: nx, ny, ny_gl, nstep, nstatis, icycle
+        integer, intent(in) :: nx, ny, nstep, nstatis, icycle
 
         real :: y_in(nx, ny)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
@@ -140,14 +141,14 @@ contains
         !-----------------------------------------------------
         
         ! Run the neural net parameterisation
-        call nn_convection_flux(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
-                                tabs(:,:,1:nrf), &
-                                t(:,:,1:nrf), q(:,:,1:nrf), &
-                                rho, adz, dz, dtn, &
-                                t_rad_rest_tend, &
-                                t_delta_adv, q_delta_adv, &
-                                t_delta_auto, q_delta_auto, &
-                                t_delta_sed, q_delta_sed, prec_sed)
+!        call nn_convection_flux(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
+!                                tabs(:,:,1:nrf), &
+!                                t(:,:,1:nrf), q(:,:,1:nrf), &
+!                                rho, adz, dz, dtn, &
+!                                t_rad_rest_tend, &
+!                                t_delta_adv, q_delta_adv, &
+!                                t_delta_auto, q_delta_auto, &
+!                                t_delta_sed, q_delta_sed, prec_sed)
 
         !-----------------------------------------------------
         
