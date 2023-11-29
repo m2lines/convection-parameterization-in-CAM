@@ -10,26 +10,31 @@ module SAM_consts_mod
   ! forced to match the external model
 
   ! Physical Constants:
-  
-  != unit J / kg :: lfus
+
+  != unit (m / s^2)
+  real, parameter :: ggr = 9.81
+      !! Gravity acceleration, m/s2
+
+  != unit J / kg :: lcond, lsub, lfus
   real, parameter :: lfus = 0.3336e+06
       !! Latent heat of fusion
-  
-  != unit J / kg :: lcond
   real, parameter :: lcond = 2.5104e+06
       !! Latent heat of condensation
-  
+  real, parameter :: lsub = 2.8440e+06
+      !! Latent heat of sublimation, J/kg
+
   != unit (J / kg) / K :: cp
   real, parameter :: cp = 1004.
       !! Specific heat of air
   
-  ! unit K - not checkable yet
+  ! unit K :: fac_cond, fac_fus, fac_sub
   real, parameter :: fac_cond = lcond/cp
       !!
-  
-  ! unit K - not checkable yet
   real, parameter :: fac_fus = lfus/cp
       !!
+  real, parameter :: fac_sub = lsub/cp
+      !!
+
   ! Temperatures limits for various hydrometeors
   != unit K :: tprmin
   real, parameter :: tprmin = 268.16
@@ -71,6 +76,19 @@ module SAM_consts_mod
   real, parameter :: fac1 = fac_cond+(1+bp)*fac_fus
   real, parameter :: fac2 = fac_fus*ap
   real, parameter :: ag = 1./(tgrmax-tgrmin)
+
+  ! ---------------------------
+  ! SAM Grid Variables
+  ! ---------------------------
+  integer, parameter :: input_ver_dim = 48
+      !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
+  
+  ! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,
+  ! and at 29 levels for fluxes (as flux at bottom boundary is zero).
+  integer, parameter :: nrf = 30
+      !! number of vertical levels the NN uses
+  integer, parameter :: nrfq = nrf - 1
+      !! number of vertical levels the NN uses when boundary condition is set to 0
 
 
 
