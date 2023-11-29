@@ -481,7 +481,7 @@ contains
             !! array sizes
         integer :: nzm
             !! Number of z points in a subdomain - 1
-        integer :: i, j, k
+        integer :: i, j, k, niter
             !! Counters
 
         ! ---------------------
@@ -494,9 +494,9 @@ contains
             !! Temporary variable for tabs
 
         != unit 1 :: q, qp, qn0, q
-        real, intent(in) :: qn(:, :, :)
+        real, intent(inout) :: qn(:, :, :)
             !! Total water
-        real, intent(in) :: qp(:, :, :)
+        real, intent(inout) :: qp(:, :, :)
             !! Precipitable water (rain+snow)
         real :: qn0
             !! Temporary variable for q
@@ -507,7 +507,7 @@ contains
         real, intent(in) :: t(:, :, :)
             !! t
 
-        real :: qsat, om
+        real :: qsat, om, dtabs, dqsat
 
         nx = size(tabs, 1)
         ny = size(tabs, 2)
@@ -546,67 +546,65 @@ contains
                 qsat = om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
 
             endif
-!         
-!         
-!         !  Test if condensation is possible:
-!         
-!         
-!             if(q(i,j,k) .gt. qsat) then
-!         
-!               niter=0
-!               dtabs = 100.
-!               do while(abs(dtabs).gt.0.01.and.niter.lt.10)
-!         	if(tabs1.ge.tbgmax) then
-!         	   om=1.
-!         	   lstarn=fac_cond
-!         	   dlstarn=0.
-!         	   qsat=qsatw(tabs1,pres(k))
-!         	   dqsat=dtqsatw(tabs1,pres(k))
-!                 else if(tabs1.le.tbgmin) then
-!         	   om=0.
-!         	   lstarn=fac_sub
-!         	   dlstarn=0.
-!         	   qsat=qsati(tabs1,pres(k))
-!         	   dqsat=dtqsati(tabs1,pres(k))
-!         	else
-!         	   om=an*tabs1-bn
-!         	   lstarn=fac_cond+(1.-om)*fac_fus
-!         	   dlstarn=an
-!         	   qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
-!         	   dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
-!         	endif
-!         	if(tabs1.ge.tprmax) then
-!         	   omp=1.
-!         	   lstarp=fac_cond
-!         	   dlstarp=0.
-!                 else if(tabs1.le.tprmin) then
-!         	   omp=0.
-!         	   lstarp=fac_sub
-!         	   dlstarp=0.
-!         	else
-!         	   omp=ap*tabs1-bp
-!         	   lstarp=fac_cond+(1.-omp)*fac_fus
-!         	   dlstarp=ap
-!         	endif
-!         	fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)+lstarp*qp(i,j,k)
-!         	dfff=dlstarn*(q(i,j,k)-qsat)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
-!         	dtabs=-fff/dfff
-!         	niter=niter+1
-!         	tabs1=tabs1+dtabs
-!               end do   
-!         
-!               qsat = qsat + dqsat * dtabs
-!               qn(i,j,k) = max(0.,q(i,j,k)-qsat)
-!         
-!             else
-!         
-!               qn(i,j,k) = 0.
-!         
-!             endif
-!         
-!             tabs(i,j,k) = tabs1
-!             qp(i,j,k) = max(0.,qp(i,j,k)) ! just in case
-!         
+
+            !  Test if condensation is possible and iterate:
+             if(q(i,j,k) .gt. qsat) then
+                 niter=0
+                 dtabs = 100.
+                 do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+!                    	if(tabs1.ge.tbgmax) then
+!                    	   om=1.
+!                    	   lstarn=fac_cond
+!                    	   dlstarn=0.
+!                    	   qsat=qsatw(tabs1,pres(k))
+!                    	   dqsat=dtqsatw(tabs1,pres(k))
+!                            else if(tabs1.le.tbgmin) then
+!                    	   om=0.
+!                    	   lstarn=fac_sub
+!                    	   dlstarn=0.
+!                    	   qsat=qsati(tabs1,pres(k))
+!                    	   dqsat=dtqsati(tabs1,pres(k))
+!                    	else
+!                    	   om=an*tabs1-bn
+!                    	   lstarn=fac_cond+(1.-om)*fac_fus
+!                    	   dlstarn=an
+!                    	   qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
+!                    	   dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
+!                    	endif
+!                    	if(tabs1.ge.tprmax) then
+!                    	   omp=1.
+!                    	   lstarp=fac_cond
+!                    	   dlstarp=0.
+!                            else if(tabs1.le.tprmin) then
+!                    	   omp=0.
+!                    	   lstarp=fac_sub
+!                    	   dlstarp=0.
+!                    	else
+!                    	   omp=ap*tabs1-bp
+!                    	   lstarp=fac_cond+(1.-omp)*fac_fus
+!                    	   dlstarp=ap
+!                    	endif
+!                    	fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)+lstarp*qp(i,j,k)
+!                    	dfff=dlstarn*(q(i,j,k)-qsat)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
+!                    	dtabs=-fff/dfff
+!                    	niter=niter+1
+!                    	tabs1=tabs1+dtabs
+                end do   
+
+                qsat = qsat + dqsat * dtabs
+                qn(i,j,k) = max(0.,q(i,j,k)-qsat)
+
+            ! If condensation not possible qn is 0.0
+            else
+
+              qn(i,j,k) = 0.
+
+            endif
+
+            ! Set tabs to iterated tabs after convection and sanity check qp
+            tabs(i,j,k) = tabs1
+            qp(i,j,k) = max(0.,qp(i,j,k))
+ 
         end do
         end do
         end do
