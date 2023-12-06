@@ -521,9 +521,6 @@ contains
         do j = 1, ny
         do i = 1, nx
         
-!              TODO Confirm with PAOGORMAN if microscaling used
-!              if(domicroscaling) dtn = dtn_scaled(i, j, k)
-        
             ! Enforce q >= 0.0
             q(i,j,k)=max(0.,q(i,j,k))
         
