@@ -91,5 +91,24 @@ module SAM_consts_mod
       !! number of vertical levels the NN uses when boundary condition is set to 0
 
 
+!---------------------------------------------------------------------
+! Functions and Subroutines
+
+contains
+
+  subroutine check(err_status)
+  !! Check error status after netcdf call and print message for
+  !! error codes.
+
+  use netcdf
+
+  integer, intent(in) :: err_status
+    !! error status from nf90 function
+
+  if(err_status /= nf90_noerr) then
+     write(*, *) trim(nf90_strerror(err_status))
+  end if
+
+  end subroutine check
 
 end module SAM_consts_mod

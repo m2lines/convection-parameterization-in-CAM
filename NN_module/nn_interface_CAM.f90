@@ -18,7 +18,8 @@ use nn_convection_flux_mod, only: nn_convection_flux, &
                                   esati, qsati, qsatw, dtqsatw, dtqsati
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac1, fac2, fac_cond, fac_sub, fac_fus, &
-                          an, bn, ap, bp
+                          an, bn, ap, bp, &
+                          check
 implicit none
 private
 
@@ -460,20 +461,6 @@ contains
 
     end subroutine sam_sounding_finalize
 
-
-    ! TODO Duplicated from nn_cf_net.f90 - consider placing 1 copy in shared location?
-    subroutine check(err_status)
-        !! Check error status after netcdf call and print message for
-        !! error codes.
-
-        integer, intent(in) :: err_status
-            !! error status from nf90 function
-
-        if(err_status /= nf90_noerr) then
-             write(*, *) trim(nf90_strerror(err_status))
-        end if
-
-    end subroutine check
 
     subroutine t_q_conversion(t, q, tabs, qn, qp, qv)
         !! Convert SAM t and q to tabs, qn, and qp used by CAM
