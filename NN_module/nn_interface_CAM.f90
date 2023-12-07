@@ -19,7 +19,7 @@ use nn_convection_flux_mod, only: nn_convection_flux, &
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           an, bn, ap, bp, &
-                          check
+                          omegan, check
 implicit none
 private
 
@@ -462,10 +462,10 @@ contains
     end subroutine sam_sounding_finalize
 
 
-    subroutine t_q_conversion(t, q, tabs, qn, qv)
-        !! Convert SAM t and q to tabs, qn used by CAM
+    subroutine t_q_conversion(t, q, tabs, qv, qc, qi)
+        !! Convert SAM t and q to tabs, qv, qc, qi used by CAM
         !! t is normalised liquid ice static energy, q is total water
-        !! tabs is absolute temperature, qn is cloud liquid + cloud ice,
+        !! tabs is absolute temperature, q is cloud vapor/liquid/ice,
 
         integer :: nx, ny
             !! array sizes
@@ -483,19 +483,23 @@ contains
         real, allocatable :: tabs1
             !! Temporary variable for tabs
 
-        != unit 1 :: q, qn, qv
+        != unit 1 :: q, qn, qv, qc, qi
         real :: q(:, :, :)
             !! Total non-precipitating water mixing ratio from SAM
-        real, intent(out) :: qn(:, :, :)
-            !! Cloud liquid + cloud ice
         real, intent(out) :: qv(:, :, :)
             !! Cloud water vapour
+        real, intent(out) :: qc(:, :, :)
+            !! Cloud water
+        real, intent(out) :: qi(:, :, :)
+            !! Cloud ice
+        real :: qn
+            !! Cloud liquid + cloud ice
 
         != unit  :: t
         real, intent(in) :: t(:, :, :)
             !! normalised liquid ice static energy
 
-        real :: qsat, om, dtabs, dqsat, lstarn, dlstarn, fff, dfff
+        real :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff
 
         nx = size(tabs, 1)
         ny = size(tabs, 2)
@@ -561,20 +565,27 @@ contains
                end do
 
                qsat = qsat + dqsat * dtabs
-               qn(i,j,k) = max(0., q(i,j,k)-qsat)
-               qv(i,j,k) = max(0., q(i,j,k)-qn(i,j,k))
+               qn = max(0., q(i,j,k)-qsat)
+               qv(i,j,k) = max(0., q(i,j,k)-qn)
 
             ! If condensation not possible qn is 0.0
             else
 
-              qn(i,j,k) = 0.
+              qn = 0.
               qv(i,j,k) = q(i,j,k)
 
             endif
 
             ! Set tabs to iterated tabs after convection
             tabs(i,j,k) = tabs1
- 
+
+            !! Code for calculating qcc and qii from qn.
+            !! Assumes dokruegermicro=.false. in SAM.
+            !! Taken from statistics.f90
+            omn = omegan(tabs(i,j,k))
+            qc(i,j,k) = qn*omn
+            qi(i,j,k) = qn*(1.-omn)
+
         end do
         end do
         end do
