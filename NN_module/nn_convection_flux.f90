@@ -163,6 +163,7 @@ contains
             !! Number of z points in a subdomain - 1
         ! real :: omn
         !     !! variable to store result of omegan function
+        !     !! Note that if using you will need to import omegan() from SAM_consts_mod
 
         ! Other variables
         real,   dimension(nrf) :: omp, fac
@@ -414,24 +415,6 @@ contains
     end subroutine error_mesg
 
 
-!     !-----------------------------------------------------------------
-!     ! Need omegan function to run with rf_uses_rh option (currently unused)
-!     ! Ripped from SAM model:
-!     ! https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
-! 
-!     != unit 1 :: omegan
-!     real function omegan(tabs)
-!         != unit K :: tabs
-!         real, intent(in) :: tabs
-!             !! Absolute temperature
-! 
-!         omegan = max(0., min(1., (tabs-tbgmin)*a_bg))
-! 
-!         return
-! 
-!     end function omegan
-! 
-! 
     !-----------------------------------------------------------------
     ! Need qsatw functions to:
     !     - run with rf_uses_rh option (currently unused)

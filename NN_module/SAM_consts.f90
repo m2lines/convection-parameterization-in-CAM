@@ -65,9 +65,9 @@ module SAM_consts_mod
   real, parameter :: a_pr = 1./(tprmax-tprmin)
       !! Misc. microphysics variables
   
-  ! != unit 1 / K :: a_bg
-  ! real, parameter :: a_bg = 1./(tbgmax-tbgmin)
-  !     !! Misc. microphysics variables
+  != unit 1 / K :: a_bg
+  real, parameter :: a_bg = 1./(tbgmax-tbgmin)
+      !! Misc. microphysics variables
 
   real, parameter :: an = 1./(tbgmax-tbgmin)
   real, parameter :: bn = tbgmin * an
@@ -95,6 +95,19 @@ module SAM_consts_mod
 ! Functions and Subroutines
 
 contains
+
+  != unit 1 :: omegan
+  real function omegan(tabs)
+      != unit K :: tabs
+      real, intent(in) :: tabs
+          !! Absolute temperature
+
+      omegan = max(0., min(1., (tabs-tbgmin)*a_bg))
+
+      return
+
+  end function omegan
+
 
   subroutine check(err_status)
   !! Check error status after netcdf call and print message for
