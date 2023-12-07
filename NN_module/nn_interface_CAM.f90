@@ -495,7 +495,7 @@ contains
         real, intent(in) :: t(:, :, :)
             !! normalised liquid ice static energy
 
-        real :: qsat, om, omp, dtabs, dqsat, lstarn, dlstarn, fff, dfff
+        real :: qsat, om, dtabs, dqsat, lstarn, dlstarn, fff, dfff
 
         nx = size(tabs, 1)
         ny = size(tabs, 2)
