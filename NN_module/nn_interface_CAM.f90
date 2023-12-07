@@ -17,7 +17,7 @@ use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize, &
                                   esati, qsati, qsatw, dtqsatw, dtqsati
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
-                          fac1, fac2, fac_cond, fac_sub, fac_fus, &
+                          fac_cond, fac_sub, fac_fus, &
                           an, bn, ap, bp, &
                           check
 implicit none
@@ -462,11 +462,10 @@ contains
     end subroutine sam_sounding_finalize
 
 
-    subroutine t_q_conversion(t, q, tabs, qn, qp, qv)
-        !! Convert SAM t and q to tabs, qn, and qp used by CAM
+    subroutine t_q_conversion(t, q, tabs, qn, qv)
+        !! Convert SAM t and q to tabs, qn used by CAM
         !! t is normalised liquid ice static energy, q is total water
         !! tabs is absolute temperature, qn is cloud liquid + cloud ice,
-        !! qp is precipitation (0.0 in SAM parameterisation)
 
         integer :: nx, ny
             !! array sizes
@@ -484,13 +483,11 @@ contains
         real, allocatable :: tabs1
             !! Temporary variable for tabs
 
-        != unit 1 :: q, qp, qn, qv
+        != unit 1 :: q, qn, qv
         real :: q(:, :, :)
             !! Total non-precipitating water mixing ratio from SAM
         real, intent(out) :: qn(:, :, :)
             !! Cloud liquid + cloud ice
-        real, intent(out) :: qp(:, :, :)
-            !! Precipitable water (rain+snow)
         real, intent(out) :: qv(:, :, :)
             !! Cloud water vapour
 
@@ -498,7 +495,7 @@ contains
         real, intent(in) :: t(:, :, :)
             !! normalised liquid ice static energy
 
-        real :: qsat, om, omp, dtabs, dqsat, lstarn, dlstarn, lstarp, dlstarp, fff, dfff
+        real :: qsat, om, omp, dtabs, dqsat, lstarn, dlstarn, fff, dfff
 
         nx = size(tabs, 1)
         ny = size(tabs, 2)
@@ -514,16 +511,14 @@ contains
         
             ! Initial guess for temperature assuming no cloud water/ice:
             tabs(i,j,k) = t(i,j,k)-gamaz(k)
-            tabs1=(tabs(i,j,k)+fac1*qp(i,j,k))/(1.+fac2*qp(i,j,k))
+            tabs1=tabs(i,j,k)
         
             ! Warm cloud:
             if(tabs1.ge.tbgmax) then
-                tabs1=tabs(i,j,k)+fac_cond*qp(i,j,k)
                 qsat = qsatw(tabs1,pres(k))
         
             ! Ice cloud:
             elseif(tabs1.le.tbgmin) then
-                tabs1=tabs(i,j,k)+fac_sub*qp(i,j,k)
                 qsat = qsati(tabs1,pres(k))
         
             ! Mixed-phase cloud:
@@ -558,22 +553,8 @@ contains
                         dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
                     endif
 
-                    if(tabs1.ge.tprmax) then
-                       omp=1.
-                       lstarp=fac_cond
-                       dlstarp=0.
-                          else if(tabs1.le.tprmin) then
-                       omp=0.
-                       lstarp=fac_sub
-                       dlstarp=0.
-                    else
-                       omp=ap*tabs1-bp
-                       lstarp=fac_cond+(1.-omp)*fac_fus
-                       dlstarp=ap
-                    endif
-
-                    fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)+lstarp*qp(i,j,k)
-                    dfff=dlstarn*(q(i,j,k)-qsat)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
+                    fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)
+                    dfff=dlstarn*(q(i,j,k)-qsat)-lstarn*dqsat-1.
                     dtabs=-fff/dfff
                     niter=niter+1
                     tabs1=tabs1+dtabs
@@ -591,9 +572,8 @@ contains
 
             endif
 
-            ! Set tabs to iterated tabs after convection and sanity check qp
+            ! Set tabs to iterated tabs after convection
             tabs(i,j,k) = tabs1
-            qp(i,j,k) = max(0.,qp(i,j,k))
  
         end do
         end do
