@@ -462,20 +462,58 @@ contains
     end subroutine sam_sounding_finalize
 
 
-    subroutine t_q_conversion(t, q, tabs, qv, qc, qi)
+    subroutine CAM_var_conversion(qv, qc, qi, q)
+        !! Convert CAM qv, qc, qi to q to used by SAM parameterisation
+        !! q is total wate q_n is cloud vapor/liquid/ice
+        !! No conversion for temperature because CAM and SAM temperature
+        !! is the same
+
+        integer :: nx, ny, nz
+            !! array sizes
+        integer :: i, j, k
+            !! Counters
+
+        ! ---------------------
+        ! Fields from CAM/SAM
+        ! ---------------------
+        != unit 1 :: q, qn, qv, qc, qi
+        real, intent(out) :: q(:, :, :)
+            !! Total non-precipitating water mixing ratio from SAM
+        real, intent(in) :: qv(:, :, :)
+            !! Cloud water vapour
+        real, intent(in) :: qc(:, :, :)
+            !! Cloud water
+        real, intent(in) :: qi(:, :, :)
+            !! Cloud ice
+
+
+        nx = size(q, 1)
+        ny = size(q, 2)
+        nz = size(q, 3)
+
+        do k = 1, nz
+        do j = 1, ny
+        do i = 1, nx
+            q(i,j,k) = qv(i,j,k) + qc(i,j,k) + qi(i,j,k)
+        end do
+        end do
+        end do
+
+    end subroutine CAM_var_conversion
+    
+
+    subroutine SAM_var_conversion(t, q, tabs, qv, qc, qi)
         !! Convert SAM t and q to tabs, qv, qc, qi used by CAM
         !! t is normalised liquid ice static energy, q is total water
         !! tabs is absolute temperature, q is cloud vapor/liquid/ice,
 
-        integer :: nx, ny
+        integer :: nx, ny, nz
             !! array sizes
-        integer :: nzm
-            !! Number of z points in a subdomain - 1
         integer :: i, j, k, niter
             !! Counters
 
         ! ---------------------
-        ! Fields from SAM
+        ! Fields from SAM/CAM
         ! ---------------------
         != unit K :: tabs, tabs1
         real, intent(inout) :: tabs(:, :, :)
@@ -503,9 +541,9 @@ contains
 
         nx = size(tabs, 1)
         ny = size(tabs, 2)
-        nzm = size(tabs, 3)
+        nz = size(tabs, 3)
 
-        do k = 1, nzm
+        do k = 1, nz
         do j = 1, ny
         do i = 1, nx
         
@@ -590,6 +628,6 @@ contains
         end do
         end do
 
-    end subroutine t_q_conversion
+    end subroutine SAM_var_conversion
 
 end module nn_interface_CAM
