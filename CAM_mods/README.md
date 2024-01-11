@@ -46,7 +46,7 @@ After you [create a case](https://ncar.github.io/CAM/doc/build/html/CAM6.0_users
    1. `YOG` as a possible option for `deep_scheme`.
    2. `nn_weights` as a `char*132`
    3. `SAM_sounding` as a `char*132`
-   For full detaiuls see [Appendix A](#appendix-a) below.
+   For full detaiuls see [Appendix A](#appendix-a---modifications-to-camnamelist_definitionxml) below.
 
 4. We can now run `./case.setup` and `./case.build`.
 
