@@ -29,17 +29,26 @@ After you [create a case](https://ncar.github.io/CAM/doc/build/html/CAM6.0_users
    3. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`  
       The path to the SAM sounding for the NN.  
       This file is generated using the `sounding_to_netcdf.py` script in the resources of the NN code.
+   4. Also consider adding:
+   ```
+   fincl2 = 'ZMDT', 'ZMDQ'
+   fincl3 = 'YOGDT', 'YOGDQ'
+   ```
+   to generate ZM and YOG output diagnostics.
 2. The latter two are new variables so we need to add the following lines to `my_cesm_sandbox/components/cam/bld/namelist_files/namelist_defaults_cam.xml`:
    ```
    <nn_weights                      >NONE     </nn_weights>
    <SAM_sounding                    >NONE     </SAM_sounding>
    ```
-
-3. The main CESM code checks the vailidity of options for various arguments at build time, so we need to modify the CESM source file `my_cesm_sandbox/components/cam/bld/namelist_files/namelist_definition.xml` to add:
+3. The main CESM code checks the vailidity of options for various arguments at build time
+   , so we need to modify the CESM source file
+   `my_cesm_sandbox/components/cam/bld/namelist_files/namelist_definition.xml` to add:
    1. `YOG` as a possible option for `deep_scheme`.
    2. `nn_weights` as a `char*132`
    3. `SAM_sounding` as a `char*132`
-3. We can now run `./case.setup` and `./case.build`.
+   For full detaiuls see [Appendix A](#appendix-a) below.
+
+4. We can now run `./case.setup` and `./case.build`.
 
 An example `user_nl_cam` is provided in this repo.
 
@@ -76,6 +85,34 @@ On cheyenne we have been running a case generated from:
 - Useful link: [CAM phys docs](https://www2.cesm.ucar.edu/models/atm-cam/docs/phys-interface/)
 
 - There is a call to `zm_convect_deep_tend_2` in `physpkg.F90` called when `if ( .not. deep_scheme_does_scav_trans() ) then` But the call has different arguments, so how should YOG handle this?
+  - PAOG - No, leave that, it is separate from this.
 
 ! jwa34 - this writes to outfield - i.e. diaganostics to file
 call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
+
+
+## Appendix A - Modifications to `cam/.../namelist_definition.xml`
+
+Under `<!-- Moist Convection and Microphysics -->` modify `deep_scheme` to become:
+```xml
+<entry id="deep_scheme" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS,YOG" >
+Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
+'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
+Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
+</entry>
+```
+and then add
+```xml
+<entry id="nn_weights" type="char*132" input_pathname="abs" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Path to the neural net weights used for the YOG deep convection scheme
+</entry>
+
+<entry id="SAM_sounding" type="char*132" input_pathname="abs" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Path to the SAM sounding profile used for the YOG deep convection scheme
+</entry>
+
+```
+directly below `deep_scheme`.
