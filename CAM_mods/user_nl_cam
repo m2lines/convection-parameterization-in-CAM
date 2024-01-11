@@ -1,3 +1,5 @@
+scmlon=$PTS_LON
+scmlat=$PTS_LAT
 iopfile="$DIN_LOC_ROOT/atm/cam/scam/iop/GATEIII_4scam_c170809.nc"
 ncdata="$DIN_LOC_ROOT/atm/cam/scam/iop/CESM2.F2000climo.IOP_SITES.cam.i.0003-08-01-00000.nc"
 mfilt=1440
@@ -13,8 +15,8 @@ scm_relax_linear             = .true.
 scm_relax_tau_bot_sec                = 864000.
 scm_relax_tau_top_sec                = 172800.
 deep_scheme = 'YOG'
+nn_weights='/glade/u/home/jatkinson/my_cesm_sandbox/cime/scripts/test_scam_gateIII_clean/SourceMods/src.cam/NN_weights_YOG_convection.nc'
+SAM_sounding='/glade/u/home/jatkinson/my_cesm_sandbox/cime/scripts/test_scam_gateIII_clean/SourceMods/src.cam/SAM_sounding.nc'
 fincl1 = 'T', 'Z3', 'U', 'V'
 fincl2 = 'ZMDT', 'ZMDQ'
 fincl3 = 'YOGDT', 'YOGDQ'
-nn_weights='/glade/u/home/jatkinson/my_cesm_sandbox/cime/scripts/test_scam_gateIII_clean/SourceMods/src.cam/NN_weights_YOG_convection.nc'
-SAM_sounding='/glade/u/home/jatkinson/my_cesm_sandbox/cime/scripts/test_scam_gateIII_clean/SourceMods/src.cam/SAM_sounding.nc'
