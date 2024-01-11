@@ -14,7 +14,12 @@ module nn_interface_CAM
 ! Libraries to use
 use netcdf
 use nn_convection_flux_mod, only: nn_convection_flux, &
-                                  nn_convection_flux_init, nn_convection_flux_finalize
+                                  nn_convection_flux_init, nn_convection_flux_finalize, &
+                                  esati, qsati, qsatw, dtqsatw, dtqsati
+use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
+                          fac_cond, fac_sub, fac_fus, &
+                          an, bn, ap, bp, &
+                          omegan, check
 implicit none
 private
 
@@ -30,18 +35,14 @@ public interp_to_sam, interp_to_cam, fetch_sam_data
 !---------------------------------------------------------------------
 ! local/private data
 
-! Copied from nn_convection_flux.f90
-! Outputs from NN are supplied at lowest 30 half-model levels
-integer, parameter :: nrf = 30
-    !! number of vertical levels the NN parameterisation uses
-
 != unit 1 :: nz_sam
 integer :: nz_sam
     !! number of vertical values in the SAM sounding profiles
+!= unit m :: z
 != unit hPa :: pres, presi
 != unit kg m-3 :: rho
 != unit 1 :: adz
-real, allocatable, dimension(:) :: pres, presi, rho, adz
+real, allocatable, dimension(:) :: z, pres, presi, rho, adz, gamaz
     !! SAM sounding variables
 != unit m :: dz
 real :: dz
@@ -394,7 +395,7 @@ contains
         !! Read various profiles in from SAM sounding file
 
         ! This will be the netCDF ID for the file and data variable.
-        integer :: ncid
+        integer :: ncid, k
         integer :: z_dimid, dz_dimid
         integer :: z_varid, dz_varid, pres_varid, presi_varid, rho_varid, adz_varid
 
@@ -417,14 +418,16 @@ contains
         ! call check( nf90_inquire_dimension(ncid, dz_dimid, len=ndz))
 
         ! Note that nz of sounding may be longer than nrf
+        allocate(z(nz_sam))
         allocate(pres(nz_sam))
         allocate(presi(nz_sam))
         allocate(rho(nz_sam))
         allocate(adz(nz_sam))
+        allocate(gamaz(nz_sam))
 
         ! Read data in from nc file - convert pressures to hPa
-        ! call check( nf90_inq_varid(ncid, "z", z_varid))
-        ! call check( nf90_get_var(ncid, z_varid, z))
+        call check( nf90_inq_varid(ncid, "z", z_varid))
+        call check( nf90_get_var(ncid, z_varid, z))
         call check( nf90_inq_varid(ncid, "pressure", pres_varid))
         call check( nf90_get_var(ncid, pres_varid, pres))
         pres(:) = pres / 100.0
@@ -441,6 +444,11 @@ contains
         ! Close the nc file
         call check( nf90_close(ncid))
 
+        ! Calculate gamaz required elsewhere
+        do k = 1, nz_sam
+            gamaz(k) = ggr/cp*z(k)
+        end do
+
         write(*,*) 'Finished reading SAM sounding file.'
 
     end subroutine sam_sounding_init
@@ -449,24 +457,177 @@ contains
     subroutine sam_sounding_finalize()
         !! Deallocate module variables read from sounding
 
-        deallocate(pres, presi, rho, adz)
+        deallocate(z, pres, presi, rho, adz, gamaz)
 
     end subroutine sam_sounding_finalize
 
 
-    ! TODO Duplicated from nn_cf_net.f90 - consider placing 1 copy in shared location?
-    subroutine check(err_status)
-        !! Check error status after netcdf call and print message for
-        !! error codes.
+    subroutine CAM_var_conversion(qv, qc, qi, q)
+        !! Convert CAM qv, qc, qi to q to used by SAM parameterisation
+        !! q is total wate q_n is cloud vapor/liquid/ice
+        !! No conversion for temperature because CAM and SAM temperature
+        !! is the same
 
-        integer, intent(in) :: err_status
-            !! error status from nf90 function
+        integer :: nx, ny, nz
+            !! array sizes
+        integer :: i, j, k
+            !! Counters
 
-        if(err_status /= nf90_noerr) then
-             write(*, *) trim(nf90_strerror(err_status))
-        end if
+        ! ---------------------
+        ! Fields from CAM/SAM
+        ! ---------------------
+        != unit 1 :: q, qn, qv, qc, qi
+        real, intent(out) :: q(:, :, :)
+            !! Total non-precipitating water mixing ratio from SAM
+        real, intent(in) :: qv(:, :, :)
+            !! Cloud water vapour
+        real, intent(in) :: qc(:, :, :)
+            !! Cloud water
+        real, intent(in) :: qi(:, :, :)
+            !! Cloud ice
 
-    end subroutine check
 
+        nx = size(q, 1)
+        ny = size(q, 2)
+        nz = size(q, 3)
+
+        do k = 1, nz
+        do j = 1, ny
+        do i = 1, nx
+            q(i,j,k) = qv(i,j,k) + qc(i,j,k) + qi(i,j,k)
+        end do
+        end do
+        end do
+
+    end subroutine CAM_var_conversion
+    
+
+    subroutine SAM_var_conversion(t, q, tabs, qv, qc, qi)
+        !! Convert SAM t and q to tabs, qv, qc, qi used by CAM
+        !! t is normalised liquid ice static energy, q is total water
+        !! tabs is absolute temperature, q is cloud vapor/liquid/ice,
+
+        integer :: nx, ny, nz
+            !! array sizes
+        integer :: i, j, k, niter
+            !! Counters
+
+        ! ---------------------
+        ! Fields from SAM/CAM
+        ! ---------------------
+        != unit K :: tabs, tabs1
+        real, intent(inout) :: tabs(:, :, :)
+            !! absolute temperature
+        real, allocatable :: tabs1
+            !! Temporary variable for tabs
+
+        != unit 1 :: q, qn, qv, qc, qi
+        real :: q(:, :, :)
+            !! Total non-precipitating water mixing ratio from SAM
+        real, intent(out) :: qv(:, :, :)
+            !! Cloud water vapour
+        real, intent(out) :: qc(:, :, :)
+            !! Cloud water
+        real, intent(out) :: qi(:, :, :)
+            !! Cloud ice
+        real :: qn
+            !! Cloud liquid + cloud ice
+
+        != unit  :: t
+        real, intent(in) :: t(:, :, :)
+            !! normalised liquid ice static energy
+
+        real :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff
+
+        nx = size(tabs, 1)
+        ny = size(tabs, 2)
+        nz = size(tabs, 3)
+
+        do k = 1, nz
+        do j = 1, ny
+        do i = 1, nx
+        
+            ! Enforce q >= 0.0
+            q(i,j,k)=max(0.,q(i,j,k))
+        
+        
+            ! Initial guess for temperature assuming no cloud water/ice:
+            tabs(i,j,k) = t(i,j,k)-gamaz(k)
+            tabs1=tabs(i,j,k)
+        
+            ! Warm cloud:
+            if(tabs1.ge.tbgmax) then
+                qsat = qsatw(tabs1,pres(k))
+        
+            ! Ice cloud:
+            elseif(tabs1.le.tbgmin) then
+                qsat = qsati(tabs1,pres(k))
+        
+            ! Mixed-phase cloud:
+            else
+                om = an*tabs1-bn
+                qsat = om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
+
+            endif
+
+            !  Test if condensation is possible and iterate:
+            if(q(i,j,k) .gt. qsat) then
+                niter=0
+                dtabs = 100.
+                do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+                    if(tabs1.ge.tbgmax) then
+                        om=1.
+                        lstarn=fac_cond
+                        dlstarn=0.
+                        qsat=qsatw(tabs1,pres(k))
+                        dqsat=dtqsatw(tabs1,pres(k))
+                           else if(tabs1.le.tbgmin) then
+                        om=0.
+                        lstarn=fac_sub
+                        dlstarn=0.
+                        qsat=qsati(tabs1,pres(k))
+                        dqsat=dtqsati(tabs1,pres(k))
+                    else
+                        om=an*tabs1-bn
+                        lstarn=fac_cond+(1.-om)*fac_fus
+                        dlstarn=an
+                        qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
+                        dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
+                    endif
+
+                    fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)
+                    dfff=dlstarn*(q(i,j,k)-qsat)-lstarn*dqsat-1.
+                    dtabs=-fff/dfff
+                    niter=niter+1
+                    tabs1=tabs1+dtabs
+               end do
+
+               qsat = qsat + dqsat * dtabs
+               qn = max(0., q(i,j,k)-qsat)
+               qv(i,j,k) = max(0., q(i,j,k)-qn)
+
+            ! If condensation not possible qn is 0.0
+            else
+
+              qn = 0.
+              qv(i,j,k) = q(i,j,k)
+
+            endif
+
+            ! Set tabs to iterated tabs after convection
+            tabs(i,j,k) = tabs1
+
+            !! Code for calculating qcc and qii from qn.
+            !! Assumes dokruegermicro=.false. in SAM.
+            !! Taken from statistics.f90
+            omn = omegan(tabs(i,j,k))
+            qc(i,j,k) = qn*omn
+            qi(i,j,k) = qn*(1.-omn)
+
+        end do
+        end do
+        end do
+
+    end subroutine SAM_var_conversion
 
 end module nn_interface_CAM

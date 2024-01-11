@@ -7,13 +7,17 @@ module nn_convection_flux_mod
 !---------------------------------------------------------------------
 ! Libraries to use
 use nn_cf_net_mod, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
+use SAM_consts_mod, only: fac_cond, fac_fus, tprmin, a_pr, input_ver_dim, &
+                          nrf, nrfq
+
 implicit none
 private
 
 
 !---------------------------------------------------------------------
 ! public interfaces
-public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
+public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize, &
+        esati, qsati, qsatw, dtqsatw, dtqsati
 
 
 !---------------------------------------------------------------------
@@ -24,71 +28,8 @@ public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
 integer :: n_inputs, n_outputs
     !! Length of input/output vector to the NN
 
-integer, parameter :: input_ver_dim = 48
-    !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
-
-! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,
-! and at 29 levels for fluxes (as flux at bottom boundary is zero).
-integer, parameter :: nrf = 30
-    !! number of vertical levels the NN uses
-integer, parameter :: nrfq = nrf - 1
-    !! number of vertical levels the NN uses when boundary condition is set to 0
-
 logical :: do_init=.true.
     !! model initialisation is yet to be performed
-
-
-! From params.f90 in SAM
-! These are constants used in equations as part of the parameterisation.
-! Since the net is trained with them they should be left as defined here, rather than
-! forced to match the external model
-
-! Physical Constants:
-
-!= unit J / kg :: lfus
-real, parameter :: lfus = 0.3336e+06
-    !! Latent heat of fusion
-
-!= unit J / kg :: lcond
-real, parameter :: lcond = 2.5104e+06
-    !! Latent heat of condensation
-
-!= unit (J / kg) / K :: cp
-real, parameter :: cp = 1004.
-    !! Specific heat of air
-
-! unit K - not checkable yet
-real, parameter :: fac_cond = lcond/cp
-    !!
-
-! unit K - not checkable yet
-real, parameter :: fac_fus = lfus/cp
-    !!
-! Temperatures limits for various hydrometeors
-!= unit K :: tprmin
-real, parameter :: tprmin = 268.16
-    !! Minimum temperature for rain
-
-!= unit K :: tprmax
-real, parameter :: tprmax = 283.16
-    !! Maximum temperature for snow+graupel, K
-
-! != unit K :: tbgmin
-! real, parameter :: tbgmin = 253.16
-!     !! Minimum temperature for cloud water.
-!
-! != unit K :: tbgmin
-! real, parameter :: tbgmax = 273.16
-!     !! Maximum temperature for cloud ice, K
-
-! Misc. microphysics variables
-! != unit 1 / K :: a_pr
-real, parameter :: a_pr = 1./(tprmax-tprmin)
-    !! Misc. microphysics variables
-
-! != unit 1 / K :: a_bg
-! real, parameter :: a_bg = 1./(tbgmax-tbgmin)
-!     !! Misc. microphysics variables
 
 
 !---------------------------------------------------------------------
@@ -222,6 +163,7 @@ contains
             !! Number of z points in a subdomain - 1
         ! real :: omn
         !     !! variable to store result of omegan function
+        !     !! Note that if using you will need to import omegan() from SAM_consts_mod
 
         ! Other variables
         real,   dimension(nrf) :: omp, fac
@@ -460,7 +402,6 @@ contains
 
     
     !-----------------------------------------------------------------
-    ! Private Subroutines
     
     subroutine error_mesg (message)
       character(len=*), intent(in) :: message
@@ -474,146 +415,129 @@ contains
     end subroutine error_mesg
 
 
-!     !-----------------------------------------------------------------
-!     ! Need omegan function to run with rf_uses_rh option (currently unused)
-!     ! Ripped from SAM model:
-!     ! https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/omega.f90
-! 
-!     != unit 1 :: omegan
-!     real function omegan(tabs)
-!         != unit K :: tabs
-!         real, intent(in) :: tabs
-!             !! Absolute temperature
-! 
-!         omegan = max(0., min(1., (tabs-tbgmin)*a_bg))
-! 
-!         return
-! 
-!     end function omegan
-! 
-! 
-!     !-----------------------------------------------------------------
-!     ! Need qsatw functions to run with rf_uses_rh option (currently unused)
-!     ! Ripped from SAM model:
-!     ! https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/sat.f90
-! 
-!     ! Saturation vapor pressure and mixing ratio.
-!     ! Based on Flatau et.al, (JAM, 1992:1507)
-! 
-!     != unit mb :: esatw
-!     real function esatw(t)
-!       implicit none
-!       != unit K :: t
-!       real :: t  ! temperature (K)
-! 
-!       != unit :: a0
-!       != unit :: mb / k :: a1, a2, a3, a4, a5, a6, a7, a8
-!       real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!       data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
-!               6.105851, 0.4440316, 0.1430341e-1, &
-!               0.2641412e-3, 0.2995057e-5, 0.2031998e-7, &
-!               0.6936113e-10, 0.2564861e-13,-0.3704404e-15/
-!       !       6.11239921, 0.443987641, 0.142986287e-1, &
-!       !       0.264847430e-3, 0.302950461e-5, 0.206739458e-7, &
-!       !       0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
-! 
-!       != unit K :: dt
-!       real :: dt
-!       dt = max(-80.,t-273.16)
-!       esatw = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     end function esatw
-! 
+    !-----------------------------------------------------------------
+    ! Need qsatw functions to:
+    !     - run with rf_uses_rh option (currently unused)
+    !     - convert variables in CAM interface
+    ! Ripped from SAM model:
+    ! https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/sat.f90
 
-!     != unit 1 :: qsatw
-!     real function qsatw(t,p)
-!       implicit none
-!       != unit K :: t
-!       real :: t  ! temperature
-! 
-!       != unit mb :: p, esat
-!       real :: p  ! pressure
-!       real :: esat
-! 
-!       esat = esatw(t)
-!       qsatw = 0.622 * esat/max(esat, p-esat)
-!     end function qsatw
-! 
-! 
-!     ! real function dtesatw(t)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!     !   data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
-!     !             0.443956472, 0.285976452e-1, 0.794747212e-3, &
-!     !             0.121167162e-4, 0.103167413e-6, 0.385208005e-9, &
-!     !            -0.604119582e-12, -0.792933209e-14, -0.599634321e-17/
-!     !   real :: dt
-!     !   dt = max(-80.,t-273.16)
-!     !   dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     ! end function dtesatw
-!     !
-!     ! real function dtqsatw(t,p)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: p  ! pressure    (mb)
-!     !   real :: dtesatw
-!     !   dtqsatw=0.622*dtesatw(t)/p
-!     ! end function dtqsatw
-! 
-! 
-!     real function esati(t)
-!       implicit none
-!       != unit K :: t
-!       real :: t  ! temperature
-!       real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!       data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
-!               6.11147274, 0.503160820, 0.188439774e-1, &
-!               0.420895665e-3, 0.615021634e-5,0.602588177e-7, &
-!               0.385852041e-9, 0.146898966e-11, 0.252751365e-14/
-!       real :: dt
-!       dt = max(-80.0, t-273.16)
-!       esati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     end function esati
-! 
-! 
-!     != unit 1 :: qsati
-!     real function qsati(t,p)
-!       implicit none
-!       != unit t :: K
-!       real :: t  ! temperature
-! 
-!       != unit mb :: p
-!       real :: p  ! pressure
-! 
-!       != unit mb :: esat
-!       real :: esat
-!       esat = esati(t)
-!       qsati = 0.622 * esat/max(esat,p-esat)
-!     end function qsati
-! 
-! 
-!     ! function dtesati(t)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
-!     !   data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
-!     !           0.503223089, 0.377174432e-1,0.126710138e-2, &
-!     !           0.249065913e-4, 0.312668753e-6, 0.255653718e-8, &
-!     !           0.132073448e-10, 0.390204672e-13, 0.497275778e-16/
-!     !   real :: dtesati, dt
-!     !   dt = max(-800. ,t-273.16)
-!     !   dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-!     !   return
-!     ! end function dtesati
-!     !
-!     !
-!     ! real function dtqsati(t,p)
-!     !   implicit none
-!     !   real :: t  ! temperature (K)
-!     !   real :: p  ! pressure    (mb)
-!     !   real :: dtesati
-!     !   dtqsati = 0.622 * dtesati(t) / p
-!     ! end function dtqsati
+    ! Saturation vapor pressure and mixing ratio.
+    ! Based on Flatau et.al, (JAM, 1992:1507)
+
+    != unit mb :: esatw
+    real function esatw(t)
+      implicit none
+      != unit K :: t
+      real :: t  ! temperature (K)
+
+      != unit :: a0
+      != unit :: mb / k :: a1, a2, a3, a4, a5, a6, a7, a8
+      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
+      data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+              6.105851, 0.4440316, 0.1430341e-1, &
+              0.2641412e-3, 0.2995057e-5, 0.2031998e-7, &
+              0.6936113e-10, 0.2564861e-13,-0.3704404e-15/
+      !       6.11239921, 0.443987641, 0.142986287e-1, &
+      !       0.264847430e-3, 0.302950461e-5, 0.206739458e-7, &
+      !       0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
+
+      != unit K :: dt
+      real :: dt
+      dt = max(-80.,t-273.16)
+      esatw = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
+    end function esatw
+
+
+    != unit 1 :: qsatw
+    real function qsatw(t,p)
+      implicit none
+      != unit K :: t
+      real :: t  ! temperature
+
+      != unit mb :: p, esat
+      real :: p  ! pressure
+      real :: esat
+
+      esat = esatw(t)
+      qsatw = 0.622 * esat/max(esat, p-esat)
+    end function qsatw
+
+
+    real function dtesatw(t)
+      implicit none
+      real :: t  ! temperature (K)
+      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
+      data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+                0.443956472, 0.285976452e-1, 0.794747212e-3, &
+                0.121167162e-4, 0.103167413e-6, 0.385208005e-9, &
+               -0.604119582e-12, -0.792933209e-14, -0.599634321e-17/
+      real :: dt
+      dt = max(-80.,t-273.16)
+      dtesatw = a0 + dt* (a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
+    end function dtesatw
+
+
+    real function dtqsatw(t,p)
+      implicit none
+      real :: t  ! temperature (K)
+      real :: p  ! pressure    (mb)
+      dtqsatw=0.622*dtesatw(t)/p
+    end function dtqsatw
+
+
+    real function esati(t)
+      implicit none
+      != unit K :: t
+      real :: t  ! temperature
+      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
+      data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+              6.11147274, 0.503160820, 0.188439774e-1, &
+              0.420895665e-3, 0.615021634e-5,0.602588177e-7, &
+              0.385852041e-9, 0.146898966e-11, 0.252751365e-14/
+      real :: dt
+      dt = max(-80.0, t-273.16)
+      esati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
+    end function esati
+
+
+    != unit 1 :: qsati
+    real function qsati(t,p)
+      implicit none
+      != unit t :: K
+      real :: t  ! temperature
+
+      != unit mb :: p
+      real :: p  ! pressure
+
+      != unit mb :: esat
+      real :: esat
+      esat = esati(t)
+      qsati = 0.622 * esat/max(esat,p-esat)
+    end function qsati
+
+
+    real function dtesati(t)
+      implicit none
+      real :: t  ! temperature (K)
+      real :: a0,a1,a2,a3,a4,a5,a6,a7,a8
+      data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
+              0.503223089, 0.377174432e-1,0.126710138e-2, &
+              0.249065913e-4, 0.312668753e-6, 0.255653718e-8, &
+              0.132073448e-10, 0.390204672e-13, 0.497275778e-16/
+      real :: dt
+      dt = max(-800. ,t-273.16)
+      dtesati = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
+      return
+    end function dtesati
+
+
+    real function dtqsati(t,p)
+      implicit none
+      real :: t  ! temperature (K)
+      real :: p  ! pressure    (mb)
+      dtqsati = 0.622 * dtesati(t) / p
+    end function dtqsati
 
 
 end module nn_convection_flux_mod
