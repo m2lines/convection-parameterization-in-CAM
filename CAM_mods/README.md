@@ -121,7 +121,7 @@ Path to the SAM sounding profile used for the YOG deep convection scheme
 directly below `deep_scheme`.
 
 
-## Appendix B
+## Appendix B - Obtaining and running CESM
 
 Obtain CESM, set version, and generate a new gate III case to run:
 ```bash
@@ -138,10 +138,29 @@ Modify:
 - `components/cam/bld/namelist_files/namelist_defaults_cam.xml`
 - `components/cam/bld/namelist_files/namelist_defaults_cam.xml`
 
+as described in [Appendix A](#appendix-a).
+
 Copy contents of `CAM_mods` over to `SourceMods/`:
 
 - `convect_deep.F90`
 - `phys_control.F90`
 - `physpkg.F90`
-- `user_nl_cam`
 - `yog_mod.F90`
+- `nn_*`
+
+Copy `user_nl_cam` from `CAM_mods` to the case directory and modify as appropriate.
+
+The model can now be built from the casedirectory by running:
+```bash
+./case.setup
+./case.build
+./case.submit
+```
+The output should appear in `/glade/derecho/scratch/<USER>/archive/<CASENAME>/`.
+
+For testing purposes you may wish to restrict the default length of a simulation.
+This can be done from the case directory by running:
+```bash
+./xmlchange STOP_OPTION=nsteps,STOP_N=4
+```
+or similar.
