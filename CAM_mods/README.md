@@ -1,16 +1,19 @@
 # CAM mods
 
-This directory contains the modifications to the CESM/CAM source code that need to be made in order to run the NN parameterisation in CAM.
+This directory contains the modifications to the CESM/CAM source code that need to be
+made in order to run the NN parameterisation in CAM.
 
-They should be placed in 
+This work is based on CESM v2.1.5.
+There are notable changes to the CAM source for CESM v2.2 that will require revisions
+to these files in future.
+
+The source modifications should be placed in 
 ```
 my_cesm_sandbox/cime/scripts/<testcase>/SourceMods/src.cam/
 ```
 where they will be picked up during the build process for compilation and override any CAM source files with the same name.
 
 The modifications here consist of:
-
-- Adding a select case structure to
 
 - `physpkg.F90` - modified to provide a select case structure for `'YOG'` to call the parameterisation scheme.
 - `phys_control.F90` - modified to read filenames from namelist and broadcast.
@@ -116,3 +119,29 @@ Path to the SAM sounding profile used for the YOG deep convection scheme
 
 ```
 directly below `deep_scheme`.
+
+
+## Appendix B
+
+Obtain CESM, set version, and generate a new gate III case to run:
+```bash
+mkdir cesm_cases
+git clone -b release-cesm2.1.5 https://github.com/ESCOMP/CESM.git my_cesm_sandbox
+cd my_cesm_sandbox
+./manage_externals/checkout_externals
+cd cime/scripts/
+./create_newcase --case ~/cesm_cases/scam_gateIII --compset FSCAM --res T42_T42 --user-mods-dir ../../components/cam/cime_config/usermods_dirs/scam_gateIII --project <YOUR_PROJECT_NUMBER>
+```
+
+Modify:
+
+- `components/cam/bld/namelist_files/namelist_defaults_cam.xml`
+- `components/cam/bld/namelist_files/namelist_defaults_cam.xml`
+
+Copy contents of `CAM_mods` over to `SourceMods/`:
+
+- `convect_deep.F90`
+- `phys_control.F90`
+- `physpkg.F90`
+- `user_nl_cam`
+- `yog_mod.F90`
