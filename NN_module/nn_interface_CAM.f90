@@ -83,13 +83,12 @@ contains
 
 
     subroutine nn_convection_flux_CAM(pres_cam, pres_int_cam, &
-                                      tabs_i, q_i, &
-                                      tabs, &
+                                      tabs, q_v, q_c, q_i, &
                                       dtn, dy, &
-                                      nx, ny, &
+                                      nx, ny, nz, &
                                       nstep, nstatis, icycle, &
-                                      precsfc, prec_xy)
-        !! Interface to the nn_convection parameterisation for the SAM model
+                                      precsfc)
+        !! Interface to the nn_convection parameterisation for the CAM model
 
         integer :: j, k
 
@@ -97,15 +96,21 @@ contains
             !! pressure [hPa] from the CAM model
         real, dimension(:) :: pres_int_cam
             !! interface pressure [hPa] from the CAM model (element 1 is surface pressure)
-        real, dimension(:,:) :: tabs_i, tabs!, t
-        real, dimension(:,:,:) :: q_i!, q
-        real, dimension(:, :) :: precsfc, prec_xy
+        real, dimension(:,:) :: tabs
+            !! absolute temperature [K] from the CAM model
+        real, dimension(:,:,:) :: q_v, q_c, q_i
+            !! moisture content [-] from the CAM model
+        real, dimension(:, :) :: precsfc
         real, intent(in) :: dtn
         real, intent(in) :: dy
-        integer, intent(in) :: nx, ny, nstep, nstatis, icycle
+        integer, intent(in) :: nx, ny, nz, nstep, nstatis, icycle
+
+        real, dimension(nx, ny, nz) :: q
+            !! moisture content [-] converted to SAM model form but CAM coordinates
 
         real :: y_in(nx, ny)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
+
 
         real, dimension(nx, ny, nrf) :: t_rad_rest_tend, t_delta_adv, q_delta_adv, &
                                         t_delta_auto, t_delta_sed, &
@@ -116,8 +121,8 @@ contains
         real, dimension(nx, ny)      :: prec_sed
             !! Sedimenting precipitation at surface
        
-        ! TODO: Does CAM require precipitation?
-        ! Initialise precipitation to 0 if required and at start of cycle
+        ! TODO: CAM requires surface precipitation
+        ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
             precsfc(:,:)=0.
         end if
@@ -132,12 +137,16 @@ contains
         !-----------------------------------------------------
         
         ! TODO: Formulate the input variables to the parameterisation as required.
+        ! Convert CAM Moistures to SAM - no need to change temp
+        call  CAM_var_conversion(q_v, q_c, q_i, q)
 
         !-----------------------------------------------------
         
         ! TODO
         ! Interpolate CAM variables to the SAM pressure levels
-        ! call interp_to_sam(pres_cam, pres_int_cam(1), var_cam, var_sam)
+!        call interp_to_sam(pres_cam, pres_int_cam(1), &
+!                           tabs, tabs_sam, &
+!                           q, q_sam)
 
         !-----------------------------------------------------
         
@@ -166,6 +175,11 @@ contains
 
         
         ! TODO: Formulate the output variables to CAM as required.
+        call SAM_var_conversion(t, q, tabs, qv, qc, qi)
+
+        !-----------------------------------------------------
+
+        ! TODO Convert back into tendencies
 
         !-----------------------------------------------------
         
@@ -464,7 +478,7 @@ contains
 
     subroutine CAM_var_conversion(qv, qc, qi, q)
         !! Convert CAM qv, qc, qi to q to used by SAM parameterisation
-        !! q is total wate q_n is cloud vapor/liquid/ice
+        !! q is total water qn is cloud vapor/liquid/ice
         !! No conversion for temperature because CAM and SAM temperature
         !! is the same
 
@@ -492,11 +506,11 @@ contains
         nz = size(q, 3)
 
         do k = 1, nz
-        do j = 1, ny
-        do i = 1, nx
-            q(i,j,k) = qv(i,j,k) + qc(i,j,k) + qi(i,j,k)
-        end do
-        end do
+          do j = 1, ny
+            do i = 1, nx
+              q(i,j,k) = qv(i,j,k) + qc(i,j,k) + qi(i,j,k)
+            end do
+          end do
         end do
 
     end subroutine CAM_var_conversion
