@@ -22,7 +22,7 @@ LDFLAGS = $(shell nf-config --flibs)
 
 
 PROGRAM = test
-SRC = nn_cf_net.f90 nn_convection_flux.f90 nn_interface_SAM.f90 test.f90
+SRC = precision.f90 test_utils.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_SAM.f90 test.f90
 OBJECTS = $(SRC:.f90=.o)
 
 
