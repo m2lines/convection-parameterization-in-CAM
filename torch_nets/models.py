@@ -1,5 +1,6 @@
 """Neural network architectures."""
-import netCDF4 as nc  # type: ignore
+import netCDF4 as nc
+import numpy as np
 
 import torch
 from torch import nn
@@ -35,14 +36,14 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
         n_in: int = 61,
         n_out: int = 148,
         n_layers: int = 5,
-        neurons=128,
-        dropout=0.0,
-        device="cpu",
-        features_mean=None,
-        features_std=None,
-        outputs_mean=None,
-        outputs_std=None,
-        output_groups=None
+        neurons: int=128,
+        dropout: int=0.0,
+        device: str="cpu",
+        features_mean: np.ndarray=None,
+        features_std: np.ndarray=None,
+        outputs_mean: np.ndarray=None,
+        outputs_std: np.ndarray=None,
+        output_groups: np.ndarray=None
     ):
         """Build ``ANN``."""
         super().__init__()
@@ -71,7 +72,7 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
         self.to(torch.device("cpu"))
 
 
-    def forward(self, batch):
+    def forward(self, batch: torch.Tensor):
         """Pass ``batch`` through the model.
 
         Parameters
@@ -122,7 +123,7 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
 
 
 @torch.no_grad()
-def endow_with_netcdf_params(model: Module, nc_file: str):
+def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     """Endow the model with weights and biases in the netcdf file.
 
     Parameters
