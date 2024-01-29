@@ -1,13 +1,13 @@
 """Neural network architectures."""
-import netCDF4 as nc  # type: ignore
+import netCDF4 as nc
+import numpy as np
 
-from torch import as_tensor, no_grad  # pylint: disable=no-name-in-module
-
-from torch.nn import Module, Linear, Dropout
+import torch
+from torch import nn
 from torch.nn import functional as F
 
 
-class ANN(Module):  # pylint: disable=too-many-instance-attributes
+class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
     """Model used in the paper.
 
     Paper: https://doi.org/10.1029/2020GL091363
@@ -19,10 +19,24 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
         Number of input features.
     n_out : int
         Number of output features.
+    n_layers : int
+        Number of layers.
     neurons : int
-        The number of neurons in the bhidden layers.
+        The number of neurons in the hidden layers.
     dropout : float
         The dropout probability to apply in the hidden layers.
+    device : str
+        The device to put the model on.
+    features_mean : ndarray
+        The mean of the input features.
+    features_std : ndarray
+        The standard deviation of the input features.
+    outputs_mean : ndarray
+        The mean of the output features.
+    outputs_std : ndarray
+        The standard deviation of the output features.
+    output_groups : ndarray
+        The number of output features in each group of the ouput.
 
     Notes
     -----
@@ -35,23 +49,44 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
         self,
         n_in: int = 61,
         n_out: int = 148,
-        neurons=128,
-        dropout=0.0,
+        n_layers: int = 5,
+        neurons: int = 128,
+        dropout: int = 0.0,
+        device: str = "cpu",
+        features_mean: np.ndarray = None,
+        features_std: np.ndarray = None,
+        outputs_mean: np.ndarray = None,
+        outputs_std: np.ndarray = None,
+        output_groups: np.ndarray = None
     ):
         """Build ``ANN``."""
         super().__init__()
-        self.linear1 = Linear(n_in, neurons)
-        self.linear2 = Linear(neurons, neurons)
-        self.linear3 = Linear(neurons, neurons)
-        self.linear4 = Linear(neurons, neurons)
-        self.linear5 = Linear(neurons, n_out)
+        
+        n_units = [n_in] + [neurons] * (n_layers - 1) + [n_out]
+        
+        self.layers = [nn.Linear(n_units[i], n_units[i + 1])
+                       for i in range(n_layers)]
+        self.dropout = nn.Dropout(dropout)
+        self.features_mean = features_mean
+        self.features_std = features_std
+        self.outputs_mean = outputs_mean
+        self.outputs_std = outputs_std
+        
+        if output_groups is not None:
+            assert len(output_groups) == len(outputs_mean)
+            self.outputs_mean = torch.cat([
+                torch.tensor([x] * g, dtype=torch.float32)
+                for x, g in zip(outputs_mean, output_groups)
+            ])
+            self.outputs_std = torch.cat([
+                torch.tensor([x] * g, dtype=torch.float32)
+                for x, g in zip(outputs_std, output_groups)
+            ])
 
-        self.lin_drop1 = Dropout(dropout)
-        self.lin_drop2 = Dropout(dropout)
-        self.lin_drop3 = Dropout(dropout)
-        self.lin_drop4 = Dropout(dropout)
+        self.to(torch.device(device))
 
-    def forward(self, batch):
+
+    def forward(self, batch: torch.Tensor):
         """Pass ``batch`` through the model.
 
         Parameters
@@ -65,25 +100,23 @@ class ANN(Module):  # pylint: disable=too-many-instance-attributes
             The result of passing ``batch`` through the model.
 
         """
-        batch = F.relu(self.linear1(batch))
-        batch = self.lin_drop1(batch)
+        
+        if self.features_mean is not None:
+            batch = (batch - self.features_mean) / self.features_std
+        
+        for layer in self.layers[:-1]:
+            batch = self.dropout(F.relu(layer(batch)))
 
-        batch = F.relu(self.linear2(batch))
-        batch = self.lin_drop2(batch)
-
-        batch = F.relu(self.linear3(batch))
-        batch = self.lin_drop3(batch)
-
-        batch = F.relu(self.linear4(batch))
-        batch = self.lin_drop4(batch)
-
-        batch = self.linear5(batch)
+        batch = self.layers[-1](batch)
+        
+        if self.outputs_mean is not None:
+            batch = batch * self.outputs_std + self.outputs_mean
 
         return batch
 
 
-@no_grad()
-def endow_with_netcdf_params(model: Module, nc_file: str):
+@torch.no_grad()
+def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     """Endow the model with weights and biases in the netcdf file.
 
     Parameters
@@ -101,23 +134,6 @@ def endow_with_netcdf_params(model: Module, nc_file: str):
     """
     data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
 
-    for name, layer in model.named_children():
-        if not isinstance(layer, Linear):
-            continue
-
-        layer_num = int("".join(filter(lambda x: x.isdigit(), name)))
-
-        weight = as_tensor(
-            data_set.variables[f"w{layer_num}"][:],
-            dtype=layer.weight.dtype,
-            device=layer.weight.device,
-        )
-
-        bias = as_tensor(
-            data_set.variables[f"b{layer_num}"][:],
-            dtype=layer.bias.dtype,
-            device=layer.bias.device,
-        )
-
-        layer.weight[:] = weight[:]
-        layer.bias[:] = bias[:]
+    for i, layer in enumerate(model.layers):
+        layer.weight[:] = data_set[f"w{i+1}"]
+        layer.bias[:] = data_set[f"b{i+1}"]
