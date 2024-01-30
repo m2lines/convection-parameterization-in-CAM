@@ -1,7 +1,7 @@
 """Neural network architectures."""
 from typing import Optional
 
-import netCDF4 as nc
+import netCDF4 as nc  # type: ignore
 import numpy as np
 import torch
 from torch import nn
@@ -69,24 +69,26 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
         self.dropout = nn.Dropout(dropout)
         self.features_mean = features_mean
         self.features_std = features_std
-        self.outputs_mean = outputs_mean
-        self.outputs_std = outputs_std
 
-        if output_groups is not None:
-            assert outputs_mean is not None and outputs_std is not None
-            assert len(output_groups) == len(outputs_mean) == len(outputs_std)
-            self.outputs_mean = torch.cat(
-                [
-                    torch.tensor([x] * g, dtype=torch.float32)
-                    for x, g in zip(outputs_mean, output_groups)
-                ]
-            )
-            self.outputs_std = torch.cat(
-                [
-                    torch.tensor([x] * g, dtype=torch.float32)
-                    for x, g in zip(outputs_std, output_groups)
-                ]
-            )
+        if outputs_mean is not None:
+            assert outputs_std is not None and outputs_mean.shape == outputs_std.shape
+            if output_groups is None:
+                self.outputs_mean = torch.tensor(outputs_mean, dtype=torch.float32)
+                self.outputs_std = torch.tensor(outputs_std, dtype=torch.float32)
+            else:
+                assert len(output_groups) == len(outputs_mean)
+                self.outputs_mean = torch.cat(
+                    [
+                        torch.tensor([x] * g, dtype=torch.float32)
+                        for x, g in zip(outputs_mean, output_groups)
+                    ]
+                )
+                self.outputs_std = torch.cat(
+                    [
+                        torch.tensor([x] * g, dtype=torch.float32)
+                        for x, g in zip(outputs_std, output_groups)
+                    ]
+                )
 
         self.to(torch.device(device))
 
