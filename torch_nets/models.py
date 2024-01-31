@@ -135,5 +135,5 @@ def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
 
     for i, layer in enumerate(model.layers):
-        layer.weight[:] = data_set[f"w{i+1}"]
-        layer.bias[:] = data_set[f"b{i+1}"]
+        layer.weight[:] = torch.tensor(data_set[f"w{i+1}"][:])
+        layer.bias[:] = torch.tensor(data_set[f"b{i+1}"][:])
