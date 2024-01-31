@@ -59,7 +59,7 @@ class ANN(nn.Sequential):
         outputs_std: Any = None,
         output_groups: Any = None,
     ):
-        """Build ``ANN``."""
+        """Initialize the ANN model."""
         dims = [n_in] + [neurons] * (n_layers - 1) + [n_out]
         layers = []
 
@@ -123,8 +123,22 @@ class ANN(nn.Sequential):
 
         return batch
 
+    def load(self, path: str):
+        """Load the model from a checkpoint.
 
-@torch.no_grad()
+        Parameters
+        ----------
+        path : str
+            The path to the checkpoint.
+
+        """
+        state = torch.load(path)
+        for key in ["features_mean", "features_std", "outputs_mean", "outputs_std"]:
+            if key in state and getattr(self, key) is None:
+                setattr(self, key, state[key])
+        self.load_state_dict(state)
+
+
 def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     """Endow the model with weights and biases in the netcdf file.
 
