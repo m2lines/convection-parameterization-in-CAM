@@ -99,29 +99,29 @@ class ANN(nn.Sequential):
 
         self.to(torch.device(device))
 
-    def forward(self, batch: torch.Tensor):
-        """Pass ``batch`` through the model.
+    def forward(self, input: torch.Tensor):
+        """Pass the input through the model.
 
         Parameters
         ----------
-        batch : Tensor
+        input : Tensor
             A mini-batch of inputs.
 
         Returns
         -------
         Tensor
-            The result of passing ``batch`` through the model.
+            The model output.
 
         """
         if self.features_mean is not None:
-            batch = (batch - self.features_mean) / self.features_std
+            input = (input - self.features_mean) / self.features_std
 
-        batch = super().forward(batch)
+        output = super().forward(input)
 
         if self.outputs_mean is not None:
-            batch = batch * self.outputs_std + self.outputs_mean
+            output = output * self.outputs_std + self.outputs_mean
 
-        return batch
+        return output
 
     def load(self, path: str):
         """Load the model from a checkpoint.
