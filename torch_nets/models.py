@@ -1,6 +1,6 @@
 """Neural network architectures."""
 
-from typing import Any
+from typing import Any, List
 
 import netCDF4 as nc  # type: ignore
 import torch
@@ -60,8 +60,8 @@ class ANN(nn.Sequential):
         output_groups: Any = None,
     ):
         """Initialize the ANN model."""
-        dims = [n_in] + [neurons] * (n_layers - 1) + [n_out]
-        layers = []
+        dims: List[int] = [n_in] + [neurons] * (n_layers - 1) + [n_out]
+        layers: List[Any] = []
 
         for i in range(n_layers):
             layers.append(nn.Linear(dims[i], dims[i + 1]))
@@ -157,6 +157,6 @@ def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     """
     data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
 
-    for i, layer in enumerate(l for l in model if isinstance(l, nn.Linear)):
+    for i, layer in enumerate([l for l in model if isinstance(l, nn.Linear)]):
         layer.weight.data = torch.tensor(data_set[f"w{i+1}"][:])
         layer.bias.data = torch.tensor(data_set[f"b{i+1}"][:])
