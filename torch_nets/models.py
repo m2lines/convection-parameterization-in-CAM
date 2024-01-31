@@ -76,28 +76,42 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
         if features_mean is not None:
             assert features_std is not None
             assert len(features_mean) == len(features_std)
-            self.features_mean = torch.tensor(features_mean, dtype=torch.float32)
-            self.features_std = torch.tensor(features_std, dtype=torch.float32)
+            self.features_mean = nn.Parameter(
+                torch.tensor(features_mean, dtype=torch.float32), requires_grad=False
+            )
+            self.features_std = nn.Parameter(
+                torch.tensor(features_std, dtype=torch.float32), requires_grad=False
+            )
 
         if outputs_mean is not None:
             assert outputs_std is not None
             assert len(outputs_mean) == len(outputs_std)
             if output_groups is None:
-                self.outputs_mean = torch.tensor(outputs_mean, dtype=torch.float32)
-                self.outputs_std = torch.tensor(outputs_std, dtype=torch.float32)
+                self.outputs_mean = nn.Parameter(
+                    torch.tensor(outputs_mean, dtype=torch.float32), requires_grad=False
+                )
+                self.outputs_std = nn.Parameter(
+                    torch.tensor(outputs_std, dtype=torch.float32), requires_grad=False
+                )
             else:
                 assert len(output_groups) == len(outputs_mean)
-                self.outputs_mean = torch.cat(
-                    [
-                        torch.tensor([x] * g, dtype=torch.float32)
-                        for x, g in zip(outputs_mean, output_groups)
-                    ]
+                self.outputs_mean = nn.Parameter(
+                    torch.cat(
+                        [
+                            torch.tensor([x] * g, dtype=torch.float32)
+                            for x, g in zip(outputs_mean, output_groups)
+                        ]
+                    ),
+                    requires_grad=False,
                 )
-                self.outputs_std = torch.cat(
-                    [
-                        torch.tensor([x] * g, dtype=torch.float32)
-                        for x, g in zip(outputs_std, output_groups)
-                    ]
+                self.outputs_std = nn.Parameter(
+                    torch.cat(
+                        [
+                            torch.tensor([x] * g, dtype=torch.float32)
+                            for x, g in zip(outputs_std, output_groups)
+                        ]
+                    ),
+                    requires_grad=False,
                 )
 
         self.to(torch.device(device))
