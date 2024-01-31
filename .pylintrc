@@ -12,3 +12,4 @@ disable=
     too-many-public-methods,
     import-error,
     redefined-builtin,
+    no-member,

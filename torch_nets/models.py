@@ -155,8 +155,8 @@ def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     it when we edit a layer's weights/biases with gradients enabled.
 
     """
-    data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
+    data_set = nc.Dataset(nc_file)
 
-    for i, layer in enumerate([l for l in model if isinstance(l, nn.Linear)]):
+    for i, layer in enumerate(l for l in model.modules() if isinstance(l, nn.Linear)):
         layer.weight.data = torch.tensor(data_set[f"w{i+1}"][:])
         layer.bias.data = torch.tensor(data_set[f"b{i+1}"][:])
