@@ -1,7 +1,7 @@
 """Neural network architectures."""
-import netCDF4 as nc
-import numpy as np
+from typing import Any
 
+import netCDF4 as nc  # type: ignore
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -51,40 +51,54 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
         n_out: int = 148,
         n_layers: int = 5,
         neurons: int = 128,
-        dropout: int = 0.0,
+        dropout: float = 0.0,
         device: str = "cpu",
-        features_mean: np.ndarray = None,
-        features_std: np.ndarray = None,
-        outputs_mean: np.ndarray = None,
-        outputs_std: np.ndarray = None,
-        output_groups: np.ndarray = None
+        features_mean: Any = None,
+        features_std: Any = None,
+        outputs_mean: Any = None,
+        outputs_std: Any = None,
+        output_groups: Any = None,
     ):
         """Build ``ANN``."""
         super().__init__()
-        
+
         n_units = [n_in] + [neurons] * (n_layers - 1) + [n_out]
-        
-        self.layers = [nn.Linear(n_units[i], n_units[i + 1])
-                       for i in range(n_layers)]
-        self.dropout = nn.Dropout(dropout)
+
+        self.layers = [nn.Linear(n_units[i], n_units[i + 1]) for i in range(n_layers)]
+        self.dropout = dropout
         self.features_mean = features_mean
         self.features_std = features_std
         self.outputs_mean = outputs_mean
         self.outputs_std = outputs_std
-        
-        if output_groups is not None:
-            assert len(output_groups) == len(outputs_mean)
-            self.outputs_mean = torch.cat([
-                torch.tensor([x] * g, dtype=torch.float32)
-                for x, g in zip(outputs_mean, output_groups)
-            ])
-            self.outputs_std = torch.cat([
-                torch.tensor([x] * g, dtype=torch.float32)
-                for x, g in zip(outputs_std, output_groups)
-            ])
+
+        if features_mean is not None:
+            assert features_std is not None
+            assert features_mean.shape == features_std.shape
+            self.features_mean = torch.tensor(features_mean, dtype=torch.float32)
+            self.features_std = torch.tensor(features_std, dtype=torch.float32)
+
+        if outputs_mean is not None:
+            assert outputs_std is not None
+            assert outputs_mean.shape == outputs_std.shape
+            if output_groups is None:
+                self.outputs_mean = torch.tensor(outputs_mean, dtype=torch.float32)
+                self.outputs_std = torch.tensor(outputs_std, dtype=torch.float32)
+            else:
+                assert len(output_groups) == len(outputs_mean)
+                self.outputs_mean = torch.cat(
+                    [
+                        torch.tensor([x] * g, dtype=torch.float32)
+                        for x, g in zip(outputs_mean, output_groups)
+                    ]
+                )
+                self.outputs_std = torch.cat(
+                    [
+                        torch.tensor([x] * g, dtype=torch.float32)
+                        for x, g in zip(outputs_std, output_groups)
+                    ]
+                )
 
         self.to(torch.device(device))
-
 
     def forward(self, batch: torch.Tensor):
         """Pass ``batch`` through the model.
@@ -100,15 +114,15 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
             The result of passing ``batch`` through the model.
 
         """
-        
         if self.features_mean is not None:
             batch = (batch - self.features_mean) / self.features_std
-        
+
         for layer in self.layers[:-1]:
-            batch = self.dropout(F.relu(layer(batch)))
+            batch = F.relu(layer(batch))
+            batch = F.dropout(batch, p=self.dropout, training=self.training)
 
         batch = self.layers[-1](batch)
-        
+
         if self.outputs_mean is not None:
             batch = batch * self.outputs_std + self.outputs_mean
 
