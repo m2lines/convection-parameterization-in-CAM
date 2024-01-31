@@ -64,7 +64,9 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
 
         n_units = [n_in] + [neurons] * (n_layers - 1) + [n_out]
 
-        self.layers = [nn.Linear(n_units[i], n_units[i + 1]) for i in range(n_layers)]
+        self.layers = nn.ModuleList(
+            [nn.Linear(n_units[i], n_units[i + 1]) for i in range(n_layers)]
+        )
         self.dropout = dropout
         self.features_mean = features_mean
         self.features_std = features_std
@@ -73,13 +75,13 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
 
         if features_mean is not None:
             assert features_std is not None
-            assert features_mean.shape == features_std.shape
+            assert len(features_mean) == len(features_std)
             self.features_mean = torch.tensor(features_mean, dtype=torch.float32)
             self.features_std = torch.tensor(features_std, dtype=torch.float32)
 
         if outputs_mean is not None:
             assert outputs_std is not None
-            assert outputs_mean.shape == outputs_std.shape
+            assert len(outputs_mean) == len(outputs_std)
             if output_groups is None:
                 self.outputs_mean = torch.tensor(outputs_mean, dtype=torch.float32)
                 self.outputs_std = torch.tensor(outputs_std, dtype=torch.float32)
