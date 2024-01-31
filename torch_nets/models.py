@@ -1,13 +1,13 @@
 """Neural network architectures."""
+
 from typing import Any
 
 import netCDF4 as nc  # type: ignore
 import torch
 from torch import nn
-from torch.nn import functional as F
 
 
-class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
+class ANN(nn.Sequential):
     """Model used in the paper.
 
     Paper: https://doi.org/10.1029/2020GL091363
@@ -60,59 +60,42 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
         output_groups: Any = None,
     ):
         """Build ``ANN``."""
-        super().__init__()
+        dims = [n_in] + [neurons] * (n_layers - 1) + [n_out]
+        layers = []
 
-        n_units = [n_in] + [neurons] * (n_layers - 1) + [n_out]
+        for i in range(n_layers):
+            layers.append(nn.Linear(dims[i], dims[i + 1]))
+            if i < n_layers - 1:
+                layers.append(nn.ReLU())
+                layers.append(nn.Dropout(dropout))
 
-        self.layers = nn.ModuleList(
-            [nn.Linear(n_units[i], n_units[i + 1]) for i in range(n_layers)]
-        )
-        self.dropout = dropout
-        self.features_mean = features_mean
-        self.features_std = features_std
-        self.outputs_mean = outputs_mean
-        self.outputs_std = outputs_std
+        super().__init__(*layers)
 
         if features_mean is not None:
             assert features_std is not None
             assert len(features_mean) == len(features_std)
-            self.features_mean = nn.Parameter(
-                torch.tensor(features_mean, dtype=torch.float32), requires_grad=False
-            )
-            self.features_std = nn.Parameter(
-                torch.tensor(features_std, dtype=torch.float32), requires_grad=False
-            )
+            features_mean = torch.tensor(features_mean)
+            features_std = torch.tensor(features_std)
 
         if outputs_mean is not None:
             assert outputs_std is not None
             assert len(outputs_mean) == len(outputs_std)
             if output_groups is None:
-                self.outputs_mean = nn.Parameter(
-                    torch.tensor(outputs_mean, dtype=torch.float32), requires_grad=False
-                )
-                self.outputs_std = nn.Parameter(
-                    torch.tensor(outputs_std, dtype=torch.float32), requires_grad=False
-                )
+                outputs_mean = torch.tensor(outputs_mean)
+                outputs_std = torch.tensor(outputs_std)
             else:
                 assert len(output_groups) == len(outputs_mean)
-                self.outputs_mean = nn.Parameter(
-                    torch.cat(
-                        [
-                            torch.tensor([x] * g, dtype=torch.float32)
-                            for x, g in zip(outputs_mean, output_groups)
-                        ]
-                    ),
-                    requires_grad=False,
+                outputs_mean = torch.tensor(
+                    [x for x, g in zip(outputs_mean, output_groups) for _ in range(g)]
                 )
-                self.outputs_std = nn.Parameter(
-                    torch.cat(
-                        [
-                            torch.tensor([x] * g, dtype=torch.float32)
-                            for x, g in zip(outputs_std, output_groups)
-                        ]
-                    ),
-                    requires_grad=False,
+                outputs_std = torch.tensor(
+                    [x for x, g in zip(outputs_std, output_groups) for _ in range(g)]
                 )
+
+        self.register_buffer("features_mean", features_mean)
+        self.register_buffer("features_std", features_std)
+        self.register_buffer("outputs_mean", outputs_mean)
+        self.register_buffer("outputs_std", outputs_std)
 
         self.to(torch.device(device))
 
@@ -133,11 +116,7 @@ class ANN(nn.Module):  # pylint: disable=too-many-instance-attributes
         if self.features_mean is not None:
             batch = (batch - self.features_mean) / self.features_std
 
-        for layer in self.layers[:-1]:
-            batch = F.relu(layer(batch))
-            batch = F.dropout(batch, p=self.dropout, training=self.training)
-
-        batch = self.layers[-1](batch)
+        batch = super().forward(batch)
 
         if self.outputs_mean is not None:
             batch = batch * self.outputs_std + self.outputs_mean
@@ -164,6 +143,6 @@ def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     """
     data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
 
-    for i, layer in enumerate(model.layers):
-        layer.weight[:] = torch.tensor(data_set[f"w{i+1}"][:])
-        layer.bias[:] = torch.tensor(data_set[f"b{i+1}"][:])
+    for i, layer in enumerate(l for l in model if isinstance(l, nn.Linear)):
+        layer.weight.data = torch.tensor(data_set[f"w{i+1}"][:])
+        layer.bias.data = torch.tensor(data_set[f"b{i+1}"][:])
