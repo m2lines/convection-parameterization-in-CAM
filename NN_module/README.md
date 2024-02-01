@@ -14,3 +14,9 @@ Files:
 - `test.f90` - simple smoke tests for parameterisation routines
 - `NN_weights_YOG_convection.nc` - NetCDF file with weights for the neural net
 - Makefile - Makefile to compile these files
+
+## Running tests
+
+To run the tests (requires `ifort` and `netcdf`):
+
+    make test
