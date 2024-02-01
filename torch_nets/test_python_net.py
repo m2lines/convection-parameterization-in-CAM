@@ -1,12 +1,19 @@
-import models as nn_model
+"""Module to save the results of running the net on a tensor of ones."""
 
 from torch import ones  # pylint: disable=no-name-in-module
+import models as nn_model
+
 
 if __name__ == "__main__":
 
     test_model = nn_model.ANN()
 
-    nn_model.endow_with_netcdf_params(test_model, "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc")
+    nn_model.endow_with_netcdf_params(
+        test_model,
+        "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F"
+        + "_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED"
+        + "_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc",
+    )
 
     test_model.eval()
 
