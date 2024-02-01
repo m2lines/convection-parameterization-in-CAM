@@ -84,55 +84,54 @@ contains
 
     subroutine nn_convection_flux_CAM(pres_cam, pres_int_cam, &
                                       tabs, q_v, q_c, q_i, &
-                                      dtn, dy, &
-                                      nx, ny, nz, &
+                                      dtn, &
+                                      nx, nz, &
                                       nstep, nstatis, icycle, &
                                       precsfc)
         !! Interface to the nn_convection parameterisation for the CAM model
 
-        integer :: j, k
+        integer :: k
 
+        real, intent(in) :: cp_cam
+            !! specific heat capacity of dry air from CAM
         real, dimension(:,:) :: pres_cam
             !! pressure [hPa] from the CAM model
         real, dimension(:) :: pres_int_cam
             !! interface pressure [hPa] from the CAM model (element 1 is surface pressure)
         real, dimension(:,:) :: tabs
             !! absolute temperature [K] from the CAM model
-        real, dimension(:,:,:) :: q_v, q_c, q_i
+        real, dimension(:,:) :: q_v, q_c, q_i
             !! moisture content [-] from the CAM model
-        real, dimension(:, :) :: precsfc
+        real, dimension(:) :: precsfc
         real, intent(in) :: dtn
-        real, intent(in) :: dy
-        integer, intent(in) :: nx, ny, nz, nstep, nstatis, icycle
+        integer, intent(in) :: nx, nz, nstep, nstatis, icycle
 
-        real, dimension(nx, ny, nz) :: q
+        real, dimension(nx, nz) :: q
             !! moisture content [-] converted to SAM model form but CAM coordinates
 
-        real :: y_in(nx, ny)
+        real :: y_in(nx)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
 
-        real, dimension(nx, ny, nrf) :: t_rad_rest_tend, t_delta_adv, q_delta_adv, &
-                                        t_delta_auto, t_delta_sed, &
-                                        q_delta_auto, q_delta_sed
+        real, dimension(nx, nrf) :: t_rad_rest_tend, t_delta_adv, q_delta_adv, &
+                                    t_delta_auto, t_delta_sed, &
+                                    q_delta_auto, q_delta_sed
             !! deltas/tendencies returned by the parameterisation:
             !! radiation rest tendency, advective, autoconversion, sedimentation
 
-        real, dimension(nx, ny)      :: prec_sed
+        real, dimension(nx)      :: prec_sed
             !! Sedimenting precipitation at surface
        
         ! TODO: CAM requires surface precipitation
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
-            precsfc(:,:)=0.
+            precsfc(:)=0.
         end if
 
         ! distance to the equator
         ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM
-        do j=1, ny
-            ! TODO: Set y_in as appropriate for CAM
-            y_in(:,j) = 0.0
-        enddo
+        ! TODO: Set y_in as appropriate for CAM
+        y_in(:) = 0.0
 
         !-----------------------------------------------------
         
@@ -151,9 +150,9 @@ contains
         !-----------------------------------------------------
         
         ! Run the neural net parameterisation
-!        call nn_convection_flux(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
-!                                tabs(:,:,1:nrf), &
-!                                t(:,:,1:nrf), q(:,:,1:nrf), &
+!        call nn_convection_flux(tabs_i(:,1:nrf), q_i(:,1:nrf), y_in, &
+!                                tabs(:,1:nrf), &
+!                                t(:,1:nrf), q(:,1:nrf), &
 !                                rho, adz, dz, dtn, &
 !                                t_rad_rest_tend, &
 !                                t_delta_adv, q_delta_adv, &
@@ -161,15 +160,17 @@ contains
 !                                t_delta_sed, q_delta_sed, prec_sed)
 
         !-----------------------------------------------------
-        
-        ! TODO: Update CAM variables with NN outputs
-        ! q_delta_adv(:,:,:)
-        ! q_delta_auto(:,:,:)
-        ! q_delta_sed(:,:,:)
-        ! t_delta_adv(:,:,:)
-        ! t_delta_auto(:,:,:)
-        ! t_delta_sed(:,:,:)
-        ! t_rad_rest_tend(:,:,:)*dtn
+        ! Update q and t with delta values
+        ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
+        ! sedimentation (dt = -dq*(latent_heat/cp)),
+        ! radiation rest tendency (multiply by dtn to get dt)
+        q(:,1:nrf) = q(:,1:nrf) + q_delta_adv(:,:) &
+                                + q_delta_auto(:,:) &
+                                + q_delta_sed(:,:)
+        t(:,1:nrf) = t(:,1:nrf) + t_delta_adv(:,:) &
+                                + t_delta_auto(:,:) &
+                                + t_delta_sed(:,:) &
+                                + t_rad_rest_tend(:,:)*dtn
 
         ! TODO: Update precipitation if required
 
@@ -482,34 +483,31 @@ contains
         !! No conversion for temperature because CAM and SAM temperature
         !! is the same
 
-        integer :: nx, ny, nz
+        integer :: nx, nz
             !! array sizes
-        integer :: i, j, k
+        integer :: i, k
             !! Counters
 
         ! ---------------------
         ! Fields from CAM/SAM
         ! ---------------------
         != unit 1 :: q, qn, qv, qc, qi
-        real, intent(out) :: q(:, :, :)
-            !! Total non-precipitating water mixing ratio from SAM
-        real, intent(in) :: qv(:, :, :)
-            !! Cloud water vapour
-        real, intent(in) :: qc(:, :, :)
-            !! Cloud water
-        real, intent(in) :: qi(:, :, :)
-            !! Cloud ice
+        real, intent(out) :: q(:, :)
+            !! Total non-precipitating water mixing ratio as required by SAM NN
+        real, intent(in) :: qv(:, :)
+            !! Cloud water vapour from CAM
+        real, intent(in) :: qc(:, :)
+            !! Cloud water from CAM
+        real, intent(in) :: qi(:, :)
+            !! Cloud ice from CAM
 
 
         nx = size(q, 1)
-        ny = size(q, 2)
-        nz = size(q, 3)
+        nz = size(q, 2)
 
         do k = 1, nz
-          do j = 1, ny
-            do i = 1, nx
-              q(i,j,k) = qv(i,j,k) + qc(i,j,k) + qi(i,j,k)
-            end do
+          do i = 1, nx
+            q(i,k) = qv(i,k) + qc(i,k) + qi(i,k)
           end do
         end do
 
@@ -521,53 +519,51 @@ contains
         !! t is normalised liquid ice static energy, q is total water
         !! tabs is absolute temperature, q is cloud vapor/liquid/ice,
 
-        integer :: nx, ny, nz
+        integer :: nx, nz
             !! array sizes
-        integer :: i, j, k, niter
+        integer :: i, k, niter
             !! Counters
 
         ! ---------------------
         ! Fields from SAM/CAM
         ! ---------------------
         != unit K :: tabs, tabs1
-        real, intent(inout) :: tabs(:, :, :)
+        real, intent(inout) :: tabs(:, :)
             !! absolute temperature
         real, allocatable :: tabs1
             !! Temporary variable for tabs
 
         != unit 1 :: q, qn, qv, qc, qi
-        real :: q(:, :, :)
+        real :: q(:, :)
             !! Total non-precipitating water mixing ratio from SAM
-        real, intent(out) :: qv(:, :, :)
+        real, intent(out) :: qv(:, :)
             !! Cloud water vapour
-        real, intent(out) :: qc(:, :, :)
+        real, intent(out) :: qc(:, :)
             !! Cloud water
-        real, intent(out) :: qi(:, :, :)
+        real, intent(out) :: qi(:, :)
             !! Cloud ice
         real :: qn
             !! Cloud liquid + cloud ice
 
         != unit  :: t
-        real, intent(in) :: t(:, :, :)
+        real, intent(in) :: t(:, :)
             !! normalised liquid ice static energy
 
         real :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff
 
         nx = size(tabs, 1)
-        ny = size(tabs, 2)
-        nz = size(tabs, 3)
+        nz = size(tabs, 2)
 
         do k = 1, nz
-        do j = 1, ny
         do i = 1, nx
         
             ! Enforce q >= 0.0
-            q(i,j,k)=max(0.,q(i,j,k))
+            q(i,k)=max(0.,q(i,k))
         
         
             ! Initial guess for temperature assuming no cloud water/ice:
-            tabs(i,j,k) = t(i,j,k)-gamaz(k)
-            tabs1=tabs(i,j,k)
+            tabs(i,k) = t(i,k)-gamaz(k)
+            tabs1=tabs(i,k)
         
             ! Warm cloud:
             if(tabs1.ge.tbgmax) then
@@ -585,7 +581,7 @@ contains
             endif
 
             !  Test if condensation is possible and iterate:
-            if(q(i,j,k) .gt. qsat) then
+            if(q(i,k) .gt. qsat) then
                 niter=0
                 dtabs = 100.
                 do while(abs(dtabs).gt.0.01.and.niter.lt.10)
@@ -609,36 +605,35 @@ contains
                         dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
                     endif
 
-                    fff = tabs(i,j,k)-tabs1+lstarn*(q(i,j,k)-qsat)
-                    dfff=dlstarn*(q(i,j,k)-qsat)-lstarn*dqsat-1.
+                    fff = tabs(i,k)-tabs1+lstarn*(q(i,k)-qsat)
+                    dfff=dlstarn*(q(i,k)-qsat)-lstarn*dqsat-1.
                     dtabs=-fff/dfff
                     niter=niter+1
                     tabs1=tabs1+dtabs
                end do
 
                qsat = qsat + dqsat * dtabs
-               qn = max(0., q(i,j,k)-qsat)
-               qv(i,j,k) = max(0., q(i,j,k)-qn)
+               qn = max(0., q(i,k)-qsat)
+               qv(i,k) = max(0., q(i,k)-qn)
 
             ! If condensation not possible qn is 0.0
             else
 
               qn = 0.
-              qv(i,j,k) = q(i,j,k)
+              qv(i,k) = q(i,k)
 
             endif
 
             ! Set tabs to iterated tabs after convection
-            tabs(i,j,k) = tabs1
+            tabs(i,k) = tabs1
 
             !! Code for calculating qcc and qii from qn.
             !! Assumes dokruegermicro=.false. in SAM.
             !! Taken from statistics.f90
-            omn = omegan(tabs(i,j,k))
-            qc(i,j,k) = qn*omn
-            qi(i,j,k) = qn*(1.-omn)
+            omn = omegan(tabs(i,k))
+            qc(i,k) = qn*omn
+            qi(i,k) = qn*(1.-omn)
 
-        end do
         end do
         end do
 
