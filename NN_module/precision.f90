@@ -8,6 +8,7 @@ module precision
 
   public
   integer, parameter :: c_wp = c_sp
-  integer, parameter :: wp = 4
+  integer, parameter :: wps = sp
+  integer, parameter :: wpc = dp
 
 end module precision
