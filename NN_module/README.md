@@ -17,6 +17,8 @@ Files:
 
 ## Running tests
 
-To run the tests (requires `ifort` and `netcdf`):
-
-    make test
+To run the tests (requires `ifort` or `gfortran` and `netcdf`):
+Edit `Makefile` to select the appropriate compiler (`ifort` or `gfortran`) and then build with:
+```bash
+make test
+```
