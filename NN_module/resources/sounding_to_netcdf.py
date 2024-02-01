@@ -4,13 +4,13 @@ import os
 from typing import Tuple
 import time
 import numpy as np
-import netCDF4 as nc4
+import netCDF4 as nc4  # type: ignore
 
 
 VERSION = "1.3"
 
 
-def read_sounding(filename: str) -> np.ndarray:
+def read_sounding(filename: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Read SAM soundings from txt file into numpy arrays.
 
@@ -104,7 +104,7 @@ def save_to_netcdf(
     rho_a: np.ndarray,
     d_z: float,
     adz: np.ndarray,
-):
+) -> None:
     """
     Save sounding data to NetCDF.
 
