@@ -84,6 +84,7 @@ contains
 
     subroutine nn_convection_flux_CAM(pres_cam, pres_int_cam, &
                                       tabs, q_v, q_c, q_i, &
+                                      cp_cam, &
                                       dtn, &
                                       nx, nz, &
                                       nstep, nstatis, icycle, &
@@ -136,7 +137,7 @@ contains
         !-----------------------------------------------------
         
         ! TODO: Formulate the input variables to the parameterisation as required.
-        ! Convert CAM Moistures to SAM - no need to change temp
+        ! Convert CAM Moistures and tabs to SAM q and t
         call  CAM_var_conversion(q_v, q_c, q_i, q, t, tabs)
 
         !-----------------------------------------------------
@@ -174,19 +175,26 @@ contains
 
         ! TODO: Update precipitation if required
 
+        !-----------------------------------------------------
         
         ! TODO: Formulate the output variables to CAM as required.
-        call SAM_var_conversion(t, q, tabs, qv, qc, qi)
-
-        !-----------------------------------------------------
-
-        ! TODO Convert back into tendencies
+        ! call SAM_var_conversion(t, q, tabs, qv, qc, qi)
 
         !-----------------------------------------------------
         
         ! TODO
         ! Interpolate SAM variables to the CAM pressure levels
         ! call interp_to_cam(pres_cam, pres_int_cam, var_sam, var_cam)
+
+
+        !-----------------------------------------------------
+
+        ! TODO Convert back into CAM tendencies (diff div by dtn) and tabs to s (mult by cp)
+        dqv = (qv - qv0) / dtn
+        dqc = (qc - qc0) / dtn
+        dqi = (qi - qi0) / dtn
+        dtabs = cp_cam * (tabs - tabs0) / dtn
+
 
 
     end subroutine nn_convection_flux_CAM

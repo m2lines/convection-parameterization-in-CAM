@@ -4,7 +4,7 @@ module tests
   !--------------------------------------------------------------------------
   ! Libraries to use
   use netcdf
-  use nn_cf_net, only: relu, nn_cf_net_init, nn_cf_net_finalize
+  use nn_cf_net_mod, only: relu, nn_cf_net_init, nn_cf_net_finalize, net_forward
   use nn_convection_flux_mod, only:   nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
   use test_utils, only: assert_array_equal
 
@@ -90,27 +90,27 @@ module tests
       character(len=1024) :: nn_filename
       character(len=512) :: msg
 
-      real :: tabs_i(1, 1, 48) = 293.15
-      real :: q_i(1, 1, 48) = 0.5
-      real :: y_in(1, 48) = 0.0
-      real :: tabs(1, 1, 48) = 293.15
-      real :: t_0(1, 1, 48) =  1.0e4
-      real :: q_0(1, 1, 48) = 0.5
+      real :: tabs_i(1, 48) = 293.15
+      real :: q_i(1, 48) = 0.5
+      real :: y_in(48) = 0.0
+      real :: tabs(1, 48) = 293.15
+      real :: t_0(1, 48) =  1.0e4
+      real :: q_0(1, 48) = 0.5
       real :: rho(48) = 1.2
       real :: adz(48) = 1.0
       real :: dz = 100.0
       real :: dtn = 2.0
-      real, dimension(1,1,nrf) :: t_delta_adv, q_delta_adv, &
+      real, dimension(1,nrf) :: t_delta_adv, q_delta_adv, &
                                 t_delta_auto, q_delta_auto, &
                                 t_delta_sed, q_delta_sed
-      real :: t_rad_rest_tend(1,1,nrf)
-      real :: prec_sed(1,1)
+      real :: t_rad_rest_tend(1,nrf)
+      real :: prec_sed(1)
 
-      real, dimension(1,1,nrf) :: t_delta_adv_dat, q_delta_adv_dat, &
+      real, dimension(1,nrf) :: t_delta_adv_dat, q_delta_adv_dat, &
                                 t_delta_auto_dat, q_delta_auto_dat, &
                                 t_delta_sed_dat, q_delta_sed_dat
-      real :: t_rad_rest_tend_dat(1,1,nrf)
-      real :: prec_sed_dat(1,1)
+      real :: t_rad_rest_tend_dat(1,nrf)
+      real :: prec_sed_dat(1)
       
       nn_filename = "./NN_weights_YOG_convection.nc"
       call nn_convection_flux_init(nn_filename)
@@ -150,12 +150,12 @@ module tests
         stop
       end if
       do i = 1,nrf
-        read(io, '(7E18.8)') t_delta_adv_dat(1,1,i), q_delta_adv_dat(1,1,i), &
-                     t_delta_auto_dat(1,1,i), q_delta_auto_dat(1,1,i), &
-                     t_delta_sed_dat(1,1,i), q_delta_sed_dat(1,1,i), &
-                     t_rad_rest_tend_dat(1,1,i)
+        read(io, '(7E18.8)') t_delta_adv_dat(1,i), q_delta_adv_dat(1,i), &
+                     t_delta_auto_dat(1,i), q_delta_auto_dat(1,i), &
+                     t_delta_sed_dat(1,i), q_delta_sed_dat(1,i), &
+                     t_rad_rest_tend_dat(1,i)
       enddo
-      read(io, '(E18.8)') prec_sed_dat(1,1)
+      read(io, '(E18.8)') prec_sed_dat(1)
       close(io)
 
       call assert_array_equal(t_delta_adv, t_delta_adv_dat, test_name//" t adv", 1.0e-6)
