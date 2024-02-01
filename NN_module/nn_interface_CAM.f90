@@ -18,7 +18,7 @@ use nn_convection_flux_mod, only: nn_convection_flux, &
                                   esati, qsati, qsatw, dtqsatw, dtqsati
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
-                          an, bn, ap, bp, &
+                          a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
 implicit none
 private
@@ -137,7 +137,7 @@ contains
         
         ! TODO: Formulate the input variables to the parameterisation as required.
         ! Convert CAM Moistures to SAM - no need to change temp
-        call  CAM_var_conversion(q_v, q_c, q_i, q)
+        call  CAM_var_conversion(q_v, q_c, q_i, q, t, tabs)
 
         !-----------------------------------------------------
         
@@ -477,11 +477,12 @@ contains
     end subroutine sam_sounding_finalize
 
 
-    subroutine CAM_var_conversion(qv, qc, qi, q)
+    subroutine CAM_var_conversion(qv, qc, qi, q, tabs, t)
         !! Convert CAM qv, qc, qi to q to used by SAM parameterisation
-        !! q is total water qn is cloud vapor/liquid/ice
-        !! No conversion for temperature because CAM and SAM temperature
-        !! is the same
+        !! q is total water qv/c/i is cloud vapor/liquid/ice
+        !! Convert CAM absolute temperature to moist static energy t used by SAM
+        !! by inverting lines 49-53 of diagnose.f90 from SAM where
+        !! qn is cloud water + ice, qp is precipitable water (0 here)
 
         integer :: nx, nz
             !! array sizes
@@ -491,7 +492,7 @@ contains
         ! ---------------------
         ! Fields from CAM/SAM
         ! ---------------------
-        != unit 1 :: q, qn, qv, qc, qi
+        != unit 1 :: q, qv, qc, qi
         real, intent(out) :: q(:, :)
             !! Total non-precipitating water mixing ratio as required by SAM NN
         real, intent(in) :: qv(:, :)
@@ -501,6 +502,11 @@ contains
         real, intent(in) :: qi(:, :)
             !! Cloud ice from CAM
 
+        real, intent(out) :: t(:, :)
+            !! Static energy as required by SAM NN
+        real, intent(out) :: tabs(:, :)
+            !! Absolute temperature from CAM
+
 
         nx = size(q, 1)
         nz = size(q, 2)
@@ -508,6 +514,13 @@ contains
         do k = 1, nz
           do i = 1, nx
             q(i,k) = qv(i,k) + qc(i,k) + qi(i,k)
+
+            omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
+            omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
+            t(i,k) = tabs(i,k)
+                     ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &
+                     - (fac_cond+(1.-omn)*fac_fus)*(qc(i,k) + qi(i,k)) &
+                     + gamaz(k) &
           end do
         end do
 
