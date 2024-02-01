@@ -7,7 +7,7 @@ import numpy as np
 import netCDF4 as nc4
 
 
-VERSION = "1.2"
+VERSION = "1.3"
 
 
 def read_sounding(filename: str) -> np.ndarray:
@@ -78,22 +78,22 @@ def grid_calcs(alt: np.ndarray) -> Tuple[float, np.ndarray]:
 
     Returns
     -------
-    dz : float
+    d_z : float
         dz at bottom of grid
     adz : np.ndarray
         array of adz grid values as floats
     """
-    dz = 0.5 * (alt[0] + alt[1])
+    d_z = 0.5 * (alt[0] + alt[1])
 
     # From setgrid.f90 (z = alt here):
     # z(k+1) = z(k)+(z(k)-z(k-1))
     # adz(1) = 1.
-    # adz(k) = 0.5*(z(k+1)-z(k-1))/dz
+    # adz(k) = 0.5*(z(k+1)-z(k-1))/d_z
     adz = np.ones(len(alt))
-    adz[1:-1] = 0.5 * (alt[2:] - alt[:-2]) / dz
-    adz[-1] = (alt[-1] - alt[-2]) / dz
+    adz[1:-1] = 0.5 * (alt[2:] - alt[:-2]) / d_z
+    adz[-1] = (alt[-1] - alt[-2]) / d_z
 
-    return dz, adz
+    return d_z, adz
 
 
 def save_to_netcdf(
@@ -102,7 +102,7 @@ def save_to_netcdf(
     pressure: np.ndarray,
     int_pressure: np.ndarray,
     rho_a: np.ndarray,
-    dz: float,
+    d_z: float,
     adz: np.ndarray,
 ):
     """
@@ -120,7 +120,7 @@ def save_to_netcdf(
         array of air pressures [hPa] at lower cell interfaces
     rho_a : np.ndarray
         array of air densities [kg/m^3] as floats corrresponding to altitudes, alt
-    dz : float
+    d_z : float
         dz at bottom of grid
     adz : np.ndarray
         array of adz grid values as floats corrresponding to altitudes, alt
@@ -128,7 +128,11 @@ def save_to_netcdf(
     Returns
     -------
     """
-    ncfile = nc4.Dataset(filename, mode="w", format="NETCDF4_CLASSIC")
+    # All input arguments are variables to be written to netCDF file
+    # pylint: disable=too-many-arguments
+    ncfile = nc4.Dataset(  # pylint: disable=no-member
+        filename, mode="w", format="NETCDF4_CLASSIC"
+    )
 
     ncfile.title = "SAM Soundings for neural net convection parameterisation"
     ncfile.history = f"Created: {time.ctime(time.time())} by user {os.getlogin()}"
@@ -139,8 +143,9 @@ def save_to_netcdf(
         f"Generated using sounding_to_netcdf.py v{VERSION} by Jack Atkinson (ICCS)"
     )
 
-    alt_dim = ncfile.createDimension("z", len(alt))
-    dz_dim = ncfile.createDimension("dz", 1)
+    # This data is in the file, but not required for our purposes
+    ncfile.createDimension("z", len(alt))
+    ncfile.createDimension("dz", 1)
 
     alt_var = ncfile.createVariable("z", np.float64, ("z",))
     alt_var.units = "m"
@@ -170,7 +175,7 @@ def save_to_netcdf(
     dz_var.units = "m"
     dz_var.long_name = "delta_z for lowest grid cell"
     dz_var.standard_name = "magnitude_of_derivative_of_position_wrt_model_level_number"
-    dz_var[:] = dz
+    dz_var[:] = d_z
 
     adz_var = ncfile.createVariable("adz", np.float64, ("z"))
     adz_var.units = "1"
