@@ -12,8 +12,9 @@ module tests
 
   character(len=15) :: pass = char(27)//'[32m'//'PASSED'//char(27)//'[0m'
   character(len=15) :: fail = char(27)//'[31m'//'FAILED'//char(27)//'[0m'
-
-  real(4), dimension(148) :: nn_out_ones
+  integer, parameter :: nrf = 30
+  integer, parameter :: n_nn_out = 148
+  real(4), dimension(n_nn_out) :: nn_out_ones
 
   contains
 
@@ -41,13 +42,13 @@ module tests
 
       nn_filename = "./NN_weights_YOG_convection.nc"
 
-      call nn_cf_net_init(nn_filename, nin, nout, 30)
+      call nn_cf_net_init(nn_filename, nin, nout, nrf)
 
       call nn_cf_net_finalize()
 
       if (nin == 61) then
         write(*, '(A, " :: [", A, " - nin]")') pass, trim(test_name)
-        if (nout == 148) then
+        if (nout == n_nn_out) then
           write(*, '(A, " :: [", A, " - nout]")') pass, trim(test_name)
         else
           write(*, '(A, " :: [", A, "] with nout = ", I3)') fail, trim(test_name), nout
@@ -65,12 +66,12 @@ module tests
       character(len=*), intent(in) :: test_name
       character(len=1024) :: nn_filename
       real(4) :: nn_in(61)
-      real(4) :: nn_out(148)
+      real(4) :: nn_out(n_nn_out)
 
       nn_in = 1.0
 
       nn_filename = "./NN_weights_YOG_convection.nc"
-      call nn_cf_net_init(nn_filename, nin, nout, 30)
+      call nn_cf_net_init(nn_filename, nin, nout, nrf)
 
       call net_forward(nn_in, nn_out)
 
@@ -99,16 +100,16 @@ module tests
       real :: adz(48) = 1.0
       real :: dz = 100.0
       real :: dtn = 2.0
-      real, dimension(1,1,30) :: t_delta_adv, q_delta_adv, &
+      real, dimension(1,1,nrf) :: t_delta_adv, q_delta_adv, &
                                 t_delta_auto, q_delta_auto, &
                                 t_delta_sed, q_delta_sed
-      real :: t_rad_rest_tend(1,1,30)
+      real :: t_rad_rest_tend(1,1,nrf)
       real :: prec_sed(1,1)
 
-      real, dimension(1,1,30) :: t_delta_adv_dat, q_delta_adv_dat, &
+      real, dimension(1,1,nrf) :: t_delta_adv_dat, q_delta_adv_dat, &
                                 t_delta_auto_dat, q_delta_auto_dat, &
                                 t_delta_sed_dat, q_delta_sed_dat
-      real :: t_rad_rest_tend_dat(1,1,30)
+      real :: t_rad_rest_tend_dat(1,1,nrf)
       real :: prec_sed_dat(1,1)
       
       nn_filename = "./NN_weights_YOG_convection.nc"
@@ -134,7 +135,7 @@ module tests
       !   print *, trim(msg)
       !   stop
       ! end if
-      ! do i = 1,30
+      ! do i = 1,nrf
       !   write(io, '(7E18.8)') t_delta_adv(1,1,i), q_delta_adv(1,1,i), &
       !                t_delta_auto(1,1,i), q_delta_auto(1,1,i), &
       !                t_delta_sed(1,1,i), q_delta_sed(1,1,i), t_rad_rest_tend(1,1,i)
@@ -148,7 +149,7 @@ module tests
         print *, trim(msg)
         stop
       end if
-      do i = 1,30
+      do i = 1,nrf
         read(io, '(7E18.8)') t_delta_adv_dat(1,1,i), q_delta_adv_dat(1,1,i), &
                      t_delta_auto_dat(1,1,i), q_delta_auto_dat(1,1,i), &
                      t_delta_sed_dat(1,1,i), q_delta_sed_dat(1,1,i), &
@@ -181,7 +182,7 @@ module tests
         print *, trim(msg)
         stop
       end if
-      do i = 1,148
+      do i = 1,n_nn_out
         read(io, *) nn_out_ones(i)
       enddo
       close(io)
