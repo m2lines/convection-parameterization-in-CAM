@@ -1,4 +1,4 @@
-"""Script to convert soundings from SAM into NetCDF for use as 'constants in CAM.'"""
+"""Script to convert soundings from SAM into NetCDF for use as 'constants in CAM."""
 
 import os
 from typing import Tuple
@@ -124,9 +124,6 @@ def save_to_netcdf(
         dz at bottom of grid
     adz : np.ndarray
         array of adz grid values as floats corrresponding to altitudes, alt
-
-    Returns
-    -------
     """
     # All input arguments are variables to be written to netCDF file
     # pylint: disable=too-many-arguments
