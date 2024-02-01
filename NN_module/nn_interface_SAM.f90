@@ -5,7 +5,7 @@ module nn_interface_SAM
 
 !---------------------------------------------------------------------
 ! Libraries to use
-use nn_convection_flux, only: nn_convection_flux, &
+use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize
 implicit none
 private
@@ -82,13 +82,13 @@ contains
         real :: y_in(nx, ny)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
-        real, dimension(nx, ny, nrf) :: t_rad_rest_tend, t_delta_adv, q_delta_adv, &
+        real, dimension(nx, nrf) :: t_rad_rest_tend, t_delta_adv, q_delta_adv, &
                                         t_delta_auto, t_delta_sed, &
                                         q_delta_auto, q_delta_sed
             !! deltas/tendencies returned by the parameterisation:
             !! radiation rest tendency, advective, autoconversion, sedimentation
 
-        real, dimension(nx, ny)      :: prec_sed
+        real, dimension(nx)      :: prec_sed
             !! Sedimenting precipitation at surface
         
         ! Initialise precipitation to 0 if required and at start of cycle
@@ -122,39 +122,43 @@ contains
 
         !-----------------------------------------------------
         ! Run the neural net parameterisation
-        call nn_convection_flux(tabs_i(:,:,1:nrf), q_i(:,:,1:nrf), y_in, &
-                                tabs(:,:,1:nrf), &
-                                t(:,:,1:nrf), q(:,:,1:nrf), &
+        call nn_convection_flux(reshape(tabs_i(:,:,1:nrf), [nx*ny, nrf]), &
+                                reshape(q_i(:,:,1:nrf), [nx*ny, nrf]), &
+                                reshape(y_in, [nx*ny]), &
+                                reshape(tabs(:,:,1:nrf), [nx*ny, nrf]), &
+                                reshape(t(:,:,1:nrf), [nx*ny, nrf]), reshape(q(:,:,1:nrf), [nx*ny, nrf]), &
                                 rho, adz, dz, dtn, &
                                 t_rad_rest_tend, &
                                 t_delta_adv, q_delta_adv, &
                                 t_delta_auto, q_delta_auto, &
-                                t_delta_sed, q_delta_sed, prec_sed)
+                                t_delta_sed, q_delta_sed, &
+                                prec_sed)
+
         !-----------------------------------------------------
         ! Update q and t with delta values
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        q(:,:,1:nrf) = q(:,:,1:nrf) + q_delta_adv(:,:,:) &
-                                    + q_delta_auto(:,:,:) &
-                                    + q_delta_sed(:,:,:)
-        t(:,:,1:nrf) = t(:,:,1:nrf) + t_delta_adv(:,:,:) &
-                                    + t_delta_auto(:,:,:) &
-                                    + t_delta_sed(:,:,:) &
-                                    + t_rad_rest_tend(:,:,:)*dtn
+        q(:,:,1:nrf) = q(:,:,1:nrf) + reshape(q_delta_adv(:,:), [nx, ny, nrf]) &
+                                    + reshape(q_delta_auto(:,:), [nx, ny, nrf]) &
+                                    + reshape(q_delta_sed(:,:), [nx, ny, nrf])
+        t(:,:,1:nrf) = t(:,:,1:nrf) + reshape(t_delta_adv(:,:), [nx, ny, nrf]) &
+                                    + reshape(t_delta_auto(:,:), [nx, ny, nrf]) &
+                                    + reshape(t_delta_sed(:,:), [nx, ny, nrf]) &
+                                    + reshape(t_rad_rest_tend(:,:), [nx, ny, nrf])*dtn
 
         !-----------------------------------------------------
         ! Calculate surface precipitation
 
         ! Apply sedimentation at surface
-        precsfc(:,:) = precsfc(:,:) + prec_sed(:,:) ! For statistics
-        prec_xy(:,:) = prec_xy(:,:) + prec_sed(:,:) ! For 2D output
+        precsfc(:,:) = precsfc(:,:) + reshape(prec_sed(:), [nx, ny]) ! For statistics
+        prec_xy(:,:) = prec_xy(:,:) + reshape(prec_sed(:), [nx, ny]) ! For 2D output
         
         ! Apply all autoconversion in the column and multiply by rho*adz for
         ! precip (rho*dq*adz) i.e. all precip. falls out on large model timescale
         do k=1, nrf
-            precsfc(:,:) = precsfc(:,:) - q_delta_auto(:,:,k)*adz(k)*rho(k)
-            prec_xy(:,:) = prec_xy(:,:) - q_delta_auto(:,:,k)*adz(k)*rho(k)
+            precsfc(:,:) = precsfc(:,:) - reshape(q_delta_auto(:,k), [nx, ny])*adz(k)*rho(k)
+            prec_xy(:,:) = prec_xy(:,:) - reshape(q_delta_auto(:,k), [nx, ny])*adz(k)*rho(k)
         end do
 
         ! As a final check enforce q must be >= 0.0 (should be redundant)
