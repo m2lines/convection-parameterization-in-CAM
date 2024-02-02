@@ -181,20 +181,10 @@ contains
         ! call SAM_var_conversion(t, q, tabs, qv, qc, qi)
 
         !-----------------------------------------------------
-        
+
         ! TODO
         ! Interpolate SAM variables to the CAM pressure levels
         ! call interp_to_cam(pres_cam, pres_int_cam, var_sam, var_cam)
-
-
-        !-----------------------------------------------------
-
-        ! TODO Convert back into CAM tendencies (diff div by dtn) and tabs to s (mult by cp)
-        dqv = (qv - qv0) / dtn
-        dqc = (qc - qc0) / dtn
-        dqi = (qi - qi0) / dtn
-        dtabs = cp_cam * (tabs - tabs0) / dtn
-
 
 
     end subroutine nn_convection_flux_CAM

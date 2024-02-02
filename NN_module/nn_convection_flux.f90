@@ -174,9 +174,9 @@ contains
             !! Vector of input features for the NN
         real(4), dimension(n_outputs) :: outputs
             !! vector of output features from the NN
+        ! NN outputs
         real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
                                   q_sed_flux
-        ! NN outputs
         ! Output variable t_rad_rest_tend is also an output from the NN (defined above)
 
         nx = size(tabs_i, 1)
