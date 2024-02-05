@@ -45,7 +45,7 @@ class ANN(nn.Sequential):
 
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-locals
         self,
         n_in: int = 61,
         n_out: int = 148,
@@ -74,32 +74,32 @@ class ANN(nn.Sequential):
         if features_mean is not None:
             assert features_std is not None
             assert len(features_mean) == len(features_std)
-            features_mean = torch.tensor(features_mean)
-            features_std = torch.tensor(features_std)
+            fmean = torch.tensor(features_mean)
+            fstd = torch.tensor(features_std)
 
         if outputs_mean is not None:
             assert outputs_std is not None
             assert len(outputs_mean) == len(outputs_std)
             if output_groups is None:
-                outputs_mean = torch.tensor(outputs_mean)
-                outputs_std = torch.tensor(outputs_std)
+                omean = torch.tensor(outputs_mean)
+                ostd = torch.tensor(outputs_std)
             else:
                 assert len(output_groups) == len(outputs_mean)
-                outputs_mean = torch.tensor(
+                omean = torch.tensor(
                     [x for x, g in zip(outputs_mean, output_groups) for _ in range(g)]
                 )
-                outputs_std = torch.tensor(
+                ostd = torch.tensor(
                     [x for x, g in zip(outputs_std, output_groups) for _ in range(g)]
                 )
 
-        self.register_buffer("features_mean", features_mean)
-        self.register_buffer("features_std", features_std)
-        self.register_buffer("outputs_mean", outputs_mean)
-        self.register_buffer("outputs_std", outputs_std)
+        self.register_buffer("features_mean", fmean)
+        self.register_buffer("features_std", fstd)
+        self.register_buffer("outputs_mean", omean)
+        self.register_buffer("outputs_std", ostd)
 
         self.to(torch.device(device))
 
-    def forward(self, input: torch.Tensor):
+    def forward(self, input: torch.Tensor):  # pylint: disable=redefined-builtin
         """Pass the input through the model.
 
         Parameters
@@ -116,6 +116,7 @@ class ANN(nn.Sequential):
         if self.features_mean is not None:
             input = (input - self.features_mean) / self.features_std
 
+        # pass the input through the layers
         output = super().forward(input)
 
         if self.outputs_mean is not None:
