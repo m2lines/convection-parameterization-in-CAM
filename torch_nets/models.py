@@ -1,10 +1,10 @@
 """Neural network architectures."""
 
-from typing import Optional, Sequence
+from typing import Optional
 
 import netCDF4 as nc  # type: ignore
 import torch
-from torch import nn
+from torch import nn, tensor
 
 
 class ANN(nn.Sequential):
@@ -53,11 +53,11 @@ class ANN(nn.Sequential):
         neurons: int = 128,
         dropout: float = 0.0,
         device: str = "cpu",
-        features_mean: Optional[Sequence] = None,
-        features_std: Optional[Sequence] = None,
-        outputs_mean: Optional[Sequence] = None,
-        outputs_std: Optional[Sequence] = None,
-        output_groups: Optional[Sequence] = None,
+        features_mean: Optional[tensor] = None,
+        features_std: Optional[tensor] = None,
+        outputs_mean: Optional[tensor] = None,
+        outputs_std: Optional[tensor] = None,
+        output_groups: Optional[tensor] = None,
     ):
         """Initialize the ANN model."""
         dims = [n_in] + [neurons] * (n_layers - 1) + [n_out]
@@ -74,21 +74,21 @@ class ANN(nn.Sequential):
         if features_mean is not None:
             assert features_std is not None
             assert len(features_mean) == len(features_std)
-            fmean = torch.tensor(features_mean)
-            fstd = torch.tensor(features_std)
+            fmean = tensor(features_mean)
+            fstd = tensor(features_std)
 
         if outputs_mean is not None:
             assert outputs_std is not None
             assert len(outputs_mean) == len(outputs_std)
             if output_groups is None:
-                omean = torch.tensor(outputs_mean)
-                ostd = torch.tensor(outputs_std)
+                omean = tensor(outputs_mean)
+                ostd = tensor(outputs_std)
             else:
                 assert len(output_groups) == len(outputs_mean)
-                omean = torch.tensor(
+                omean = tensor(
                     [x for x, g in zip(outputs_mean, output_groups) for _ in range(g)]
                 )
-                ostd = torch.tensor(
+                ostd = tensor(
                     [x for x, g in zip(outputs_std, output_groups) for _ in range(g)]
                 )
 
@@ -99,7 +99,7 @@ class ANN(nn.Sequential):
 
         self.to(torch.device(device))
 
-    def forward(self, input: torch.Tensor):  # pylint: disable=redefined-builtin
+    def forward(self, input: tensor):  # pylint: disable=redefined-builtin
         """Pass the input through the model.
 
         Parameters
@@ -170,10 +170,10 @@ def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     data_set = nc.Dataset(nc_file)
 
     for i, layer in enumerate(l for l in model.modules() if isinstance(l, nn.Linear)):
-        layer.weight.data = torch.tensor(data_set[f"w{i+1}"][:])
-        layer.bias.data = torch.tensor(data_set[f"b{i+1}"][:])
+        layer.weight.data = tensor(data_set[f"w{i+1}"][:])
+        layer.bias.data = tensor(data_set[f"b{i+1}"][:])
 
-    model.outputs_mean = torch.tensor(data_set["oscale_mean"][:])
-    model.outputs_std = torch.tensor(data_set["oscale_stnd"][:])
-    model.features_mean = torch.tensor(data_set["fscale_mean"][:])
-    model.features_std = torch.tensor(data_set["fscale_stnd"][:])
+    model.outputs_mean = tensor(data_set["oscale_mean"][:])
+    model.outputs_std = tensor(data_set["oscale_stnd"][:])
+    model.features_mean = tensor(data_set["fscale_mean"][:])
+    model.features_std = tensor(data_set["fscale_stnd"][:])
