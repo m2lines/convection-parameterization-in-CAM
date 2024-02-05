@@ -1,6 +1,6 @@
 """Neural network architectures."""
 
-from typing import Any, List
+from typing import Optional, Sequence
 
 import netCDF4 as nc  # type: ignore
 import torch
@@ -53,15 +53,15 @@ class ANN(nn.Sequential):
         neurons: int = 128,
         dropout: float = 0.0,
         device: str = "cpu",
-        features_mean: Any = None,
-        features_std: Any = None,
-        outputs_mean: Any = None,
-        outputs_std: Any = None,
-        output_groups: Any = None,
+        features_mean: Optional[Sequence] = None,
+        features_std: Optional[Sequence] = None,
+        outputs_mean: Optional[Sequence] = None,
+        outputs_std: Optional[Sequence] = None,
+        output_groups: Optional[Sequence] = None,
     ):
         """Initialize the ANN model."""
-        dims: List[int] = [n_in] + [neurons] * (n_layers - 1) + [n_out]
-        layers: List[Any] = []
+        dims = [n_in] + [neurons] * (n_layers - 1) + [n_out]
+        layers = []
 
         for i in range(n_layers):
             layers.append(nn.Linear(dims[i], dims[i + 1]))
@@ -138,6 +138,17 @@ class ANN(nn.Sequential):
                 setattr(self, key, state[key])
         self.load_state_dict(state)
 
+    def save(self, path: str):
+        """Save the model to a checkpoint.
+
+        Parameters
+        ----------
+        path : str
+            The path to save the checkpoint to.
+
+        """
+        torch.save(self.state_dict(), path)
+
 
 def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     """Endow the model with weights and biases in the netcdf file.
@@ -160,3 +171,8 @@ def endow_with_netcdf_params(model: nn.Module, nc_file: str):
     for i, layer in enumerate(l for l in model.modules() if isinstance(l, nn.Linear)):
         layer.weight.data = torch.tensor(data_set[f"w{i+1}"][:])
         layer.bias.data = torch.tensor(data_set[f"b{i+1}"][:])
+
+    model.outputs_mean = torch.tensor(data_set["oscale_mean"][:])
+    model.outputs_std = torch.tensor(data_set["oscale_stnd"][:])
+    model.features_mean = torch.tensor(data_set["fscale_mean"][:])
+    model.features_std = torch.tensor(data_set["fscale_stnd"][:])
