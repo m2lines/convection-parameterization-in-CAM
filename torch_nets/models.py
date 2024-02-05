@@ -66,8 +66,8 @@ class ANN(nn.Sequential):
         for i in range(n_layers):
             layers.append(nn.Linear(dims[i], dims[i + 1]))
             if i < n_layers - 1:
-                layers.append(nn.ReLU())
-                layers.append(nn.Dropout(dropout))
+                layers.append(nn.ReLU())  # type: ignore
+                layers.append(nn.Dropout(dropout))  # type: ignore
 
         super().__init__(*layers)
 
