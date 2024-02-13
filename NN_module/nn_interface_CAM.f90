@@ -109,6 +109,8 @@ contains
 
         real, dimension(nx, nz) :: q
             !! moisture content [-] converted to SAM model form but CAM coordinates
+        real, dimension(nx, nz) :: t
+            !! moisture static energy converted to SAM model form but CAM coordinates
 
         real :: y_in(nx)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
@@ -122,7 +124,7 @@ contains
 
         real, dimension(nx)      :: prec_sed
             !! Sedimenting precipitation at surface
-       
+
         ! TODO: CAM requires surface precipitation
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
@@ -186,6 +188,15 @@ contains
         ! Interpolate SAM variables to the CAM pressure levels
         ! call interp_to_cam(pres_cam, pres_int_cam, var_sam, var_cam)
 
+!        !-----------------------------------------------------
+!
+!        ! TODO Convert back into CAM tendencies (diff div by dtn) and tabs to s (mult by cp)
+!        dqv = (qv - qv0) / dtn
+!        dqc = (qc - qc0) / dtn
+!        dqi = (qi - qi0) / dtn
+!        dtabs = cp_cam * (tabs - tabs0) / dtn
+
+
 
     end subroutine nn_convection_flux_CAM
 
@@ -244,7 +255,7 @@ contains
             if (p_norm_sam(k) > p_norm_cam(i, 1)) then
                 ! TODO Remove warning and interpolate to boundary
                 ! TODO Add boundary conditions for any input variables as required.
-                write(*,*) "Interpolating to surface."
+!                write(*,*) "Interpolating to surface."
                 var_sam(i, k) = var_cam_surface(i) &
                                 + (p_norm_sam(k)-1.0) &
                                 *(var_cam(i, 1)-var_cam_surface(i))/(p_norm_cam(i, 1)-1.0)
@@ -486,6 +497,8 @@ contains
             !! array sizes
         integer :: i, k
             !! Counters
+        real :: omn
+            !! intermediate omn factor used in variable conversion
 
         ! ---------------------
         ! Fields from CAM/SAM
@@ -502,7 +515,7 @@ contains
 
         real, intent(out) :: t(:, :)
             !! Static energy as required by SAM NN
-        real, intent(out) :: tabs(:, :)
+        real, intent(in) :: tabs(:, :)
             !! Absolute temperature from CAM
 
 
@@ -513,12 +526,12 @@ contains
           do i = 1, nx
             q(i,k) = qv(i,k) + qc(i,k) + qi(i,k)
 
+            ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
             omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
-            omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
-            t(i,k) = tabs(i,k)
+            t(i,k) = tabs(i,k) &
                      ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &
                      - (fac_cond+(1.-omn)*fac_fus)*(qc(i,k) + qi(i,k)) &
-                     + gamaz(k) &
+                     + gamaz(k)
           end do
         end do
 
