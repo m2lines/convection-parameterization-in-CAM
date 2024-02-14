@@ -24,11 +24,14 @@ LDFLAGS = $(shell nf-config --flibs)
 # LDFLAGS = -L/opt/netcdf-c/lib -lnetcdf -L/opt/netcdf-fortran/lib -lnetcdff -lm
 
 
-PROGRAM = test
-SRC = precision.f90 test_utils.f90 SAM_consts.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_SAM.f90 test.f90
-# SRC = SAM_consts.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_CAM.f90 test_cam_interface.f90
-# PROGRAM = test_cam
-# SRC = nn_cf_net.f90 nn_convection_flux.f90 nn_interface_SAM.f90 test.f90 nn_interface_CAM.f90 test_cam_interface.f90
+# BASE TESTS
+# PROGRAM = test
+# SRC = precision.f90 test_utils.f90 SAM_consts.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_SAM.f90 test.f90
+
+# CAM INTERFACE TESTS
+PROGRAM = test_cam
+SRC = precision.f90 test_utils.f90 SAM_consts.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_CAM.f90 test_cam_interface.f90
+
 OBJECTS = $(SRC:.f90=.o)
 
 
