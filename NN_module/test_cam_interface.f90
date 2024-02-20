@@ -7,7 +7,7 @@ module cam_tests
   use nn_cf_net_mod, only: relu, nn_cf_net_init, nn_cf_net_finalize, net_forward
   use nn_convection_flux_mod, only:   nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
-  interp_to_sam, interp_to_cam, fetch_sam_data
+  interp_to_sam, interp_to_cam, fetch_sam_data, SAM_var_conversion, CAM_var_conversion
   use test_utils, only: assert_array_equal
 
   implicit none
@@ -34,11 +34,11 @@ module cam_tests
       real, dimension(4) :: ps_cam
       real, dimension(4, 48) :: var_sam, var_sam_exp
 
-      real, dimension(48) :: pres_sam, presi_sam
+      real, dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
-      call fetch_sam_data(pres_sam, presi_sam)
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       do i=1,4
           p_cam(i, 1:48) = pres_sam(1:48)
@@ -101,11 +101,11 @@ module cam_tests
       real, dimension(4) :: ps_cam
       real, dimension(4, 30) :: var_sam, var_sam_exp
 
-      real, dimension(48) :: pres_sam, presi_sam
+      real, dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
-      call fetch_sam_data(pres_sam, presi_sam)
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       p_cam(:, 1) = pres_sam(5)
       p_cam(:, 2) = pres_sam(10)
@@ -140,11 +140,11 @@ module cam_tests
       real, dimension(4) :: ps_cam, var_cam_surface
       real, dimension(4, 30) :: var_sam
 
-      real, dimension(48) :: pres_sam, presi_sam
+      real, dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
-      call fetch_sam_data(pres_sam, presi_sam)
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       do i=1,4
           p_cam(i, 1:30) = pres_sam(1:30)
@@ -187,11 +187,11 @@ module cam_tests
       real, dimension(4) :: ps_cam, sum_sam, sum_cam
       real, dimension(4, 30) :: var_sam
 
-      real, dimension(48) :: pres_sam, presi_sam
+      real, dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
-      call fetch_sam_data(pres_sam, presi_sam)
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       ! CAM grid finer than SAM grid
       do j=0, 29
@@ -236,9 +236,164 @@ module cam_tests
         sum_sam(i) = sum(var_sam(i,:))
         sum_cam(i) = sum(var_cam(i,:))
       enddo
-      call assert_array_equal(sum_sam, sum_cam, test_name)
+      call assert_array_equal(sum_sam, sum_cam, test_name//": integrated sum")
 
-  end subroutine test_interp_to_cam_fine
+    end subroutine test_interp_to_cam_fine
+
+    subroutine test_var_conv_sam_zero(test_name)
+      !! Check variable conversion SAM->CAM with 0.0 results in 0.0 on the other side
+
+      character(len=*), intent(in) :: test_name
+
+      real, dimension(4, 48) :: t, q, tabs, qv, qc, qi
+      real, dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      integer :: i
+      real, dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+          !! Data from the SAM soundings used in tests
+
+      ! Fetch SAM grid data
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
+
+      t = 0.0
+      q = 0.0
+      tabs = -100.0
+      qv = -100.0
+      qc = -100.0
+      qi = -100.0
+
+      call SAM_var_conversion(t, q, tabs, qv, qc, qi)
+        !! Convert SAM t and q to tabs, qv, qc, qi used by CAM
+
+      ! Add 1.0 to q values (they should be 0.0) to avoid division by 0.0 errors in check
+      qv = qv + 1.0
+      qc = qc + 1.0
+      qi = qi + 1.0
+
+      ! Check that, without moisture, tabs is (t - gamaz)
+      do i=1,48
+        tabs_exp(:,i) = 0.0 - gamaz_sam(i)
+      end do
+      qv_exp = 1.0
+      qc_exp = 1.0
+      qi_exp = 1.0
+
+      call assert_array_equal(tabs, tabs_exp, test_name)
+      call assert_array_equal(qv, qv_exp, test_name//": qv")
+      call assert_array_equal(qc, qc_exp, test_name//": qc")
+      call assert_array_equal(qi, qi_exp, test_name//": qi")
+
+    end subroutine test_var_conv_sam_zero
+
+    subroutine test_rev_var_conv_sat(test_name)
+      !! Check variable conversion SAM->CAM with 0.0 results in 0.0 on the other side
+
+      character(len=*), intent(in) :: test_name
+
+      real, dimension(4, 48) :: t, q, tabs, qv, qc, qi
+      real, dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      integer :: i
+      real, dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+
+      real, parameter :: rgas = 287.0
+          !! Gas constant for dry air used in SAM [j / kg / K]
+
+      ! Fetch SAM grid data
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
+
+      ! Set up dry saturated air
+      do i = 1,48
+        tabs(:, i) = 100.0 * pres_sam(i) / (rho_sam(i) * rgas)
+      end do
+      qv = 0.0
+      qc = 0.0
+      qi = 0.0
+
+      tabs_exp = -100.0
+      qv_exp = -100.0
+      qc_exp = -100.0
+      qi_exp = -100.0
+
+      call CAM_var_conversion(qv, qc, qi, q, tabs, t)
+      call SAM_var_conversion(t, q, tabs_exp, qv_exp, qc_exp, qi_exp)
+
+      ! Add 1.0 to q values (they should be 0.0) to avoid division by 0.0 errors in check
+      qv = qv + 1.0
+      qc = qc + 1.0
+      qi = qi + 1.0
+
+      qv_exp = 1.0
+      qc_exp = 1.0
+      qi_exp = 1.0
+
+      call assert_array_equal(tabs, tabs_exp, test_name//": tabs")
+      call assert_array_equal(qv, qv_exp, test_name//": qv")
+      call assert_array_equal(qc, qc_exp, test_name//": qc")
+      call assert_array_equal(qi, qi_exp, test_name//": qi")
+
+    end subroutine test_rev_var_conv_sat
+
+    subroutine test_rev_var_conv_moist(test_name)
+      !! Check variable conversion SAM->CAM with 0.0 results in 0.0 on the other side
+
+      character(len=*), intent(in) :: test_name
+
+      real, dimension(4, 48) :: t, q, tabs, qv, qc, qi
+      real, dimension(4, 48) :: r, p_sat, q_sat
+      real, dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      integer :: i
+      real, dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+
+      real, parameter :: rgas = 287.0
+          !! Gas constant for dry air used in SAM [j / kg / K]
+      real, parameter :: rvap = 461.0
+          !! Gas constant for vapour used in SAM [j / kg / K]
+
+      ! Fetch SAM grid data
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
+
+      ! Set up moist air
+      do i = 1,48
+        qv(:, i) = 0.01 * exp(-5.0d-4 * z_sam(i))
+        r(:, i) = qv(:, i) / (1.0 - qv(:, i))
+
+        ! WRONG FROM REFERENCE!!!!!tabs(:, i) = (1.0 + (rgas/rvap)) * 100.0 * pres_sam(i) / (rho_sam(i) * rgas * (1.0 + r(:, i) * (rvap/rgas)))
+        ! CRUDE APPROX (actually pretty close) tabs(:, i) =   100.0 * pres_sam(i) / (rho_sam(i) * rgas * (1.0 + 0.61 * r(:, i)))
+        tabs(:, i) = 100.0 * pres_sam(i) * (1.0 + r(:, i)) * (rgas/rvap) / (rgas * rho_sam(i) * (r(:, i) + (rgas/rvap)))
+
+        ! Check that we are below saturation using Bolton (1980)
+        p_sat(:, i) = 6.112 * exp(17.67 * (tabs(:,i) - 273.15) / (tabs(:,i) - 29.65))
+        q_sat(:, i) = 0.622 * (p_sat(:, i) / (pres_sam(i) - p_sat(:, i)))
+        ! write(*,*) tabs(1, i), p_sat(1, i), pres_sam(i), q_sat(1, i), qv(1, i)
+        if (q_sat(1, i) < qv(1, i)) then
+          write(*,*) "Specific humidity above saturation, please review q-profile. STOPPING."
+          stop
+        endif
+      end do
+
+      qc = 0.0
+      qi = 0.0
+
+      tabs_exp = -100.0
+      qv_exp = -100.0
+      qc_exp = -100.0
+      qi_exp = -100.0
+
+      call CAM_var_conversion(qv, qc, qi, q, tabs, t)
+      call SAM_var_conversion(t, q, tabs_exp, qv_exp, qc_exp, qi_exp)
+
+      ! Add 1.0 to q values (they should be 0.0) to avoid division by 0.0 errors in check
+      qc = qc + 1.0
+      qi = qi + 1.0
+
+      qc_exp = 1.0
+      qi_exp = 1.0
+
+      call assert_array_equal(tabs, tabs_exp, test_name//": tabs")
+      call assert_array_equal(qv, qv_exp, test_name//": qv")
+      call assert_array_equal(qc, qc_exp, test_name//": qc")
+      call assert_array_equal(qi, qi_exp, test_name//": qi")
+
+    end subroutine test_rev_var_conv_moist
 
 end module cam_tests
 
@@ -260,12 +415,19 @@ program run_cam_tests
   call nn_convection_flux_CAM_init(nn_file, sounding_file)
   
   ! Run tests
+  ! CAM to SAM grid interpolation
   call test_interp_to_sam_match("Test interpolation to SAM from matching grid")
   call test_interp_to_sam_one("Test interpolation to SAM with array of ones")
   call test_interp_to_sam_pres("Test interpolation to SAM mapping pressure to pressure")
 
+  ! SAM to CAM grid interpolation
   call test_interp_to_cam_match("Test interpolation to CAM mapping density 1:1 match grid")
   call test_interp_to_cam_fine("Test interpolation to CAM mapping density 1:1 fine grid")
+
+  ! Variable conversion
+  call test_var_conv_sam_zero("Test variable conversion SAM->CAM for 0.0")
+  call test_rev_var_conv_sat("Test reversible variable conversion for dry air")
+  call test_rev_var_conv_moist("Test reversible variable conversion for moist unsaturated air")
 
   ! Clean up
   call nn_convection_flux_CAM_finalize()
