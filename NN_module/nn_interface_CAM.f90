@@ -31,6 +31,7 @@ public  nn_convection_flux_CAM, &
 
 ! TODO Make routines public for purposes of testing
 public interp_to_sam, interp_to_cam, fetch_sam_data
+public SAM_var_conversion, CAM_var_conversion
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -53,11 +54,14 @@ real :: dz
 
 contains
 
-    subroutine fetch_sam_data(pressam, presisam)
+    subroutine fetch_sam_data(pressam, presisam, gamazsam, rhosam, zsam)
         !! Temporary subroutine to extract SAM pressure profile
-        real, dimension(48), intent(out) :: pressam, presisam
+        real, dimension(48), intent(out) :: pressam, presisam, gamazsam, rhosam, zsam
         pressam(:) = pres(:)
         presisam(:) = presi(:)
+        gamazsam(:) = gamaz(:)
+        rhosam(:) = rho(:)
+        zsam(:) = z(:)
 
     end subroutine fetch_sam_data
 
@@ -109,6 +113,8 @@ contains
 
         real, dimension(nx, nz) :: q
             !! moisture content [-] converted to SAM model form but CAM coordinates
+        real, dimension(nx, nz) :: t
+            !! moisture static energy converted to SAM model form but CAM coordinates
 
         real :: y_in(nx)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
@@ -122,7 +128,7 @@ contains
 
         real, dimension(nx)      :: prec_sed
             !! Sedimenting precipitation at surface
-       
+
         ! TODO: CAM requires surface precipitation
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
@@ -197,7 +203,7 @@ contains
         call sam_sounding_finalize()
 
     end subroutine nn_convection_flux_CAM_finalize
-    
+
 
     !-----------------------------------------------------------------
     ! Private Subroutines
@@ -244,7 +250,7 @@ contains
             if (p_norm_sam(k) > p_norm_cam(i, 1)) then
                 ! TODO Remove warning and interpolate to boundary
                 ! TODO Add boundary conditions for any input variables as required.
-                write(*,*) "Interpolating to surface."
+!                write(*,*) "Interpolating to surface."
                 var_sam(i, k) = var_cam_surface(i) &
                                 + (p_norm_sam(k)-1.0) &
                                 *(var_cam(i, 1)-var_cam_surface(i))/(p_norm_cam(i, 1)-1.0)
@@ -482,10 +488,16 @@ contains
         !! by inverting lines 49-53 of diagnose.f90 from SAM where
         !! qn is cloud water + ice, qp is precipitable water (0 here)
 
+        !! WARNING: This routine uses gamaz(k) which is defined on the SAM grid.
+        !!          Using a grid that does not match the SAM grid for input/output
+        !!          data will produce unphysical values.
+
         integer :: nx, nz
             !! array sizes
         integer :: i, k
             !! Counters
+        real :: omn
+            !! intermediate omn factor used in variable conversion
 
         ! ---------------------
         ! Fields from CAM/SAM
@@ -502,7 +514,7 @@ contains
 
         real, intent(out) :: t(:, :)
             !! Static energy as required by SAM NN
-        real, intent(out) :: tabs(:, :)
+        real, intent(in) :: tabs(:, :)
             !! Absolute temperature from CAM
 
 
@@ -513,12 +525,12 @@ contains
           do i = 1, nx
             q(i,k) = qv(i,k) + qc(i,k) + qi(i,k)
 
+            ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
             omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
-            omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
-            t(i,k) = tabs(i,k)
+            t(i,k) = tabs(i,k) &
                      ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &
                      - (fac_cond+(1.-omn)*fac_fus)*(qc(i,k) + qi(i,k)) &
-                     + gamaz(k) &
+                     + gamaz(k)
           end do
         end do
 
