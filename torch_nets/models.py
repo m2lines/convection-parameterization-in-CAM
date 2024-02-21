@@ -71,6 +71,8 @@ class ANN(nn.Sequential):
 
         super().__init__(*layers)
 
+        fmean = fstd = omean = ostd = None
+        
         if features_mean is not None:
             assert features_std is not None
             assert len(features_mean) == len(features_std)
@@ -124,7 +126,7 @@ class ANN(nn.Sequential):
 
         return output
 
-    def load(self, path: str):
+    def load(self, path: str) -> "ANN":
         """Load the model from a checkpoint.
 
         Parameters
@@ -138,6 +140,7 @@ class ANN(nn.Sequential):
             if key in state and getattr(self, key) is None:
                 setattr(self, key, state[key])
         self.load_state_dict(state)
+        return self
 
     def save(self, path: str):
         """Save the model to a checkpoint.
