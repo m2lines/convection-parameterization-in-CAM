@@ -72,7 +72,7 @@ class ANN(nn.Sequential):
         super().__init__(*layers)
 
         fmean = fstd = omean = ostd = None
-        
+
         if features_mean is not None:
             assert features_std is not None
             assert len(features_mean) == len(features_std)

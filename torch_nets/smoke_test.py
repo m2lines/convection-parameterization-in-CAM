@@ -1,3 +1,5 @@
+"""A smoke test for the ANN model."""
+
 import torch
 import numpy as np
 from models import ANN
