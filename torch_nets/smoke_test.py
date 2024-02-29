@@ -1,5 +1,7 @@
-"""A smoke test for the ANN model. 
-This test checks that the model can be loaded and that it produces the expected output when given an input of all ones.
+"""A smoke test for the ANN model.
+
+This test checks that the model can be loaded and that it produces
+the expected output when given an input of all ones.
 It ensures that it is equivalent to the Fortran NN model.
 """
 

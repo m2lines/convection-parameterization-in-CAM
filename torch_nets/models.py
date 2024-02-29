@@ -102,8 +102,10 @@ class ANN(nn.Sequential):
         self.to(torch.device(device))
 
     def forward(self, input: Tensor):  # pylint: disable=redefined-builtin
-        """Pass the input through the model. Override the forward method of nn.Sequential 
-        to add normalization to the input and denormalization to the output.
+        """Pass the input through the model.
+        
+        Override the forward method of nn.Sequential to add normalization
+        to the input and denormalization to the output.
 
         Parameters
         ----------
