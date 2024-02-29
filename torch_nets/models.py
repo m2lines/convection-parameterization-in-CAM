@@ -157,29 +157,38 @@ class ANN(nn.Sequential):
         torch.save(self.state_dict(), path)
 
 
-def endow_with_netcdf_params(model: nn.Module, nc_file: str):
-    """Endow the model with weights and biases in the netcdf file.
+def load_from_netcdf_params(nc_file: str, dtype: str = "float32") -> ANN:
+    """Load the model with weights and biases from the netcdf file.
 
     Parameters
     ----------
-    model : Module
-        The model to add the parameters to.
     nc_file : str
         The netcdf file containing the parameters.
-
-    Notes
-    -----
-    This function is protected with ``no_grad`` because PyTorch doesn't like
-    it when we edit a layer's weights/biases with gradients enabled.
+    dtype : str
+        The data type to cast the parameters to.
 
     """
     data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
+    
+    model = ANN(
+        features_mean=data_set["fscale_mean"][:].astype(dtype),
+        features_std=data_set["fscale_stnd"][:].astype(dtype),
+        outputs_mean=data_set["oscale_mean"][:].astype(dtype),
+        outputs_std=data_set["oscale_stnd"][:].astype(dtype),
+        output_groups=[30, 29, 29, 30, 30],
+    )
 
     for i, layer in enumerate(l for l in model.modules() if isinstance(l, nn.Linear)):
-        layer.weight.data = torch.tensor(data_set[f"w{i+1}"][:])
-        layer.bias.data = torch.tensor(data_set[f"b{i+1}"][:])
+        layer.weight.data = torch.tensor(data_set[f"w{i+1}"][:].astype(dtype))
+        layer.bias.data = torch.tensor(data_set[f"b{i+1}"][:].astype(dtype))
 
-    model.outputs_mean = torch.tensor(data_set["oscale_mean"][:])
-    model.outputs_std = torch.tensor(data_set["oscale_stnd"][:])
-    model.features_mean = torch.tensor(data_set["fscale_mean"][:])
-    model.features_std = torch.tensor(data_set["fscale_stnd"][:])
+    return model
+
+
+if __name__ == "__main__":
+    model = load_from_netcdf_params(
+        "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O"
+        "_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
+    )
+    model.save("nn_state.pt")
+    print("Model saved.")
