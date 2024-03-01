@@ -30,3 +30,5 @@ actual2 = model2.forward(x).detach().numpy()
 
 assert np.all(actual1 == actual2)
 assert np.allclose(expected, actual1, atol=1e-6, rtol=2e-6)
+
+print("Smoke tests passed")
