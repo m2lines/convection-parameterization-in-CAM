@@ -57,7 +57,7 @@ class ANN(nn.Sequential):
         features_std: Optional[Tensor] = None,
         outputs_mean: Optional[Tensor] = None,
         outputs_std: Optional[Tensor] = None,
-        output_groups: Optional[Tensor] = None,
+        output_groups: Optional[list] = None,
     ):
         """Initialize the ANN model."""
         dims = [n_in] + [neurons] * (n_layers - 1) + [n_out]
@@ -169,7 +169,7 @@ def load_from_netcdf_params(nc_file: str, dtype: str = "float32") -> ANN:
 
     """
     data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
-    
+
     model = ANN(
         features_mean=data_set["fscale_mean"][:].astype(dtype),
         features_std=data_set["fscale_stnd"][:].astype(dtype),
@@ -186,9 +186,11 @@ def load_from_netcdf_params(nc_file: str, dtype: str = "float32") -> ANN:
 
 
 if __name__ == "__main__":
-    model = load_from_netcdf_params(
-        "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O"
-        "_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
+    # Load the model from the netcdf file and save it to a checkpoint.
+    net = load_from_netcdf_params(
+        "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_"
+        "surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs"
+        "_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
     )
-    model.save("nn_state.pt")
-    print("Model saved.")
+    net.save("nn_state.pt")
+    print("Model saved to nn_state.pt")
