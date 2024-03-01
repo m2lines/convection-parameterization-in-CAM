@@ -43,4 +43,4 @@ jobs:
     - name: Smoke testing of PyTorch model
       if: always()
       run: |
-        python torch_nets/smoke_test.py
+        python torch_nets/test_python_net.py
