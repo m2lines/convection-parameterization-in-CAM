@@ -7,8 +7,12 @@ This ensures that it is equivalent to the Fortran NN model.
 
 import torch
 import numpy as np
+import os
+from pathlib import Path
 from models import ANN, load_from_netcdf_params
 
+
+os.chdir(Path(__file__).parent)
 
 expected = np.loadtxt("nn_ones.txt").astype(np.float32)
 
