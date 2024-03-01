@@ -5,10 +5,10 @@ netcdf format and that they produce the expected output when given an input of a
 This ensures that it is equivalent to the Fortran NN model.
 """
 
-import torch
-import numpy as np
 import os
 from pathlib import Path
+import torch
+import numpy as np
 from models import ANN, load_from_netcdf_params
 
 
