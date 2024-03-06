@@ -15,6 +15,7 @@ from models import ANN, load_from_netcdf_params
 os.chdir(Path(__file__).parent)
 
 expected = np.loadtxt("nn_ones.txt").astype(np.float32)
+# nn_ones.txt is the output of the Fortran NN model given an input of all ones.
 
 model1 = ANN().load("nn_state.pt")  # load from pt file
 model2 = load_from_netcdf_params(
@@ -29,6 +30,7 @@ actual1 = model1.forward(x).detach().numpy()
 actual2 = model2.forward(x).detach().numpy()
 
 assert np.all(actual1 == actual2)
-assert np.allclose(expected, actual1, atol=1e-6, rtol=2e-6)
+assert np.allclose(expected, actual1, atol=3e-8, rtol=2e-6)
+# Values of atol and rtol are chosen to be the lowest that still pass the test.
 
 print("Smoke tests passed")
