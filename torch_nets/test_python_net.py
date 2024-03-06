@@ -17,12 +17,12 @@ os.chdir(Path(__file__).parent)
 expected = np.loadtxt("nn_ones.txt").astype(np.float32)
 # nn_ones.txt is the output of the Fortran NN model given an input of all ones.
 
-model1 = ANN().load("nn_state.pt")  # load from pt file
+model1 = ANN().load("nn_state.pt")  # load from the pytorch weights
 model2 = load_from_netcdf_params(
     "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_"
     "surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs"
     "_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
-)  # load from netcdf file
+)  # load from the NetCDF weights of the pretrained Fortran NN model
 
 x = torch.ones(61)
 
