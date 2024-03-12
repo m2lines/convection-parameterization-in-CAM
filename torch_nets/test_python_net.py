@@ -23,9 +23,9 @@ model2 = load_from_netcdf_params(
     "surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs"
     "_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
 )  # load from the NetCDF weights of the pretrained Fortran NN model
-# file created at https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/NN_training/src/ml_train_nn.py#L417
-# (which the naming scheme integrating information about the training setup, see e.g., https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/NN_training/src/ml_train_nn.py#L263-L265)
-# This Neural Net can be found at https://github.com/yaniyuval/Neural_nework_parameterization/tree/f81f5f695297888f0bd1e0e61524590b4566bf03/NNs
+# file created at https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/NN_training/src/ml_train_nn.py#L417 # pylint: disable=line-too-long
+# (which the naming scheme integrating information about the training setup, see e.g., https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/NN_training/src/ml_train_nn.py#L263-L265) # pylint: disable=line-too-long
+# This Neural Net can be found at https://github.com/yaniyuval/Neural_nework_parameterization/tree/f81f5f695297888f0bd1e0e61524590b4566bf03/NNs # pylint: disable=line-too-long
 
 
 x = torch.ones(61)
