@@ -181,8 +181,8 @@ module cam_tests
 
       integer :: i, j
 
-      real, dimension(4, 92) :: p_cam, var_cam, rho_cam, rho_cam_exp
-      real, dimension(4, 93) :: p_int_cam
+      real, dimension(4, 90) :: p_cam, var_cam, rho_cam, rho_cam_exp
+      real, dimension(4, 91) :: p_int_cam
       real, dimension(4) :: var_cam_surface
       real, dimension(4) :: ps_cam, sum_sam, sum_cam
       real, dimension(4, 30) :: var_sam
@@ -198,15 +198,12 @@ module cam_tests
       do i=1,4
           p_int_cam(i, 3*j+1) = presi_sam(j+1)
           p_int_cam(i, 3*j+2) = presi_sam(j+1) + (presi_sam(j+2)-presi_sam(j+1))/3
-          p_int_cam(i, 3*j+3) = presi_sam(j+1) + (presi_sam(j+2)-presi_sam(j+1))/2
+          p_int_cam(i, 3*j+3) = presi_sam(j+1) + 2*(presi_sam(j+2)-presi_sam(j+1))/3
       enddo
       enddo
-      ! Set interface of top of CAM grid
-      p_int_cam(:,91) = 25.0
-      p_int_cam(:,92) = 12.0
-      p_int_cam(:,93) = 1.0
+      p_int_cam(:, 91) = presi_sam(31)
 
-      do j=1, 92
+      do j=1, 90
           p_cam(:, j) = (p_int_cam(:, j+1)+p_int_cam(:, j)) / 2.0
       end do
 
@@ -220,16 +217,26 @@ module cam_tests
       do i=1,92
           rho_cam(:, i) = var_cam(:, i) / (p_int_cam(:, i)-p_int_cam(:, i+1))
       end do
-      
+
       rho_cam_exp = 1.0
 
-      write(*,*) var_cam(2,1:89)
-      write(*,*) p_int_cam(2,1:89) - p_int_cam(2,2:90)
-      write(*,*) rho_cam(2,1:89)
-
-      ! Compare individual cells of regridded data
-      ! Only compare lower 89 cells as others are above the SAM grid
-      call assert_array_equal(rho_cam(:,1:89), rho_cam_exp(:,1:89), test_name)
+!       ! Compare individual cells of regridded data
+!       do i = 1,30
+!         write(*,*) i, var_sam(1,i), presi_sam(i)
+!         ! write(*,*) i, p_int_cam(1,i)
+!         ! write(*,*) i, p_cam(1,i)
+!       enddo
+!       write(*,*) presi_sam(31)
+!       do i = 1,90
+!         write(*,*) i, var_cam(1,i), rho_cam(1,i), rho_cam_exp(1,i), p_int_cam(1, i)
+!         ! write(*,*) i, p_int_cam(1,i)
+!         ! write(*,*) i, p_cam(1,i)
+!       enddo
+!       write(*,*) p_int_cam(1, 91)
+!       do j=0, 30
+!           write(*,*) var_sam(1, j+1), sum(var_cam(1, 3*j+1:3*j+3)), var_cam(1, 3*j+1:3*j+3)
+!       enddo
+      call assert_array_equal(rho_cam, rho_cam_exp, test_name, rtol_opt=2.0E-5)
 
       ! Compare sums of the variables to check conservation between grids
       do i=1,4
