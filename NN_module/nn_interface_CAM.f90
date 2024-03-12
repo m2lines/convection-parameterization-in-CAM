@@ -348,10 +348,10 @@ contains
         p_int_norm_sam(1) = 1.0
 
         do k = 1,nz_cam
-            p_norm_cam(:,k) = p_cam(:,k) / presi(1)
-            p_int_norm_cam(:,k) = p_int_cam(:,k) / presi(1)
+            p_norm_cam(:,k) = p_cam(:,k) / p_int_cam(:,1)
+            p_int_norm_cam(:,k) = p_int_cam(:,k) / p_int_cam(:,1)
         end do
-        p_int_norm_cam(:,nz_cam+1) = p_int_cam(:,nz_cam+1) / presi(1)
+        p_int_norm_cam(:,nz_cam+1) = p_int_cam(:,nz_cam+1) / p_int_cam(:,1)
         p_int_norm_cam(:,1) = 1.0
 
         ! Loop over columns and SAM levels and interpolate each column
@@ -398,12 +398,14 @@ contains
                     var_cam(i,k) = var_cam(i,k) + (pc_u - pc_l)*var_sam(i, ks_u)/(ps_u-ps_l)
                 else
                   do c = ks_l, ks_u
-                    !write(*,*) c
                     if (c == ks_l) then
+                      ! Bottom cell
                       var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks_l+1)-pc_l)*var_sam(i,ks_l)/(p_int_norm_sam(ks_l+1)-ps_l)
                     elseif (c == ks_u) then
+                      ! Top cell
                       var_cam(i,k) = var_cam(i,k) + (pc_u - p_int_norm_sam(ks_u))*var_sam(i, ks_u)/(ps_u-p_int_norm_sam(ks_u))
                     else
+                      ! Intermediate cell (SAM Cell fully enclosed by CAM Cell => Absorb all)
                       var_cam(i,k) = var_cam(i,k) + var_sam(i,c)
 
                     endif
