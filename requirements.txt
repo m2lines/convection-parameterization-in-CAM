@@ -1,5 +1,4 @@
-pytorch
-pytorch-cuda
+torch
 black
 pytest
 pydocstyle
