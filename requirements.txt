@@ -1,0 +1,8 @@
+pytorch
+pytorch-cuda
+black
+pytest
+pydocstyle
+pylint
+mypy
+netcdf4
