@@ -87,12 +87,13 @@ contains
 
 
     subroutine nn_convection_flux_CAM(pres_cam, pres_int_cam, &
-                                      tabs, q_v, q_c, q_i, &
+                                      tabs_cam, qv_cam, qc_cam, qi_cam, &
                                       cp_cam, &
                                       dtn, &
                                       nx, nz, &
                                       nstep, nstatis, icycle, &
-                                      precsfc)
+                                      precsfc, &
+                                      dqi, dqv, dqc, ds)
         !! Interface to the nn_convection parameterisation for the CAM model
 
         integer :: k
@@ -101,33 +102,37 @@ contains
             !! specific heat capacity of dry air from CAM
         real, dimension(:,:) :: pres_cam
             !! pressure [hPa] from the CAM model
-        real, dimension(:) :: pres_int_cam
+        real, dimension(:,:) :: pres_int_cam
             !! interface pressure [hPa] from the CAM model (element 1 is surface pressure)
-        real, dimension(:,:) :: tabs
+        real, dimension(:,:) :: tabs_cam
             !! absolute temperature [K] from the CAM model
-        real, dimension(:,:) :: q_v, q_c, q_i
+        real, dimension(:,:) :: qv_cam, qc_cam, qi_cam
             !! moisture content [-] from the CAM model
         real, dimension(:) :: precsfc
         real, intent(in) :: dtn
         integer, intent(in) :: nx, nz, nstep, nstatis, icycle
 
-        real, dimension(nx, nz) :: q
-            !! moisture content [-] converted to SAM model form but CAM coordinates
-        real, dimension(nx, nz) :: t
-            !! moisture static energy converted to SAM model form but CAM coordinates
-
         real :: y_in(nx)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
-
-        real, dimension(nx, nrf) :: t_rad_rest_tend, t_delta_adv, q_delta_adv, &
-                                    t_delta_auto, t_delta_sed, &
-                                    q_delta_auto, q_delta_sed
-            !! deltas/tendencies returned by the parameterisation:
-            !! radiation rest tendency, advective, autoconversion, sedimentation
-
         real, dimension(nx)      :: prec_sed
             !! Sedimenting precipitation at surface
+
+        ! Variables on the SAM grid
+        real, dimension(nx, nrf) :: q_0_sam, tabs_0_sam
+        real, dimension(nx, nrf) :: q_sam, t_sam, tabs_sam
+        real, dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
+
+        real, dimension(nx, nz), intent(out) :: dqi, dqv, dqc, ds
+        real, dimension(nx, nz) :: qi0, qv0, qc0, tabs0
+
+        real, dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
+
+        ! Store variables at the start of the timestep to calculate tendencies later
+        qi0 = qi_cam
+        qv0 = qv_cam
+        qc0 = qc_cam
+        tabs0 = tabs_cam
 
         ! TODO: CAM requires surface precipitation
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
@@ -142,56 +147,64 @@ contains
 
         !-----------------------------------------------------
         
-        ! TODO: Formulate the input variables to the parameterisation as required.
-        ! Convert CAM Moistures and tabs to SAM q and t
-        call  CAM_var_conversion(q_v, q_c, q_i, q, t, tabs)
-
-        !-----------------------------------------------------
-        
-        ! TODO
         ! Interpolate CAM variables to the SAM pressure levels
-!        call interp_to_sam(pres_cam, pres_int_cam(1), &
-!                           tabs, tabs_sam, &
-!                           q, q_sam)
+        ! TODO Interpolate all variables in one call
+        ! TODO Check Boundary Condition
+        qi_surf = 0.0
+        qc_surf = 0.0
+        qv_surf = 0.0
+        call interp_to_sam(pres_cam, pres_int_cam(:,1), &
+                           tabs_cam, tabs_sam, tabs_surf)
+        call interp_to_sam(pres_cam, pres_int_cam(:,1), &
+                           qi_cam, qi_sam, qi_surf)
+        call interp_to_sam(pres_cam, pres_int_cam(:,1), &
+                           qc_cam, qc_sam, qc_surf)
+        call interp_to_sam(pres_cam, pres_int_cam(:,1), &
+                           qv_cam, qv_sam, qv_surf)
 
         !-----------------------------------------------------
         
-        ! Run the neural net parameterisation
-!        call nn_convection_flux(tabs_i(:,1:nrf), q_i(:,1:nrf), y_in, &
-!                                tabs(:,1:nrf), &
-!                                t(:,1:nrf), q(:,1:nrf), &
-!                                rho, adz, dz, dtn, &
-!                                t_rad_rest_tend, &
-!                                t_delta_adv, q_delta_adv, &
-!                                t_delta_auto, q_delta_auto, &
-!                                t_delta_sed, q_delta_sed, prec_sed)
+        ! Convert CAM Moistures and tabs to SAM q and t
+        call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, q_sam, t_sam, tabs_sam)
 
         !-----------------------------------------------------
-        ! Update q and t with delta values
+
+        tabs_0_sam = tabs_sam
+        q_0_sam = q_sam
+        ! Run the neural net parameterisation
+        ! Updates q and t with delta values
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        q(:,1:nrf) = q(:,1:nrf) + q_delta_adv(:,:) &
-                                + q_delta_auto(:,:) &
-                                + q_delta_sed(:,:)
-        t(:,1:nrf) = t(:,1:nrf) + t_delta_adv(:,:) &
-                                + t_delta_auto(:,:) &
-                                + t_delta_sed(:,:) &
-                                + t_rad_rest_tend(:,:)*dtn
+        call nn_convection_flux(tabs_0_sam(:,1:nrf), q_0_sam(:,1:nrf), y_in, &
+                                tabs_sam(:,1:nrf), &
+                                t_sam(:,1:nrf), q_sam(:,1:nrf), &
+                                rho, adz, dz, dtn, &
+                                prec_sed)
 
         ! TODO: Update precipitation if required
 
         !-----------------------------------------------------
         
-        ! TODO: Formulate the output variables to CAM as required.
-        ! call SAM_var_conversion(t, q, tabs, qv, qc, qi)
+        ! Formulate the output variables to CAM as required.
+        call SAM_var_conversion(t_sam, q_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
 
         !-----------------------------------------------------
 
-        ! TODO
         ! Interpolate SAM variables to the CAM pressure levels
-        ! call interp_to_cam(pres_cam, pres_int_cam, var_sam, var_cam)
+        ! TODO Interpolate all variables in one call
+        call interp_to_cam(pres_cam, pres_int_cam, qv_sam, qv_cam)
+        call interp_to_cam(pres_cam, pres_int_cam, qc_sam, qc_cam)
+        call interp_to_cam(pres_cam, pres_int_cam, qi_sam, qi_cam)
+        call interp_to_cam(pres_cam, pres_int_cam, tabs_sam, tabs_cam)
 
+        !-----------------------------------------------------
+
+        ! Convert back into CAM tendencies (diff div by dtn) and tabs to s (mult by cp)
+        dqv = (qv_cam - qv0) / dtn
+        dqc = (qc_cam - qc0) / dtn
+        dqi = (qi_cam - qi0) / dtn
+        ds = cp_cam * (tabs_cam - tabs0) / dtn
 
     end subroutine nn_convection_flux_CAM
 
@@ -270,7 +283,7 @@ contains
 !                write(*,*) "Interpolating to surface."
                 var_sam(i, k) = var_cam_surface(i) &
                                 + (p_norm_sam(k)-1.0) &
-                                *(var_cam(i, 1)-var_cam_surface(i))/(p_norm_cam(i, 1)-1.0)
+                                * (var_cam(i, 1)-var_cam_surface(i))/(p_norm_cam(i, 1)-1.0)
             ! Check CAM grid top cell is above SAM grid top
             elseif (p_norm_cam(i, nz_cam) > p_norm_sam(nrf)) then
                 ! This should not happen as CAM grid extends to higher altitudes than SAM
@@ -412,11 +425,6 @@ contains
 
                   enddo
                 endif
-
-
-
-
-
             endif
         end do
         end do
