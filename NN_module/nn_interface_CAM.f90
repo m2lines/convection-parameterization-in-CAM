@@ -119,20 +119,15 @@ contains
             !! Sedimenting precipitation at surface
 
         ! Variables on the SAM grid
-        real, dimension(nx, nrf) :: q_0_sam, tabs_0_sam
+        real, dimension(nx, nrf) :: q0_sam, tabs0_sam
         real, dimension(nx, nrf) :: q_sam, t_sam, tabs_sam
         real, dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
+        real, dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam
+        real, dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
 
         real, dimension(nx, nz), intent(out) :: dqi, dqv, dqc, ds
-        real, dimension(nx, nz) :: qi0, qv0, qc0, tabs0
 
         real, dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
-
-        ! Store variables at the start of the timestep to calculate tendencies later
-        qi0 = qi_cam
-        qv0 = qv_cam
-        qc0 = qc_cam
-        tabs0 = tabs_cam
 
         ! TODO: CAM requires surface precipitation
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
@@ -167,16 +162,23 @@ contains
         ! Convert CAM Moistures and tabs to SAM q and t
         call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, q_sam, t_sam, tabs_sam)
 
+        ! Store variables on SAM grid at the start of the timestep
+        ! for calculating tendencies later
+        qv0_sam = qv_sam
+        qc0_sam = qc_sam
+        qi0_sam = qi_sam
+        tabs0_sam = tabs_sam
+
         !-----------------------------------------------------
 
-        tabs_0_sam = tabs_sam
-        q_0_sam = q_sam
+        tabs0_sam = tabs_sam
+        q0_sam = q_sam
         ! Run the neural net parameterisation
         ! Updates q and t with delta values
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs_0_sam(:,1:nrf), q_0_sam(:,1:nrf), y_in, &
+        call nn_convection_flux(tabs0_sam(:,1:nrf), q0_sam(:,1:nrf), y_in, &
                                 tabs_sam(:,1:nrf), &
                                 t_sam(:,1:nrf), q_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
@@ -191,20 +193,22 @@ contains
 
         !-----------------------------------------------------
 
-        ! Interpolate SAM variables to the CAM pressure levels
-        ! TODO Interpolate all variables in one call
-        call interp_to_cam(pres_cam, pres_int_cam, qv_sam, qv_cam)
-        call interp_to_cam(pres_cam, pres_int_cam, qc_sam, qc_cam)
-        call interp_to_cam(pres_cam, pres_int_cam, qi_sam, qi_cam)
-        call interp_to_cam(pres_cam, pres_int_cam, tabs_sam, tabs_cam)
+        ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
+        ! q into components and tabs to s (mult by cp)
+        dqv_sam = (qv_sam - qv0_sam) / dtn
+        dqc_sam = (qc_sam - qc0_sam) / dtn
+        dqi_sam = (qi_sam - qi0_sam) / dtn
+        ds_sam = cp_cam * (tabs_sam - tabs0_sam) / dtn
 
         !-----------------------------------------------------
 
-        ! Convert back into CAM tendencies (diff div by dtn) and tabs to s (mult by cp)
-        dqv = (qv_cam - qv0) / dtn
-        dqc = (qc_cam - qc0) / dtn
-        dqi = (qi_cam - qi0) / dtn
-        ds = cp_cam * (tabs_cam - tabs0) / dtn
+        ! Interpolate SAM variables to the CAM pressure levels
+        ! setting tendencies above the SAM grid to 0.0
+        ! TODO Interpolate all variables in one call
+        call interp_to_cam(pres_cam, pres_int_cam, dqv_sam, dqv)
+        call interp_to_cam(pres_cam, pres_int_cam, dqc_sam, dqc)
+        call interp_to_cam(pres_cam, pres_int_cam, dqi_sam, dqi)
+        call interp_to_cam(pres_cam, pres_int_cam, ds_sam, ds)
 
     end subroutine nn_convection_flux_CAM
 
@@ -310,7 +314,7 @@ contains
                 ! interpolate variables - Repeat for as many variables as need interpolating
                 var_sam(i, k) = var_cam(i, kc_l) &
                                 + (p_norm_sam(k)-pc_l) &
-                                *(var_cam(i, kc_u)-var_cam(i, kc_l))/(pc_u-pc_l)
+                                * (var_cam(i, kc_u)-var_cam(i, kc_l))/(pc_u-pc_l)
             endif
         end do
         end do
