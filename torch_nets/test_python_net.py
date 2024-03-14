@@ -1,26 +1,40 @@
-"""Module to save the results of running the net on a tensor of ones."""
+"""A smoke test for the ANN model.
 
-from torch import ones  # pylint: disable=no-name-in-module
-import models as nn_model
+This test checks that the model can be loaded from a weights file in both pt format and
+netcdf format and that they produce the expected output when given an input of all ones.
+This ensures that it is equivalent to the Fortran NN model.
+"""
+
+import os
+from pathlib import Path
+import torch
+import numpy as np
+from models import ANN, load_from_netcdf_params
 
 
-if __name__ == "__main__":
+os.chdir(Path(__file__).parent)
 
-    test_model = nn_model.ANN()
+expected = np.loadtxt("nn_ones.txt").astype(np.float32)
+# nn_ones.txt is the output of the Fortran NN model given an input of all ones.
 
-    nn_model.endow_with_netcdf_params(
-        test_model,
-        "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F"
-        + "_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED"
-        + "_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc",
-    )
+model1 = ANN().load("nn_state.pt")  # load from the pytorch weights
+model2 = load_from_netcdf_params(
+    "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_"
+    "surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs"
+    "_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
+)  # load from the NetCDF weights of the pretrained Fortran NN model
+# file created at https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/NN_training/src/ml_train_nn.py#L417 # pylint: disable=line-too-long
+# (which the naming scheme integrating information about the training setup, see e.g., https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/NN_training/src/ml_train_nn.py#L263-L265) # pylint: disable=line-too-long
+# This Neural Net can be found at https://github.com/yaniyuval/Neural_nework_parameterization/tree/f81f5f695297888f0bd1e0e61524590b4566bf03/NNs # pylint: disable=line-too-long
 
-    test_model.eval()
 
-    output = test_model(ones(61))
+x = torch.ones(61)
 
-    print(output)
+actual1 = model1.forward(x).detach().numpy()
+actual2 = model2.forward(x).detach().numpy()
 
-    with open("nn_out.txt", "w", encoding="utf_8") as file:
-        for val in output:
-            file.write(f"{val.item()}\n")
+assert np.all(actual1 == actual2)
+assert np.allclose(expected, actual1, atol=3e-8, rtol=2e-6)
+# Values of atol and rtol are chosen to be the lowest that still pass the test.
+
+print("Smoke tests passed")
