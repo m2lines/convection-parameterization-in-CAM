@@ -77,14 +77,12 @@ if __name__ == "__main__":
     # Insert code here to load your model as `trained_model`.
     # This example assumes my_ml_model has a method `initialize` to load
     # architecture, weights, and place in inference mode
-    trained_model = models.ANN()
-    # for name, layer in trained_model.named_children():
-    #     print(layer.weight)
-    #     break
-    models.endow_with_netcdf_params(
-        trained_model,
-        "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc",
-    )
+
+    # models.endow_with_netcdf_params(trained_model, weights_file)
+    # weights_file = "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
+    # weights_file = "weights.pkl"
+    # trained_model = models.ANN().initialize(weights_file, True)
+    trained_model = models.ANN().load("nn_state.pt")
     # for name, layer in trained_model.named_children():
     #     print(layer.weight)
     #     break
