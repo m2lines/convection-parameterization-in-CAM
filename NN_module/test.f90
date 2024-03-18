@@ -5,9 +5,10 @@ module tests
   ! Libraries to use
   use netcdf
   use nn_cf_net, only: relu, net_forward, nn_cf_net_init, net_forward, nn_cf_net_finalize
-    use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_forward, nn_cf_net_torch_finalize  use nn_convection_flux, only:   nn_convection_flux_forward, nn_convection_flux_init, nn_convection_flux_finalize
-    use nn_convection_flux_torch, only: nn_convection_flux_forward_torch, nn_convection_flux_init_torch, &
-        nn_convection_flux_finalize_torch
+    use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_forward, nn_cf_net_torch_finalize  
+    use nn_convection_flux, only: nn_convection_flux_forward, nn_convection_flux_init, nn_convection_flux_finalize
+    use nn_convection_flux_torch, only: nn_convection_flux_forward_torch, &
+      nn_convection_flux_init_torch, nn_convection_flux_finalize_torch
   use test_utils, only: assert_array_equal
 
   implicit none
@@ -97,6 +98,12 @@ module tests
 
     real(4), allocatable, dimension(:) :: features, features_torch
     real(4), allocatable, dimension(:) :: logits, logits_torch
+
+end module tests
+
+program run_tests
+
+    use tests
 
     write(*,*) "=== Testing routines from nn_cf_net ==="
     call test_nn_net_routines()
