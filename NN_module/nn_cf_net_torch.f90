@@ -59,27 +59,12 @@ contains
         integer :: out_pos, feature_size, f, i
             !!
 
-        real(c_wp), dimension(:), allocatable, target :: in_data
-        real(c_wp), dimension(:), allocatable, target :: out_data
-
-        allocate(in_data(in_shape(1)))
-        allocate(out_data(out_shape(1)))
-
-        ! Cast from input type to C type required
-        in_data = real(features, kind=c_wp)
-
         ! Create tensors
         in_tensor(1) = torch_tensor_from_array(features, in_layout, torch_kCPU)
         out_tensor = torch_tensor_from_array(logits, out_layout, torch_kCPU)
 
         ! Run forward pass
         call torch_module_forward(model, in_tensor, n_tensor_inputs, out_tensor)
-
-        ! Cast back from C type to Fortran type
-        logits = real(out_data, kind=4)
-
-        deallocate(in_data)
-        deallocate(out_data)
 
         ! Clean up tensors
         call torch_tensor_delete(out_tensor)

@@ -28,16 +28,6 @@ public  nn_convection_flux_forward, nn_convection_flux_init, nn_convection_flux_
 integer :: n_inputs, n_outputs
     !! Length of input/output vector to the NN
 
-integer, parameter :: input_ver_dim = 30
-    !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
-
-! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,
-! and at 29 levels for fluxes (as flux at bottom boundary is zero).
-integer, parameter :: nrf = 30
-    !! number of vertical levels the NN uses
-integer, parameter :: nrfq = nrf - 1
-    !! number of vertical levels the NN uses when boundary condition is set to 0
-
 logical :: do_init=.true.
     !! model initialisation is yet to be performed
 
@@ -372,10 +362,7 @@ contains
                 q(i,k) = max(0.,q(i,k))
             end do
         end do
-        ! End of loops over x, y, columns
-
-    deallocate(t)
-    deallocate(q)
+        ! End of loops over columns
 
     end subroutine nn_convection_flux_forward
 
