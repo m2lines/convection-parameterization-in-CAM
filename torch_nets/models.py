@@ -142,8 +142,7 @@ class ANN(nn.Module):
         """
         state = torch.load(path)
         for key in ["features_mean", "features_std", "outputs_mean", "outputs_std"]:
-            if key in state and getattr(self, key) is None:
-                setattr(self, key, state[key])
+            setattr(self, key, state.get(key, None))
         self.load_state_dict(state)
         return self
 

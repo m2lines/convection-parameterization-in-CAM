@@ -4,13 +4,11 @@ module tests
     !--------------------------------------------------------------------------
     ! Libraries to use
     use netcdf
-    use nn_cf_net_mod, only: relu, net_forward, nn_cf_net_init, net_forward, nn_cf_net_finalize
+    use nn_cf_net_mod, only: relu, nn_cf_net_init, nn_cf_net_forward, nn_cf_net_finalize
     use nn_cf_net_torch, only: nn_cf_net_torch_init, nn_cf_net_torch_forward, &
         nn_cf_net_torch_finalize
     use nn_convection_flux_mod, only: nn_convection_flux_forward, nn_convection_flux_init, &
         nn_convection_flux_finalize
-    use nn_convection_flux_torch, only: nn_convection_flux_forward_torch, &
-        nn_convection_flux_init_torch, nn_convection_flux_finalize_torch
     use test_utils, only: assert_array_equal
   
     implicit none
@@ -52,11 +50,11 @@ module tests
     integer, parameter :: nrf = 30
 
     != unit J :: t
-    real t(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    real t_torch(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+    real t(nx, nzm)
+    real t_torch(nx, nzm)
         !! moist static energy
-    real q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    real q_torch(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+    real q(nx, nzm)
+    real q_torch(nx, nzm)
         !! total water
     ! fluxes at the top and bottom of the domain:
     real :: precsfc(nx) = 0.
@@ -95,7 +93,7 @@ module tests
                                 t_delta_adv, q_delta_adv, &
                                 t_delta_auto, q_delta_auto, &
                                 t_delta_sed, q_delta_sed
-    real, dimension(nx) :: prec_sed
+    real :: prec_sed(1)
 
     real(4), allocatable, dimension(:) :: features, features_torch
     real(4), allocatable, dimension(:) :: logits, logits_torch
@@ -119,8 +117,8 @@ module tests
             allocate(logits(nout))
             features = 1.
             logits = 0.
-            call net_forward(features, logits)
-            write (*,*) "net_forward ok"
+            call nn_cf_net_forward(features, logits)
+            write (*,*) "nn_cf_net_forward ok"
 
             write (*,*) "Testing neural network finalisation"
             call nn_cf_net_finalize()
@@ -153,33 +151,31 @@ module tests
 
             ! Test convection flux routines
             write (*,*) "Testing convection flux initialisation"
-            call nn_convection_flux_init(nn_filename)
+            call nn_convection_flux_init(nn_cf_net_init, nn_filename)
             write (*,*) "nn_convection_flux_init ok"
 
             t = 0.
             q = 0.4
 
             write (*,*) "Testing convection flux forward"
-            call nn_convection_flux_forward(tabs_i, q_i, y_in, &
+            call nn_convection_flux_forward(nn_cf_net_forward, &
+                                    tabs_i, q_i, y_in, &
                                     tabs, &
                                     t, q, &
                                     rho, adz, dz, dtn, &
-                                    t_rad_rest_tend, &
-                                    t_delta_adv, q_delta_adv, &
-                                    t_delta_auto, q_delta_auto, &
-                                    t_delta_sed, q_delta_sed, prec_sed)
+                                    prec_sed)
             write (*,*) "nn_convection_flux_forward ok"
 
-            q(:, :, 1:nrf) = q(:, :, 1:nrf) + q_delta_adv &
-                                        + q_delta_auto &
-                                        + q_delta_sed
-            t(:, :, 1:nrf) = t(:, :, 1:nrf) + t_delta_adv &
-                                        + t_delta_auto &
-                                        + t_delta_sed &
-                                        + t_rad_rest_tend*dtn
+            ! q(:, 1:nrf) = q(:, 1:nrf) + q_delta_adv &
+            !                             + q_delta_auto &
+            !                             + q_delta_sed
+            ! t(:, 1:nrf) = t(:, 1:nrf) + t_delta_adv &
+            !                             + t_delta_auto &
+            !                             + t_delta_sed &
+            !                             + t_rad_rest_tend*dtn
 
             write (*,*) "Testing convection flux finalisation"
-            call nn_convection_flux_finalize()
+            call nn_convection_flux_finalize(nn_cf_net_finalize)
             write (*,*) "nn_convection_flux_finalise ok"
 
         end subroutine test_nn_flux_routines
@@ -187,36 +183,33 @@ module tests
         subroutine test_nn_flux_torch_routines()
 
             write (*,*) "Testing FTorch convection flux initialisation"
-            call nn_convection_flux_init_torch(nn_filename)
+            call nn_convection_flux_init(nn_cf_net_torch_init, nn_filename)
             write (*,*) "nn_convection_flux_init ok"
 
             t_torch = 0.
             q_torch = 0.4
 
             write (*,*) "Testing convection flux forward"
-            call nn_convection_flux_forward_torch(tabs_i, q_i, y_in, &
+            call nn_convection_flux_forward(nn_cf_net_torch_forward, &
+                                    tabs_i, q_i, y_in, &
                                     tabs, &
                                     t_torch, q_torch, &
-                                    rho, adz, dz, dtn, &
-                                    t_rad_rest_tend, &
-                                    t_delta_adv, q_delta_adv, &
-                                    t_delta_auto, q_delta_auto, &
-                                    t_delta_sed, q_delta_sed, prec_sed)
+                                    rho, adz, dz, dtn, prec_sed)
 
-            q_torch(:, :, 1:nrf) = q_torch(:, :, 1:nrf) + q_delta_adv &
-                                        + q_delta_auto &
-                                        + q_delta_sed
-            t_torch(:, :, 1:nrf) = t_torch(:, :, 1:nrf) + t_delta_adv &
-                                        + t_delta_auto &
-                                        + t_delta_sed &
-                                        + t_rad_rest_tend*dtn
+            ! q_torch(:, 1:nrf) = q_torch(:, 1:nrf) + q_delta_adv &
+            !                             + q_delta_auto &
+            !                             + q_delta_sed
+            ! t_torch(:, 1:nrf) = t_torch(:, 1:nrf) + t_delta_adv &
+            !                             + t_delta_auto &
+            !                             + t_delta_sed &
+            !                             + t_rad_rest_tend*dtn
 
-            call assert_real_3d(t, t_torch, "Test t", rtol_opt=1.0e-4)
-            call assert_real_3d(q, q_torch, "Test q", rtol_opt=1.0e-4)
+            call assert_real_2d(t, t_torch, "Test t", rtol_opt=1.0e-4)
+            call assert_real_2d(q, q_torch, "Test q", rtol_opt=1.0e-4)
             write (*,*) "nn_convection_flux_forward_torch ok"
 
             write (*,*) "Testing FTorch convection flux finalization"
-            call nn_convection_flux_finalize_torch()
+            call nn_convection_flux_finalize(nn_cf_net_torch_finalize)
             write (*,*) "nn_convection_flux_finalize ok"
 
         end subroutine test_nn_flux_torch_routines
@@ -239,10 +232,10 @@ module tests
 
         end subroutine assert_real_1d
 
-        subroutine assert_real_3d(a, b, test_name, rtol_opt)
+        subroutine assert_real_2d(a, b, test_name, rtol_opt)
 
             character(len=*), intent(in) :: test_name
-            real(4), dimension(:, :, :), intent(in) :: a, b
+            real(4), dimension(:, :), intent(in) :: a, b
             real(4), intent(in), optional :: rtol_opt
             real(4) :: relative_error, rtol
 
@@ -255,7 +248,7 @@ module tests
             relative_error = maxval(abs(a/b - 1.0))
             call print_assert_real(test_name, (rtol > relative_error), relative_error)
 
-        end subroutine assert_real_3d
+        end subroutine assert_real_2d
 
         subroutine print_assert_real(test_name, is_close, relative_error)
 

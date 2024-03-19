@@ -49,7 +49,7 @@ message(STATUS "Building with the Fortran PyTorch coupling")
 
 add_executable(test_nn test.f90)
 target_link_libraries(test_nn PRIVATE FTorch::ftorch netCDF::netcdf netCDF::netcdff)
-target_sources(test_nn PRIVATE nn_cf_net.f90 nn_cf_net_torch.f90 nn_convection_flux.f90 nn_convection_flux_torch.f90 SAM_consts.f90)
+target_sources(test_nn PRIVATE nn_cf_net.f90 nn_cf_net_torch.f90 nn_convection_flux.f90 SAM_consts.f90)
 #target_sources(test_nn PUBLIC nn_cf_net.f90 nn_cf_net_torch.f90 nn_convection_flux.f90 nn_convection_flux_torch.f90)
 #target_link_libraries(test_nn PUBLIC FTorch::ftorch netCDF::netcdf netCDF::netcdff)
 

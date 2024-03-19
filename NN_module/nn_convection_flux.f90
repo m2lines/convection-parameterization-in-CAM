@@ -6,7 +6,6 @@ module nn_convection_flux_mod
 
 !---------------------------------------------------------------------
 ! Libraries to use
-use nn_cf_net_mod, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
 use SAM_consts_mod, only: fac_cond, fac_fus, tprmin, a_pr, input_ver_dim, &
                           nrf, nrfq
 
@@ -32,6 +31,27 @@ logical :: do_init=.true.
     !! model initialisation is yet to be performed
 
 
+abstract interface
+    subroutine abstract_net_init(nn_filename, n_inputs, n_outputs, nrf)
+        character(len=1024), intent(in) :: nn_filename
+        integer, intent(out) :: n_inputs, n_outputs
+        integer, intent(in) :: nrf
+    end subroutine abstract_net_init
+end interface
+
+abstract interface
+    subroutine abstract_net_forward(features, outputs)
+        real(4), dimension(:), target :: features
+        real(4), dimension(:), target, intent(out) :: outputs
+    end subroutine abstract_net_forward
+end interface
+
+abstract interface
+    subroutine abstract_net_finalize()
+    end subroutine abstract_net_finalize
+end interface
+
+
 !---------------------------------------------------------------------
 ! Functions and Subroutines
 
@@ -40,26 +60,27 @@ contains
     !-----------------------------------------------------------------
     ! Public Subroutines
 
-    subroutine nn_convection_flux_init(nn_filename)
+    subroutine nn_convection_flux_init(init_proc, nn_filename)
         !! Initialise the NN module
 
         character(len=1024), intent(in) :: nn_filename
             !! NetCDF filename from which to read model weights
 
+        procedure(abstract_net_init) :: init_proc
+
         ! Initialise the Neural Net from file and get info
-        call nn_cf_net_init(nn_filename, n_inputs, n_outputs, nrf)
+        call init_proc(nn_filename, n_inputs, n_outputs, nrf)
 
         ! Set init flag as complete
         do_init = .false.
 
     end subroutine nn_convection_flux_init
 
-
-    subroutine nn_convection_flux_forward(tabs_i, q_i, y_in, &
-                                  tabs, &
-                                  t, q, &
-                                  rho, adz, dz, dtn, &
-                                  prec_sed)
+    subroutine nn_convection_flux_forward(forward_proc, &
+                                          tabs_i, q_i, y_in, &
+                                          tabs, &
+                                          t, q, &
+                                          rho, adz, dz, dtn, prec_sed)
         !! Interface to the neural net that applies physical constraints and reshaping
         !! of variables.
         !! Operates on subcycle of timestep dtn to update t, q, precsfc, and prec_xy
@@ -67,6 +88,9 @@ contains
         ! -----------------------------------
         ! Input Variables
         ! -----------------------------------
+
+        ! Neural net forward subroutine
+        procedure(abstract_net_forward) :: forward_proc
         
         ! ---------------------
         ! Fields from beginning of time step used as NN inputs
@@ -235,7 +259,7 @@ contains
             ! Call the forward method of the NN on the input features
             ! Scaling and normalisation done as layers in NN
 
-            call net_forward(features, outputs)
+            call forward_proc(features, outputs)
 
             !-----------------------------------------------------
             ! Separate physical outputs from NN output vector
@@ -367,11 +391,13 @@ contains
     end subroutine nn_convection_flux_forward
 
 
-    subroutine nn_convection_flux_finalize()
+    subroutine nn_convection_flux_finalize(finalize_proc)
         !! Finalize the NN module
 
+        procedure(abstract_net_finalize) :: finalize_proc
+
         ! Finalize the Neural Net deallocating arrays
-        call nn_cf_net_finalize()
+        call finalize_proc()
 
     end subroutine nn_convection_flux_finalize
 

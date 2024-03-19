@@ -53,7 +53,7 @@ def trace_to_torchscript(
     frozen_model.save(filename)
 
 
-def load_torchscript(filename: Optional[str] = "saved_model.pt") -> torch.nn.Module:
+def load_torchscript(filename: Optional[str] = "torchscript_model.pt") -> torch.nn.Module:
     """
     Load a TorchScript from file.
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
     # FPTLIB-TODO
     # Set the name of the file you want to save the torchscript model to:
-    saved_ts_filename = "saved_model.pt"
+    saved_ts_filename = "torchscript_model.pt"
 
     # FPTLIB-TODO
     # Save the pytorch model using either scripting (recommended where possible) or tracing

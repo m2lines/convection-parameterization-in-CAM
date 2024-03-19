@@ -13,8 +13,10 @@ module nn_interface_CAM
 !---------------------------------------------------------------------
 ! Libraries to use
 use netcdf
+use nn_cf_net_mod, only: nn_cf_net_init, nn_cf_net_forward, nn_cf_net_finalize
 use nn_convection_flux_mod, only: nn_convection_flux, &
-                                  nn_convection_flux_init, nn_convection_flux_finalize, &
+                                  nn_convection_flux_init, &
+                                  nn_convection_flux_finalize, &
                                   esati, qsati, qsatw, dtqsatw, dtqsati
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
@@ -78,7 +80,7 @@ contains
             !! NetCDF filename from which to read SAM sounding and grid data
 
         ! Initialise the Neural Net from file and get info
-        call nn_convection_flux_init(nn_filename)
+        call nn_convection_flux_init(nn_cf_net_init, nn_filename)
 
         ! Read in the SAM sounding and grid data required
         call sam_sounding_init(sounding_filename)
@@ -178,7 +180,8 @@ contains
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs0_sam(:,1:nrf), q0_sam(:,1:nrf), y_in, &
+        call nn_convection_flux(nn_cf_net_forward, &
+                                tabs0_sam(:,1:nrf), q0_sam(:,1:nrf), y_in, &
                                 tabs_sam(:,1:nrf), &
                                 t_sam(:,1:nrf), q_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
@@ -216,7 +219,7 @@ contains
     subroutine nn_convection_flux_CAM_finalize()
         !! Finalize the module deallocating arrays
 
-        call nn_convection_flux_finalize()
+        call nn_convection_flux_finalize(nn_cf_net_finalize)
         call sam_sounding_finalize()
 
     end subroutine nn_convection_flux_CAM_finalize

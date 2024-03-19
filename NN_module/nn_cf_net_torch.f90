@@ -56,8 +56,7 @@ contains
             !! Vector of input features
         real(4), dimension(:), target, intent(out)  :: logits
             !! Output vector
-        integer :: out_pos, feature_size, f, i
-            !!
+        integer :: i
 
         ! Create tensors
         in_tensor(1) = torch_tensor_from_array(features, in_layout, torch_kCPU)
@@ -117,7 +116,7 @@ contains
         n_outputs = n_out
 
         ! Load model
-        model = torch_module_load("../../torch_nets/saved_model.pt")
+        model = torch_module_load("../../torch_nets/torchscript_model.pt")
 
     end subroutine nn_cf_net_torch_init
 
