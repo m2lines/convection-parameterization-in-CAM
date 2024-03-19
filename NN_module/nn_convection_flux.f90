@@ -16,7 +16,7 @@ private
 
 !---------------------------------------------------------------------
 ! public interfaces
-public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize, &
+public  nn_convection_flux_forward, nn_convection_flux_init, nn_convection_flux_finalize, &
         esati, qsati, qsatw, dtqsatw, dtqsati
 
 
@@ -27,6 +27,16 @@ public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
 
 integer :: n_inputs, n_outputs
     !! Length of input/output vector to the NN
+
+integer, parameter :: input_ver_dim = 30
+    !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
+
+! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,
+! and at 29 levels for fluxes (as flux at bottom boundary is zero).
+integer, parameter :: nrf = 30
+    !! number of vertical levels the NN uses
+integer, parameter :: nrfq = nrf - 1
+    !! number of vertical levels the NN uses when boundary condition is set to 0
 
 logical :: do_init=.true.
     !! model initialisation is yet to be performed
@@ -55,7 +65,7 @@ contains
     end subroutine nn_convection_flux_init
 
 
-    subroutine nn_convection_flux(tabs_i, q_i, y_in, &
+    subroutine nn_convection_flux_forward(tabs_i, q_i, y_in, &
                                   tabs, &
                                   t, q, &
                                   rho, adz, dz, dtn, &
@@ -362,9 +372,12 @@ contains
                 q(i,k) = max(0.,q(i,k))
             end do
         end do
-        ! End of loop over columns
+        ! End of loops over x, y, columns
 
-    end subroutine nn_convection_flux
+    deallocate(t)
+    deallocate(q)
+
+    end subroutine nn_convection_flux_forward
 
 
     subroutine nn_convection_flux_finalize()
