@@ -175,7 +175,7 @@ module tests
             !                             + t_rad_rest_tend*dtn
 
             write (*,*) "Testing convection flux finalisation"
-            call nn_convection_flux_finalize(nn_cf_net_finalize)
+            call nn_cf_net_finalize()
             write (*,*) "nn_convection_flux_finalise ok"
 
         end subroutine test_nn_flux_routines
@@ -209,7 +209,7 @@ module tests
             write (*,*) "nn_convection_flux_forward_torch ok"
 
             write (*,*) "Testing FTorch convection flux finalization"
-            call nn_convection_flux_finalize(nn_cf_net_torch_finalize)
+            call nn_cf_net_torch_finalize()
             write (*,*) "nn_convection_flux_finalize ok"
 
         end subroutine test_nn_flux_torch_routines
@@ -293,8 +293,8 @@ program run_tests
     write(*,*) "======================================================"
 
     deallocate(features)
-    deallocate(features_torch)
     deallocate(logits)
+    deallocate(features_torch)
     deallocate(logits_torch)
 
 end program run_tests
