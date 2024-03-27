@@ -13,8 +13,6 @@ module tests
   
     implicit none
 
-    integer :: nin, nout
-
     character(len=1024) :: nn_filename = "../NN_weights_YOG_convection.nc"
 
     ! Parameters from SAM that are used here
@@ -48,6 +46,8 @@ module tests
     integer, parameter :: dimy1_s = 1-3*YES3D
     integer, parameter :: dimy2_s = nyp3
     integer, parameter :: nrf = 30
+    integer, parameter :: nn_n_in = 61
+    integer, parameter :: nn_n_out = 148
 
     != unit J :: t
     real t(nx, nzm)
@@ -57,10 +57,10 @@ module tests
     real q_torch(nx, nzm)
         !! total water
     ! fluxes at the top and bottom of the domain:
-    real :: precsfc(nx) = 0.
+    ! real :: precsfc(nx) = 0.
         !! surface precip. rate
     !  Horizontally varying stuff (as a function of xy)
-    real :: prec_xy(nx) = 0.
+    ! real :: prec_xy(nx) = 0.
         !! surface precipitation rate
     ! reference vertical profiles:
 
@@ -95,30 +95,37 @@ module tests
                                 t_delta_sed, q_delta_sed
     real :: prec_sed(1)
 
-    real(4), allocatable, dimension(:) :: features, features_torch
-    real(4), allocatable, dimension(:) :: logits, logits_torch
+    real(4), allocatable, dimension(:) :: nn_cf_net_out
+
+    real(4), dimension(nn_n_out) :: nn_out_ones
 
     contains
 
         subroutine test_nn_net_routines()
 
             real(4), dimension(4) :: test_array = (/ -1.0, 0.0, 0.5, 1.0 /)
+            real(4), dimension(4) :: res_array = (/ 0.0, 0.0, 0.5, 1.0 /)
+            real(4), dimension(nn_n_in) :: features = 1.0
+
+            integer :: nin, nout
 
             write (*,*) "Testing relu"
             call relu(test_array)
+            call assert_array_equal(res_array, test_array, "Test ReLU")
             write (*,*) "relu ok"
 
             write (*,*) "Testing neural network initialisation"
-            call nn_cf_net_init(nn_filename, nin, nout, 30)
+            call nn_cf_net_init(nn_filename, nin, nout, nrf)
+            call assert_array_equal([nin, nout], [nn_n_in, nn_n_out], "Test NN dimensions")
             write (*,*) "nn_cf_net_init ok"
 
             write (*,*) "Testing neural network forward pass"
-            allocate(features(nin))
-            allocate(logits(nout))
-            features = 1.
-            logits = 0.
-            call nn_cf_net_forward(features, logits)
+            allocate(nn_cf_net_out(nout))
+            call nn_cf_net_forward(features, nn_cf_net_out)
             write (*,*) "nn_cf_net_forward ok"
+
+            call load_nn_out_ones("../nn_ones.txt")
+            call assert_array_equal(nn_cf_net_out, nn_out_ones, "Test NN forward passing ones", 1.0e-4)
 
             write (*,*) "Testing neural network finalisation"
             call nn_cf_net_finalize()
@@ -128,17 +135,18 @@ module tests
 
         subroutine test_nn_net_torch_routines()
 
+            integer :: nin, nout
+
+            real(4), dimension(nn_n_in) :: features = 1.0
+            real(4), dimension(nn_n_out) :: torch_net_out
+
             write (*,*) "Testing FTorch neural network initialisation"
-            call nn_cf_net_torch_init(nn_filename, nin, nout, 30)
+            call nn_cf_net_torch_init(nn_filename, nin, nout, nrf)
             write (*,*) "nn_cf_net_torch_init ok"
 
             write (*,*) "Testing FTorch neural network forward pass"
-            allocate(features_torch(nin))
-            allocate(logits_torch(nout))
-            features_torch = 1.
-            logits_torch = 0.
-            call nn_cf_net_torch_forward(features_torch, logits_torch)
-            call assert_real_1d(logits, logits_torch, "Test NN output",  rtol_opt=1.0e-4)
+            call nn_cf_net_torch_forward(features, torch_net_out)
+            call assert_array_equal(nn_cf_net_out, torch_net_out, "Test NN output", rtol_opt=1.0e-4)
             write (*,*) "nn_cf_net_torch_forward ok"
 
             write (*,*) "Testing FTorch neural network finalisation"
@@ -158,21 +166,13 @@ module tests
             q = 0.4
 
             write (*,*) "Testing convection flux forward"
-            call nn_convection_flux_forward(nn_cf_net_forward, &
-                                    tabs_i, q_i, y_in, &
-                                    tabs, &
-                                    t, q, &
-                                    rho, adz, dz, dtn, &
-                                    prec_sed)
+            call nn_convection_flux_forward( &
+                nn_cf_net_forward, &
+                tabs_i, q_i, y_in, &
+                tabs, &
+                t, q, &
+                rho, adz, dz, dtn, prec_sed)
             write (*,*) "nn_convection_flux_forward ok"
-
-            ! q(:, 1:nrf) = q(:, 1:nrf) + q_delta_adv &
-            !                             + q_delta_auto &
-            !                             + q_delta_sed
-            ! t(:, 1:nrf) = t(:, 1:nrf) + t_delta_adv &
-            !                             + t_delta_auto &
-            !                             + t_delta_sed &
-            !                             + t_rad_rest_tend*dtn
 
             write (*,*) "Testing convection flux finalisation"
             call nn_cf_net_finalize()
@@ -190,83 +190,43 @@ module tests
             q_torch = 0.4
 
             write (*,*) "Testing convection flux forward"
-            call nn_convection_flux_forward(nn_cf_net_torch_forward, &
-                                    tabs_i, q_i, y_in, &
-                                    tabs, &
-                                    t_torch, q_torch, &
-                                    rho, adz, dz, dtn, prec_sed)
-
-            ! q_torch(:, 1:nrf) = q_torch(:, 1:nrf) + q_delta_adv &
-            !                             + q_delta_auto &
-            !                             + q_delta_sed
-            ! t_torch(:, 1:nrf) = t_torch(:, 1:nrf) + t_delta_adv &
-            !                             + t_delta_auto &
-            !                             + t_delta_sed &
-            !                             + t_rad_rest_tend*dtn
-
-            call assert_real_2d(t, t_torch, "Test t", rtol_opt=1.0e-4)
-            call assert_real_2d(q, q_torch, "Test q", rtol_opt=1.0e-4)
+            call nn_convection_flux_forward( &
+                nn_cf_net_torch_forward, &
+                tabs_i, q_i, y_in, &
+                tabs, &
+                t_torch, q_torch, &
+                rho, adz, dz, dtn, prec_sed)
+            call assert_array_equal(t, t_torch, "Test t", rtol_opt=1.0e-4)
+            call assert_array_equal(q, q_torch, "Test q", rtol_opt=1.0e-4)
             write (*,*) "nn_convection_flux_forward_torch ok"
 
             write (*,*) "Testing FTorch convection flux finalization"
             call nn_cf_net_torch_finalize()
             write (*,*) "nn_convection_flux_finalize ok"
 
+            deallocate(nn_cf_net_out)
+
         end subroutine test_nn_flux_torch_routines
 
-        subroutine assert_real_1d(a, b, test_name, rtol_opt)
+        subroutine load_nn_out_ones(nn_ones_file)
+            !! Load the result of running the NN with ones
 
-            character(len=*), intent(in) :: test_name
-            real(4), dimension(:), intent(in) :: a, b
-            real(4), intent(in), optional :: rtol_opt
-            real(4) :: relative_error, rtol
+            integer :: io, stat, i
+            character(len=512) :: msg
+            character(len=*) :: nn_ones_file
 
-            if (.not. present(rtol_opt)) then
-                rtol = 1.0e-5
-            else
-                rtol = rtol_opt
+            open(newunit=io, file=trim(nn_ones_file), status="old", action="read", &
+                 iostat=stat, iomsg=msg)
+            if (stat /= 0) then
+                print *, trim(msg)
+                stop
             end if
+            do i = 1,148
+                read(io, *) nn_out_ones(i)
+            enddo
+            close(io)
 
-            relative_error = maxval(abs(a/b - 1.0))
-            call print_assert_real(test_name, (rtol > relative_error), relative_error)
-
-        end subroutine assert_real_1d
-
-        subroutine assert_real_2d(a, b, test_name, rtol_opt)
-
-            character(len=*), intent(in) :: test_name
-            real(4), dimension(:, :), intent(in) :: a, b
-            real(4), intent(in), optional :: rtol_opt
-            real(4) :: relative_error, rtol
-
-            if (.not. present(rtol_opt)) then
-                rtol = 1.0e-5
-            else
-                rtol = rtol_opt
-            end if
-
-            relative_error = maxval(abs(a/b - 1.0))
-            call print_assert_real(test_name, (rtol > relative_error), relative_error)
-
-        end subroutine assert_real_2d
-
-        subroutine print_assert_real(test_name, is_close, relative_error)
-
-            character(len=*), intent(in) :: test_name
-            logical, intent(in) :: is_close
-            real(4), intent(in) :: relative_error
-            character(len=15) :: pass, fail
-
-            fail = char(27)//'[31m'//'FAILED'//char(27)//'[0m'
-            pass = char(27)//'[32m'//'PASSED'//char(27)//'[0m'
-
-            if (is_close) then
-            write(*, '(A, " :: [", A, "] maximum relative error = ", E11.4)') pass, trim(test_name), relative_error
-            else
-            write(*, '(A, " :: [", A, "] maximum relative error = ", E11.4)') fail, trim(test_name), relative_error
-            end if
-
-        end subroutine print_assert_real
+        end subroutine load_nn_out_ones
 
 end module tests
 
@@ -291,10 +251,5 @@ program run_tests
     write(*,*) "=== Testing routines from nn_convection_flux_torch ==="
     call test_nn_flux_torch_routines()
     write(*,*) "======================================================"
-
-    deallocate(features)
-    deallocate(logits)
-    deallocate(features_torch)
-    deallocate(logits_torch)
 
 end program run_tests

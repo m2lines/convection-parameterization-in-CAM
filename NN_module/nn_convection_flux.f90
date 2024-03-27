@@ -236,8 +236,8 @@ contains
             !     dim_counter = dim_counter + input_ver_dim
             ! else
             ! ! if using non-precipitating water as water content
-                features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,1:input_ver_dim),4)
-                dim_counter =  dim_counter + input_ver_dim
+                ! features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,1:input_ver_dim),4)
+                ! dim_counter =  dim_counter + input_ver_dim
             ! endif
 
             ! Add distance to the equator as input feature
