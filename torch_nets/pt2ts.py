@@ -1,4 +1,6 @@
 """Load a pytorch model and convert it to TorchScript."""
+# pylint: disable=fixme
+
 from typing import Optional
 import torch
 
@@ -78,14 +80,7 @@ if __name__ == "__main__":
     # This example assumes my_ml_model has a method `initialize` to load
     # architecture, weights, and place in inference mode
 
-    # models.endow_with_netcdf_params(trained_model, weights_file)
-    # weights_file = "qobsTTFFFFFTF30FFTFTF30TTFTFTFFF80FFTFTTF2699FFFF_X01_no_qp_no_adv_surf_F_Tin_qin_disteq_O_Trad_rest_Tadv_qadv_qout_qsed_RESCALED_7epochs_no_drop_REAL_NN_layers5in61out148_BN_F_te70.nc"
-    # weights_file = "weights.pkl"
-    # trained_model = models.ANN().initialize(weights_file, True)
     trained_model = models.ANN().load("nn_state.pt")
-    # for name, layer in trained_model.named_children():
-    #     print(layer.weight)
-    #     break
 
     # Switch off specific layers/parts of the model that behave
     # differently during training and inference.
@@ -119,14 +114,14 @@ if __name__ == "__main__":
 
     # FPTLIB-TODO
     # Set the name of the file you want to save the torchscript model to:
-    saved_ts_filename = "torchscript_model.pt"
+    TS_MODEL_PATH = "torchscript_model.pt"
 
     # FPTLIB-TODO
     # Save the pytorch model using either scripting (recommended where possible) or tracing
     # -----------
     # Scripting
     # -----------
-    script_to_torchscript(trained_model, filename=saved_ts_filename)
+    script_to_torchscript(trained_model, filename=TS_MODEL_PATH)
 
     # -----------
     # Tracing
@@ -142,7 +137,7 @@ if __name__ == "__main__":
     # Scale inputs as above and, if required, move inputs and mode to GPU
     trained_model_dummy_input = 2.0 * trained_model_dummy_input
     trained_model_testing_output = trained_model(trained_model_dummy_input)
-    ts_model = load_torchscript(filename=saved_ts_filename)
+    ts_model = load_torchscript(filename=TS_MODEL_PATH)
     ts_model_output = ts_model(trained_model_dummy_input)
 
     if torch.all(ts_model_output.eq(trained_model_testing_output)):
