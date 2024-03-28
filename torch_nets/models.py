@@ -61,7 +61,7 @@ class ANN(nn.Module):
     ):
         """Initialize the ANN model."""
         super().__init__()
-        
+
         dims = [n_in] + [neurons] * (n_layers - 1) + [n_out]
         layers = []
 
@@ -72,7 +72,7 @@ class ANN(nn.Module):
                 layers.append(nn.Dropout(dropout))  # type: ignore
 
         self.layers = nn.ModuleList(layers)
-        
+
         fmean = fstd = omean = ostd = None
 
         if features_mean is not None:

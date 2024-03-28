@@ -1,4 +1,5 @@
 """Load a pytorch model and convert it to TorchScript."""
+
 # pylint: disable=fixme
 
 from typing import Optional
@@ -55,7 +56,9 @@ def trace_to_torchscript(
     frozen_model.save(filename)
 
 
-def load_torchscript(filename: Optional[str] = "torchscript_model.pt") -> torch.nn.Module:
+def load_torchscript(
+    filename: Optional[str] = "torchscript_model.pt",
+) -> torch.nn.Module:
     """
     Load a TorchScript from file.
 
