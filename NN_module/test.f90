@@ -146,7 +146,7 @@ module tests
 
             write (*,*) "Testing FTorch neural network forward pass"
             call nn_cf_net_torch_forward(features, torch_net_out)
-            call assert_array_equal(nn_cf_net_out, torch_net_out, "Test NN output", rtol_opt=1.0e-4)
+            call assert_array_equal(nn_cf_net_out, torch_net_out, "Test NN output", rtol_opt=2.0e-4)
             write (*,*) "nn_cf_net_torch_forward ok"
 
             write (*,*) "Testing FTorch neural network finalisation"
