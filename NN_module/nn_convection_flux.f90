@@ -6,7 +6,6 @@ module nn_convection_flux_mod
 
 !---------------------------------------------------------------------
 ! Libraries to use
-use nn_cf_net_mod, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
 use SAM_consts_mod, only: fac_cond, fac_fus, tprmin, a_pr, input_ver_dim, &
                           nrf, nrfq
 
@@ -16,7 +15,7 @@ private
 
 !---------------------------------------------------------------------
 ! public interfaces
-public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize, &
+public  nn_convection_flux_forward, nn_convection_flux_init, nn_convection_flux_finalize, &
         esati, qsati, qsatw, dtqsatw, dtqsati
 
 
@@ -40,26 +39,33 @@ contains
     !-----------------------------------------------------------------
     ! Public Subroutines
 
-    subroutine nn_convection_flux_init(nn_filename)
+    subroutine nn_convection_flux_init(init_func, nn_filename)
         !! Initialise the NN module
 
         character(len=1024), intent(in) :: nn_filename
             !! NetCDF filename from which to read model weights
 
+        interface
+            subroutine init_func(nn_filename, n_inputs, n_outputs, nrf)
+                character(len=1024), intent(in) :: nn_filename
+                integer, intent(out) :: n_inputs, n_outputs
+                integer, intent(in) :: nrf
+            end subroutine init_func
+        end interface
+
         ! Initialise the Neural Net from file and get info
-        call nn_cf_net_init(nn_filename, n_inputs, n_outputs, nrf)
+        call init_func(nn_filename, n_inputs, n_outputs, nrf)
 
         ! Set init flag as complete
         do_init = .false.
 
     end subroutine nn_convection_flux_init
 
-
-    subroutine nn_convection_flux(tabs_i, q_i, y_in, &
-                                  tabs, &
-                                  t, q, &
-                                  rho, adz, dz, dtn, &
-                                  prec_sed)
+    subroutine nn_convection_flux_forward(forward_func, &
+                                          tabs_i, q_i, y_in, &
+                                          tabs, &
+                                          t, q, &
+                                          rho, adz, dz, dtn, prec_sed)
         !! Interface to the neural net that applies physical constraints and reshaping
         !! of variables.
         !! Operates on subcycle of timestep dtn to update t, q, precsfc, and prec_xy
@@ -67,6 +73,14 @@ contains
         ! -----------------------------------
         ! Input Variables
         ! -----------------------------------
+
+        ! Neural net forward subroutine
+        interface
+            subroutine forward_func(features, outputs)
+                real(4), dimension(:), target :: features
+                real(4), dimension(:), target, intent(out) :: outputs
+            end subroutine forward_func
+        end interface
         
         ! ---------------------
         ! Fields from beginning of time step used as NN inputs
@@ -161,12 +175,12 @@ contains
         ! -----------------------------------
         ! variables for NN
         ! -----------------------------------
-        real(4), dimension(n_inputs) :: features
+        real(4), dimension(n_inputs), target :: features
             !! Vector of input features for the NN
-        real(4), dimension(n_outputs) :: outputs
+        real(4), dimension(n_outputs), target :: outputs
             !! vector of output features from the NN
         ! NN outputs
-        real,   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
+        real, dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
                                   q_sed_flux
         ! Output variable t_rad_rest_tend is also an output from the NN (defined above)
 
@@ -222,8 +236,8 @@ contains
             !     dim_counter = dim_counter + input_ver_dim
             ! else
             ! ! if using non-precipitating water as water content
-                features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,1:input_ver_dim),4)
-                dim_counter =  dim_counter + input_ver_dim
+                ! features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,1:input_ver_dim),4)
+                ! dim_counter =  dim_counter + input_ver_dim
             ! endif
 
             ! Add distance to the equator as input feature
@@ -235,7 +249,7 @@ contains
             ! Call the forward method of the NN on the input features
             ! Scaling and normalisation done as layers in NN
 
-            call net_forward(features, outputs)
+            call forward_func(features, outputs)
 
             !-----------------------------------------------------
             ! Separate physical outputs from NN output vector
@@ -362,16 +376,16 @@ contains
                 q(i,k) = max(0.,q(i,k))
             end do
         end do
-        ! End of loop over columns
+        ! End of loops over columns
 
-    end subroutine nn_convection_flux
+    end subroutine nn_convection_flux_forward
 
 
-    subroutine nn_convection_flux_finalize()
+    subroutine nn_convection_flux_finalize(finalize_func)
         !! Finalize the NN module
 
         ! Finalize the Neural Net deallocating arrays
-        call nn_cf_net_finalize()
+        call finalize_func()
 
     end subroutine nn_convection_flux_finalize
 

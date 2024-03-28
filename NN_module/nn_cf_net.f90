@@ -12,7 +12,7 @@ private
 
 !---------------------------------------------------------------------
 ! public interfaces
-public  relu, net_forward, nn_cf_net_init, nn_cf_net_finalize
+public  relu, nn_cf_net_forward, nn_cf_net_init, nn_cf_net_finalize
 
 
 !---------------------------------------------------------------------
@@ -82,12 +82,12 @@ contains
     end subroutine relu
 
 
-    subroutine net_forward(features, logits)
+    subroutine nn_cf_net_forward(features, logits)
         !! Run forward method of the Neural Net.
 
-        real(4), dimension(:) :: features
+        real(4), dimension(:), target :: features
             !! Vector of input features
-        real(4), dimension(:), intent(out)  :: logits
+        real(4), dimension(:), target, intent(out)  :: logits
             !! Output vector
         integer :: i
             !! Loop counter

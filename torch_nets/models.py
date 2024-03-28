@@ -7,7 +7,7 @@ import torch
 from torch import nn, Tensor
 
 
-class ANN(nn.Sequential):
+class ANN(nn.Module):
     """Model used in the paper.
 
     Paper: https://doi.org/10.1029/2020GL091363
@@ -60,6 +60,8 @@ class ANN(nn.Sequential):
         output_groups: Optional[list] = None,
     ):
         """Initialize the ANN model."""
+        super().__init__()
+
         dims = [n_in] + [neurons] * (n_layers - 1) + [n_out]
         layers = []
 
@@ -69,7 +71,7 @@ class ANN(nn.Sequential):
                 layers.append(nn.ReLU())  # type: ignore
                 layers.append(nn.Dropout(dropout))  # type: ignore
 
-        super().__init__(*layers)
+        self.layers = nn.ModuleList(layers)
 
         fmean = fstd = omean = ostd = None
 
@@ -121,8 +123,8 @@ class ANN(nn.Sequential):
         if self.features_mean is not None:
             input = (input - self.features_mean) / self.features_std
 
-        # pass the input through the layers using nn.Sequential.forward
-        output = super().forward(input)
+        for layer in self.layers:
+            input = output = layer(input)
 
         if self.outputs_mean is not None:
             output = output * self.outputs_std + self.outputs_mean
@@ -140,8 +142,7 @@ class ANN(nn.Sequential):
         """
         state = torch.load(path)
         for key in ["features_mean", "features_std", "outputs_mean", "outputs_std"]:
-            if key in state and getattr(self, key) is None:
-                setattr(self, key, state[key])
+            setattr(self, key, state.get(key, None))
         self.load_state_dict(state)
         return self
 

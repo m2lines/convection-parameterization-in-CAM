@@ -3,12 +3,12 @@
 # Try using nf-config tool if available, otherwise need to manually add path as per examples below
 
 # ifort configuration
-FC = ifort
-FCFLAGS = $(shell nf-config --fflags)
+# FC = ifort
+# FCFLAGS = $(shell nf-config --fflags)
 
 # gfortran configuration
-# FC = gfortran
-# FCFLAGS = -g -ffree-line-length-none $(shell nf-config --fflags)
+FC = gfortran
+FCFLAGS = -g -ffree-line-length-none $(shell nf-config --fflags)
 
 # link flags
 # Link to netcdf and netcdf-fortran
@@ -25,12 +25,16 @@ LDFLAGS = $(shell nf-config --flibs)
 
 
 # BASE TESTS
-# PROGRAM = test
-# SRC = precision.f90 test_utils.f90 SAM_consts.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_SAM.f90 test.f90
+PROGRAM = test_nn
+SRC = precision.f90 test_utils.f90 SAM_consts.f90 nn_cf_net.f90 nn_cf_net_torch.f90 nn_convection_flux.f90 test.f90
 
 # CAM INTERFACE TESTS
-PROGRAM = test_cam
-SRC = precision.f90 test_utils.f90 SAM_consts.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_CAM.f90 test_cam_interface.f90
+# PROGRAM = test_cam
+# SRC = precision.f90 test_utils.f90 SAM_consts.f90 nn_cf_net.f90 nn_convection_flux.f90 nn_interface_CAM.f90 test_cam_interface.f90
+
+# LDFLAGS += -L/home/ek/lib/lib/lib -lftorch
+# FCFLAGS += -I/home/ek/lib/lib/include/ftorch
+# $(shell export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/ek/lib/lib/lib)
 
 OBJECTS = $(SRC:.f90=.o)
 
@@ -45,4 +49,3 @@ $(PROGRAM): $(OBJECTS)
 
 clean:
 		rm -f *.o *.mod
-
