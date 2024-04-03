@@ -12,70 +12,70 @@ module SAM_consts_mod
   ! Physical Constants:
 
   != unit (m / s^2)
-  real, parameter :: ggr = 9.81
+  real(8), parameter :: ggr = 9.81
       !! Gravity acceleration, m/s2
 
   != unit J / kg :: lcond, lsub, lfus
-  real, parameter :: lfus = 0.3336e+06
+  real(8), parameter :: lfus = 0.3336e+06
       !! Latent heat of fusion
-  real, parameter :: lcond = 2.5104e+06
+  real(8), parameter :: lcond = 2.5104e+06
       !! Latent heat of condensation
-  real, parameter :: lsub = 2.8440e+06
+  real(8), parameter :: lsub = 2.8440e+06
       !! Latent heat of sublimation, J/kg
 
   != unit (J / kg) / K :: cp
-  real, parameter :: cp = 1004.
+  real(8), parameter :: cp = 1004.
       !! Specific heat of air
   
   ! unit K :: fac_cond, fac_fus, fac_sub
-  real, parameter :: fac_cond = lcond/cp
+  real(8), parameter :: fac_cond = lcond/cp
       !!
-  real, parameter :: fac_fus = lfus/cp
+  real(8), parameter :: fac_fus = lfus/cp
       !!
-  real, parameter :: fac_sub = lsub/cp
+  real(8), parameter :: fac_sub = lsub/cp
       !!
 
   ! Temperatures limits for various hydrometeors
   != unit K :: tprmin
-  real, parameter :: tprmin = 268.16
+  real(8), parameter :: tprmin = 268.16
       !! Minimum temperature for rain
   
   != unit K :: tprmax
-  real, parameter :: tprmax = 283.16
+  real(8), parameter :: tprmax = 283.16
       !! Maximum temperature for snow+graupel, K
   
   != unit K :: tbgmin
-  real, parameter :: tbgmin = 253.16
+  real(8), parameter :: tbgmin = 253.16
       !! Minimum temperature for cloud water.
   
   != unit K :: tbgmin
-  real, parameter :: tbgmax = 273.16
+  real(8), parameter :: tbgmax = 273.16
       !! Maximum temperature for cloud ice, K
 
   != unit K :: tbgmin
-  real, parameter :: tgrmin = 223.16
+  real(8), parameter :: tgrmin = 223.16
       !! Maximum temperature for snow, K
 
   != unit K :: tbgmin
-  real, parameter :: tgrmax = 283.16
+  real(8), parameter :: tgrmax = 283.16
       !! Maximum temperature for graupel, K
 
   ! Misc. microphysics variables
   ! != unit 1 / K :: a_pr
-  real, parameter :: a_pr = 1./(tprmax-tprmin)
+  real(8), parameter :: a_pr = 1./(tprmax-tprmin)
       !! Misc. microphysics variables
   
   != unit 1 / K :: a_bg
-  real, parameter :: a_bg = 1./(tbgmax-tbgmin)
+  real(8), parameter :: a_bg = 1./(tbgmax-tbgmin)
       !! Misc. microphysics variables
 
-  real, parameter :: an = 1./(tbgmax-tbgmin)
-  real, parameter :: bn = tbgmin * an
-  real, parameter :: ap = 1./(tprmax-tprmin)
-  real, parameter :: bp = tprmin * ap
-  real, parameter :: fac1 = fac_cond+(1+bp)*fac_fus
-  real, parameter :: fac2 = fac_fus*ap
-  real, parameter :: ag = 1./(tgrmax-tgrmin)
+  real(8), parameter :: an = 1./(tbgmax-tbgmin)
+  real(8), parameter :: bn = tbgmin * an
+  real(8), parameter :: ap = 1./(tprmax-tprmin)
+  real(8), parameter :: bp = tprmin * ap
+  real(8), parameter :: fac1 = fac_cond+(1+bp)*fac_fus
+  real(8), parameter :: fac2 = fac_fus*ap
+  real(8), parameter :: ag = 1./(tgrmax-tgrmin)
 
   ! ---------------------------
   ! SAM Grid Variables
@@ -97,9 +97,9 @@ module SAM_consts_mod
 contains
 
   != unit 1 :: omegan
-  real function omegan(tabs)
+  real(8) function omegan(tabs)
       != unit K :: tabs
-      real, intent(in) :: tabs
+      real(8), intent(in) :: tabs
           !! Absolute temperature
 
       omegan = max(0., min(1., (tabs-tbgmin)*a_bg))

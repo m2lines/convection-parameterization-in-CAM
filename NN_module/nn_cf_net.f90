@@ -149,7 +149,7 @@ contains
         integer :: xscale_mean_varid, xscale_stnd_varid
         integer :: yscale_mean_varid, yscale_stnd_varid
 
-        character(len=1024), intent(in) :: nn_filename
+        character(len=136), intent(in) :: nn_filename
             !! NetCDF filename from which to read model weights
 
 
