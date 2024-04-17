@@ -80,8 +80,8 @@ module SAM_consts_mod
   ! ---------------------------
   ! SAM Grid Variables
   ! ---------------------------
-  integer, parameter :: input_ver_dim = 48
-      !! Set to 48 in setparm.f90 of SAM. Same as nz_gl??
+  integer, parameter :: input_ver_dim = 30
+      !! Set to 48 in setparm.f90 of SAM. Same as nz_gl, but trained on a run with 30.
   
   ! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,
   ! and at 29 levels for fluxes (as flux at bottom boundary is zero).

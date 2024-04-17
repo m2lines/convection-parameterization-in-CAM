@@ -97,7 +97,8 @@ contains
                                       dqi, dqv, dqc, ds)
         !! Interface to the nn_convection parameterisation for the CAM model
 
-        integer :: k
+        real(8), intent(in) :: dtn    ! Seconds
+        integer, intent(in) :: nx, nz, nstep, nstatis, icycle
 
         real(8), intent(in) :: cp_cam
             !! specific heat capacity of dry air from CAM [J/kg/K]
@@ -112,8 +113,9 @@ contains
         real(8), dimension(:,:) :: qv_cam, qc_cam, qi_cam
             !! moisture content [kg/kg] from the CAM model
         real(8), dimension(:) :: precsfc
-        real(8), intent(in) :: dtn    ! Seconds
-        integer, intent(in) :: nx, nz, nstep, nstatis, icycle
+
+        ! Outputs on the CAM grid
+        real(8), dimension(nx, nz), intent(out) :: dqi, dqv, dqc, ds
 
         real(8) :: y_in(nx)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
@@ -121,16 +123,15 @@ contains
         real(8), dimension(nx)      :: prec_sed
             !! Sedimenting precipitation at surface
 
-        ! Variables on the SAM grid
+        ! Local input variables on the SAM grid
         real(8), dimension(nx, nrf) :: q0_sam, tabs0_sam
         real(8), dimension(nx, nrf) :: q_sam, t_sam, tabs_sam
         real(8), dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
         real(8), dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam
         real(8), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
-
-        real(8), dimension(nx, nz), intent(out) :: dqi, dqv, dqc, ds
-
         real(8), dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
+
+        integer :: k
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
@@ -645,7 +646,8 @@ contains
         != unit K :: tabs, tabs1
         real(8), intent(inout) :: tabs(:, :)
             !! absolute temperature
-        real(8), allocatable :: tabs1
+        ! TODO FIX in others
+        real(8) :: tabs1
             !! Temporary variable for tabs
 
         != unit kg/kg :: q, qn, qv, qc, qi
