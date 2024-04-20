@@ -3,7 +3,7 @@ program cam_profile_tests
   use cam_profile, only: read_cam_profile, read_cam_outputs
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, &
                               nn_convection_flux_CAM_finalize, fetch_sam_data
-  use nf_out, only: nf_setup, nf_close, nf_set_t, nf_write_sam, nf_write_cam
+  use nf_out, only: nf_setup, nf_close, nf_set_t, nf_write_sam, nf_write_cam, nf_write_scalar
 
   implicit none
 
@@ -29,8 +29,10 @@ program cam_profile_tests
   real(8), dimension(1,1,101) :: ps_nc
 
   !> Tendency outputs from parameterisation on CAM
-  real(8), dimension(1,1,32,101) :: yogdt_nc, yogdq_nc, zmdt_nc, zmdq_nc
-  real(8), dimension(1,32) :: yogdt, yogdq, zmdt, zmdq
+  real(8), dimension(1,1,32,101) :: yogdt_nc, yogdq_nc
+  real(8), dimension(1,1,32,101) :: zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc
+  real(8), dimension(1,1,101) :: zmprec
+  real(8), dimension(1,32) :: yogdt, yogdq, zmdt, zmdq, zmdqi, zmdqc
 
   integer :: i
 
@@ -40,7 +42,7 @@ program cam_profile_tests
 
   ! Read in the data that was output from CAM h2 and h1 fincl files
   call read_cam_profile(cam_profile_file, t_nc, plev_nc, qv_nc, qc_nc, qi_nc, pint_nc, ps_nc)
-  call read_cam_outputs(cam_out_file, yogdt_nc, yogdq_nc, zmdt_nc, zmdq_nc)
+  call read_cam_outputs(cam_out_file, yogdt_nc, yogdq_nc, zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc, zmprec)
 
   ! Prepare the netcdf file for writing output
   call nf_setup(lev_sam(1:30), int_sam(1:31), plev(1,:), pint(1,:))
@@ -62,11 +64,15 @@ program cam_profile_tests
       yogdq = yogdq_nc(1,:,:,i)
       zmdt = zmdt_nc(1,:,:,i)
       zmdq = zmdq_nc(1,:,:,i)
+      zmdqi = zmdqi_nc(1,:,:,i)
+      zmdqc = zmdqc_nc(1,:,:,i)
 
-      call nf_write_cam(t(1,:), "YOG_T_IN")
-      call nf_write_cam(qi(1,:), "YOG_QV_IN")
-      call nf_write_cam(qc(1,:), "YOG_QC_IN")
-      call nf_write_cam(qv(1,:), "YOG_QI_IN")
+      ! Flip arrays in output to match definition of pressure coordinate from low-high
+      ! used in parameterisation (instead of high-low from CAM).
+      call nf_write_cam(t(1,size(t):1:-1), "YOG_T_IN")
+      call nf_write_cam(qi(1,size(qi):1:-1), "YOG_QV_IN")
+      call nf_write_cam(qc(1,size(qc):1:-1), "YOG_QC_IN")
+      call nf_write_cam(qv(1,size(qv):1:-1), "YOG_QI_IN")
 
       ! Run parameterisation
       call nn_convection_flux_CAM(plev(:,32:1:-1), pint(:,33:1:-1), ps, &
@@ -78,14 +84,20 @@ program cam_profile_tests
                                   precsfc, &
                                   dqi(:,32:1:-1), dqv(:,32:1:-1), dqc(:,32:1:-1), ds(:,32:1:-1))
 
-      call nf_write_cam(dqv(1,:), "YOGDQ")
-      call nf_write_cam(dqi(1,:), "YOGDQICE")
-      call nf_write_cam(dqc(1,:), "YOGDQCLD")
-      call nf_write_cam(ds(1,:), "YOGDT")
+      ! Flip arrays in output to match definition of pressure coordinate from low-high
+      ! used in parameterisation (instead of high-low from CAM).
+      call nf_write_cam(dqv(1,size(dqv):1:-1), "YOGDQ")
+      call nf_write_cam(dqi(1,size(dqi):1:-1), "YOGDQICE")
+      call nf_write_cam(dqc(1,size(dqc):1:-1), "YOGDQCLD")
+      call nf_write_cam(ds(1,size(ds):1:-1)/1004D0, "YOGDT")  ! Scale by cp=1004 to match ZMDT
+      call nf_write_scalar(precsfc(1), "YOGPREC")
 
       ! Write out ZM tendencies for comparison
-      call nf_write_cam(zmdq_nc(1,1,:,i), "ZMDQ")
-      call nf_write_cam(zmdt_nc(1,1,:,i), "ZMDT")
+      call nf_write_cam(zmdq_nc(1,1,size(zmdq):1:-1,i), "ZMDQ")
+      call nf_write_cam(zmdqi_nc(1,1,size(zmdqi):1:-1,i), "ZMDQICE")
+      call nf_write_cam(zmdqc_nc(1,1,size(zmdqc):1:-1,i), "ZMDQCLD")
+      call nf_write_cam(zmdt_nc(1,1,size(zmdt):1:-1,i), "ZMDT")
+      call nf_write_scalar(zmprec(1,1,i), "ZMPREC")
 
   end do
 

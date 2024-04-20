@@ -65,18 +65,19 @@ module cam_profile
 
     end subroutine read_cam_profile
 
-    subroutine read_cam_outputs(cam_out_file, yogdt_nc, yogdq_nc, zmdt_nc, zmdq_nc)
+    subroutine read_cam_outputs(cam_out_file, yogdt_nc, yogdq_nc, zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc, prec)
 
         character(len=136), intent(in) :: cam_out_file
         
-        real(8), dimension(1,1,32,101) :: yogdt_nc, yogdq_nc, zmdt_nc, zmdq_nc
+        real(8), dimension(1,1,32,101) :: yogdt_nc, yogdq_nc, zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc
+        real(8), dimension(1,1,101) :: prec
 
         integer :: nx = 1
         integer :: nlev = 32
 
         ! This will be the netCDF ID for the file and data variable.
         integer :: ncid
-        integer :: yogdt_id, yogdq_id, zmdt_id, zmdq_id
+        integer :: yogdt_id, yogdq_id, zmdt_id, zmdq_id, zmdqi_id, zmdqc_id, prec_id
 
         !-------------allocate arrays and read data-------------------
 
@@ -91,6 +92,12 @@ module cam_profile
         call check( nf90_get_var(ncid, zmdt_id, zmdt_nc))
         call check( nf90_inq_varid(ncid, "ZMDQ", zmdq_id))
         call check( nf90_get_var(ncid, zmdq_id, zmdq_nc))
+        call check( nf90_inq_varid(ncid, "ZMDICE", zmdqi_id))
+        call check( nf90_get_var(ncid, zmdqi_id, zmdqi_nc))
+        call check( nf90_inq_varid(ncid, "ZMDCLD", zmdqc_id))
+        call check( nf90_get_var(ncid, zmdqc_id, zmdqc_nc))
+        call check( nf90_inq_varid(ncid, "PRECC", prec_id))
+        call check( nf90_get_var(ncid, prec_id, prec))
 
         ! Close the nc file
         call check( nf90_close(ncid))
