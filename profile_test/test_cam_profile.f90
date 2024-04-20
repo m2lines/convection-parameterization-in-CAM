@@ -3,7 +3,7 @@ program cam_profile_tests
   use cam_profile, only: read_cam_profile, read_cam_outputs
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, &
                               nn_convection_flux_CAM_finalize, fetch_sam_data
-  use nf_out, only: nf_setup, nf_close, nf_write_sam, nf_write_cam
+  use nf_out, only: nf_setup, nf_close, nf_set_t, nf_write_sam, nf_write_cam
 
   implicit none
 
@@ -45,46 +45,49 @@ program cam_profile_tests
   ! Prepare the netcdf file for writing output
   call nf_setup(lev_sam(1:30), int_sam(1:31), plev(1,:), pint(1,:))
 
-  ! What timestep to analyse?
-  i = 1
+  ! Loop over timesteps
+  do i = 1, 101
+      call nf_set_t(i)
 
-  t = t_nc(1,:,:,i)
-  qv = qv_nc(1,:,:,i)
-  qc = qc_nc(1,:,:,i)
-  qi = qi_nc(1,:,:,i)
-  ! P saved as hPa so convert back to Pa
-  pint(1,:) = 100.0 * pint_nc
-  plev(1,:) = 100.0 * plev_nc
-  ps = ps_nc(1,:,i)
+      t = t_nc(1,:,:,i)
+      qv = qv_nc(1,:,:,i)
+      qc = qc_nc(1,:,:,i)
+      qi = qi_nc(1,:,:,i)
+      ! P saved as hPa so convert back to Pa
+      pint(1,:) = 100.0 * pint_nc
+      plev(1,:) = 100.0 * plev_nc
+      ps = ps_nc(1,:,i)
 
-  yogdt = yogdt_nc(1,:,:,i)
-  yogdq = yogdq_nc(1,:,:,i)
-  zmdt = zmdt_nc(1,:,:,i)
-  zmdq = zmdq_nc(1,:,:,i)
-  
-  call nf_write_cam(t(1,:), "YOG_T_IN")
-  call nf_write_cam(qi(1,:), "YOG_QV_IN")
-  call nf_write_cam(qc(1,:), "YOG_QC_IN")
-  call nf_write_cam(qv(1,:), "YOG_QI_IN")
+      yogdt = yogdt_nc(1,:,:,i)
+      yogdq = yogdq_nc(1,:,:,i)
+      zmdt = zmdt_nc(1,:,:,i)
+      zmdq = zmdq_nc(1,:,:,i)
 
-  ! Run parameterisation
-  call nn_convection_flux_CAM(plev(:,32:1:-1), pint(:,33:1:-1), ps, &
-                              t(:,32:1:-1), qv(:,32:1:-1), qc(:,32:1:-1), qi(:,32:1:-1), &
-                              1004D0, &
-                              1200D0, &
-                              1, 32, &
-                              1, 1, 1, &
-                              precsfc, &
-                              dqi(:,32:1:-1), dqv(:,32:1:-1), dqc(:,32:1:-1), ds(:,32:1:-1))
+      call nf_write_cam(t(1,:), "YOG_T_IN")
+      call nf_write_cam(qi(1,:), "YOG_QV_IN")
+      call nf_write_cam(qc(1,:), "YOG_QC_IN")
+      call nf_write_cam(qv(1,:), "YOG_QI_IN")
 
-  call nf_write_cam(dqv(1,:), "YOGDQ")
-  call nf_write_cam(dqi(1,:), "YOGDQICE")
-  call nf_write_cam(dqc(1,:), "YOGDQCLD")
-  call nf_write_cam(ds(1,:), "YOGDT")
+      ! Run parameterisation
+      call nn_convection_flux_CAM(plev(:,32:1:-1), pint(:,33:1:-1), ps, &
+                                  t(:,32:1:-1), qv(:,32:1:-1), qc(:,32:1:-1), qi(:,32:1:-1), &
+                                  1004D0, &
+                                  1200D0, &
+                                  1, 32, &
+                                  1, 1, 1, &
+                                  precsfc, &
+                                  dqi(:,32:1:-1), dqv(:,32:1:-1), dqc(:,32:1:-1), ds(:,32:1:-1))
 
-  ! Write out ZM tendencies for comparison
-  call nf_write_cam(zmdq_nc(1,1,:,i), "ZMDQ")
-  call nf_write_cam(zmdt_nc(1,1,:,i), "ZMDT")
+      call nf_write_cam(dqv(1,:), "YOGDQ")
+      call nf_write_cam(dqi(1,:), "YOGDQICE")
+      call nf_write_cam(dqc(1,:), "YOGDQCLD")
+      call nf_write_cam(ds(1,:), "YOGDT")
+
+      ! Write out ZM tendencies for comparison
+      call nf_write_cam(zmdq_nc(1,1,:,i), "ZMDQ")
+      call nf_write_cam(zmdt_nc(1,1,:,i), "ZMDT")
+
+  end do
 
   ! Clean up
   call nn_convection_flux_CAM_finalize()

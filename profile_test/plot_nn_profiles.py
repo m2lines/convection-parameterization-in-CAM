@@ -31,7 +31,7 @@ def get_coord(data, coordname):
     }
 
 
-def comparison_plot(vars, xlab="", ylab="", title=""):
+def comparison_plot(vars, xlab="", ylab="", title="", n=0):
     """
     Plot profiles for comparison based on inputs
 
@@ -40,7 +40,7 @@ def comparison_plot(vars, xlab="", ylab="", title=""):
     bottom.
     """
     for var in vars:
-        plt.scatter(var["values"], var["coords"], label=var["name"])
+        plt.scatter(var["values"][n,:], var["coords"][n,:], label=var["name"])
 
     plt.legend()
     plt.xlabel(xlab)
@@ -52,7 +52,7 @@ def comparison_plot(vars, xlab="", ylab="", title=""):
     plt.show()
 
 
-def norm_comparison_plot(vars, xlab="", ylab="", title=""):
+def norm_comparison_plot(vars, xlab="", ylab="", title="", n=0):
     """
     Plot normalised profiles for shape comparison based on inputs
 
@@ -62,7 +62,7 @@ def norm_comparison_plot(vars, xlab="", ylab="", title=""):
     """
     for var in vars:
         plt.scatter(
-            var["values"] / np.max(var["values"]), var["coords"], label=var["name"]
+            var["values"][n,:] / np.max(var["values"][n,:]), var["coords"][n,:], label=var["name"]
         )
 
     plt.legend()
@@ -75,7 +75,7 @@ def norm_comparison_plot(vars, xlab="", ylab="", title=""):
     plt.show()
 
 
-def conversion_plot(vars, xlab="", ylab="", title=""):
+def conversion_plot(vars, xlab="", ylab="", title="", n=0):
     """
     Plot profiles for checking variable conversion based on inputs.
 
@@ -89,7 +89,7 @@ def conversion_plot(vars, xlab="", ylab="", title=""):
     fig, ax = plt.subplots(1, len(vars), sharey=True)
 
     for ival, var in enumerate(vars):
-        ax[ival].scatter(var["values"], var["coords"], label=var["name"])
+        ax[ival].scatter(var["values"][n,:], var["coords"][n,:], label=var["name"])
         ax[ival].set_xlabel(var["varlabel"])
         ax[ival].legend()
     plt.gca().invert_yaxis()
@@ -109,7 +109,7 @@ def coord_plot(vars, xlab="", ylab="", title=""):
     is at the left.
     """
     for var in vars:
-        plt.scatter(var["coords"], var["values"], label=var["name"])
+        plt.scatter(var["coords"][n,:], var["values"][n,:], label=var["name"])
 
     plt.legend()
     plt.xlabel(xlab)
