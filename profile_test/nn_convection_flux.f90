@@ -367,10 +367,11 @@ contains
             call nf_write_sam(q_delta_sed(1,:), "DQ_SED")
             call nf_write_sam(-q_delta_sed(1,:)*(fac_fus+fac_cond), "DT_SED")
 
-            ! Apply radiation rest tendency to variables (multiply by dtn to get dt)
-            t(i,1:nrf) = t(i,1:nrf) + t_rad_rest_tend(i,1:nrf)*dtn
-
-            call nf_write_sam(t_rad_rest_tend(i,1:nrf)*dtn, "DT_RAD")
+            ! Radiation is not applied in this scheme for now.
+            ! ! Apply radiation rest tendency to variables (multiply by dtn to get dt)
+            ! t(i,1:nrf) = t(i,1:nrf) + t_rad_rest_tend(i,1:nrf)*dtn
+            !
+            ! call nf_write_sam(t_rad_rest_tend(i,1:nrf)*dtn, "DT_RAD")
 
             ! Calculate surface precipitation
             ! Apply sedimenting flux at surface to get rho*dq term

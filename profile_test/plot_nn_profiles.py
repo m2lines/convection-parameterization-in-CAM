@@ -324,7 +324,7 @@ if __name__ == "__main__":
     q_tend_auto_sam = get_ncvar(data, "Q_TEND_AUTO", "PNORM_SAM", varlabel=r"$dq$ [-]")
     q_flx_sed_sam = get_ncvar(data, "Q_FLX_SED", "PNORM_SAM", varlabel=r"$dq$ [-]")
     # Deltas
-    dt_rad_sam = get_ncvar(data, "DT_RAD", "PNORM_SAM", varlabel=r"$dt$ [K]")
+    # dt_rad_sam = get_ncvar(data, "DT_RAD", "PNORM_SAM", varlabel=r"$dt$ [K]")
     dt_adv_sam = get_ncvar(data, "DT_ADV", "PNORM_SAM", varlabel=r"$dt$ [K]")
     dt_auto_sam = get_ncvar(data, "DT_AUTO", "PNORM_SAM", varlabel=r"$dt$ [K]")
     dt_sed_sam = get_ncvar(data, "DT_SED", "PNORM_SAM", varlabel=r"$dt$ [K]")
@@ -354,7 +354,8 @@ if __name__ == "__main__":
         title=r"Comparison of $q$ delta components [-] from the parameterisation.",
     )
     profile_comparison_plot(
-        [dt_rad_sam, dt_adv_sam, dt_auto_sam, dt_sed_sam],
+        # [dt_rad_sam, dt_adv_sam, dt_auto_sam, dt_sed_sam],
+        [dt_adv_sam, dt_auto_sam, dt_sed_sam],
         ylab=r"$\hat p$ [-]",
         xlab=r"$dT$ [K]",
         title=r"Comparison of $t$ delta components [K] outputs from the parameterisation.",
