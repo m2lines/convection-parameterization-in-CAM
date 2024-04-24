@@ -153,11 +153,25 @@ contains
         ! Interpolate CAM variables to the SAM pressure levels
         ! TODO Interpolate all variables in one call
         ! TODO Check Boundary Condition
-        ! TODO FIX Set Surf vals
-        qi_surf = qi_cam(:, 1)
-        qc_surf = qc_cam(:, 1)
-        qv_surf = qv_cam(:, 1)
-        tabs_surf = tabs_cam(:, 1)
+        call extrapolate_to_surface(pres_cam, qi_cam, pres_sfc_cam, qi_surf)
+        where (qi_surf>=0)
+            qi_surf = qi_surf
+        elsewhere
+            qi_surf = 0
+        end where
+        call extrapolate_to_surface(pres_cam, qc_cam, pres_sfc_cam, qc_surf)
+        where (qc_surf>=0)
+            qc_surf = qc_surf
+        elsewhere
+            qc_surf = 0
+        end where
+        call extrapolate_to_surface(pres_cam, qv_cam, pres_sfc_cam, qv_surf)
+        where (qv_surf>=0)
+            qv_surf = qv_surf
+        elsewhere
+            qv_surf = 0
+        end where
+        call extrapolate_to_surface(pres_cam, tabs_cam, pres_sfc_cam, tabs_surf)
 
         call interp_to_sam(pres_cam, pres_sfc_cam, &
                            tabs_cam, tabs_sam, tabs_surf)
@@ -503,6 +517,28 @@ contains
         deallocate(p_int_norm_cam)
 
     end subroutine interp_to_cam
+
+    subroutine extrapolate_to_surface(p_cam, var_cam, p_surf_cam, var_surf_cam)
+        !! Extrapolate variable profile to the surface, required for interpolation.
+
+        != unit Pa :: p_cam
+        real(8), dimension(:,:), intent(in) :: p_cam
+            !! pressure [Pa] from the CAM model
+        real(8), dimension(:), intent(in) :: p_surf_cam
+            !! surface pressures [Pa] for each column in CAM
+        != unit 1 :: var_cam
+        real(8), dimension(:,:), intent(in) :: var_cam
+            !! variable from CAM grid to be interpolated from
+        real(8), dimension(:), intent(out) :: var_surf_cam
+            !! variable from CAM grid to be interpolated from
+
+        integer :: i, k
+        real(8) :: gdt(size(var_surf_cam))
+
+        gdt(:) = (var_cam(:,2) - var_cam(:,1)) / (p_cam(:,2) - p_cam(:,1))
+        var_surf_cam(:) = var_cam(:,1) + gdt(:) * (p_surf_cam(:) - p_cam(:,1))
+
+    end subroutine extrapolate_to_surface
 
     subroutine sam_sounding_init(filename)
         !! Read various profiles in from SAM sounding file
