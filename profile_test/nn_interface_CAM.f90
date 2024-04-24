@@ -120,8 +120,8 @@ contains
         real(8) :: y_in(nx)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
-        real(8), dimension(nx)      :: prec_sed
-            !! Sedimenting precipitation at surface
+        real(8), dimension(nx)      :: precsfc_i
+            !! precipitation at surface from one call to parameterisation
 
         ! Local input variables on the SAM grid
         real(8), dimension(nx, nrf) :: q0_sam, tabs0_sam
@@ -206,15 +206,20 @@ contains
                                 tabs_sam(:,1:nrf), &
                                 t_sam(:,1:nrf), q_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
-                                prec_sed)
+                                precsfc_i)
+        ! Update precsfc with prec from this timestep
+        precsfc = precsfc + precsfc_i
 
         call nf_write_sam(t_sam(1,:), "T_SAM_OUT")
         call nf_write_sam(q_sam(1,:), "Q_SAM_OUT")
-        call nf_write_scalar(prec_sed(1), "PREC_SAM_OUT")
+        call nf_write_scalar(precsfc_i(1), "PREC_SAM_OUT")
         !-----------------------------------------------------
         
         ! Formulate the output variables to CAM as required.
         call SAM_var_conversion(t_sam, q_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
+        ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
+        precsfc = precsfc * 1.0D-3
+
 
         call nf_write_sam(tabs_sam(1,:), "TABS_SAM_OUT")
         call nf_write_sam(qi_sam(1,:), "QI_SAM_OUT")
@@ -229,6 +234,9 @@ contains
         dqc_sam = (qc_sam - qc0_sam) / dtn
         dqi_sam = (qi_sam - qi0_sam) / dtn
         ds_sam = cp_cam * (tabs_sam - tabs0_sam) / dtn
+        ! Convert precipitation from total in m to date in m / s by div by dtn
+        precsfc = precsfc / dtn
+
 
         call nf_write_sam(ds_sam(1,:), "DS_SAM_OUT")
         call nf_write_sam(dqi_sam(1,:), "DQI_SAM_OUT")

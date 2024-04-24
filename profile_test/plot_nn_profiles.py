@@ -222,6 +222,21 @@ def profile_coord_plot(vars, xlab="", ylab="", title=""):
     plt.show()
 
 
+def scalar_comparison_plot(vars, xlab="", ylab="", title=""):
+    """Plot scalar variable as a timeseries for comparison."""
+    for var in vars:
+        plt.plot(var["values"][:], label=var["name"])
+
+    plt.legend()
+    plt.xlabel(xlab)
+    plt.ylabel(ylab)
+    plt.yscale('log')
+
+    plt.title(title)
+
+    plt.show()
+
+
 if __name__ == "__main__":
     data = nc4.Dataset("NN_test_output.nc")
 
@@ -401,18 +416,18 @@ if __name__ == "__main__":
         xlab=r"$T$ [K]",
         title=r"Comparison of $T$ tendencies [K] from ZM and this routine on CAM grid.",
     )
-    profile_norm_comparison_plot(
-        [dqv_zm, dqv_yog],
-        ylab=r"$\hat p$ [-]",
-        xlab=r"$\hat q$ [-]",
-        title=r"Comparison of normalised $q$ tendencies from ZM and this routine on CAM grid.",
-    )
-    profile_norm_comparison_plot(
-        [dt_zm, dt_yog],
-        ylab=r"$\hat p$ [-]",
-        xlab=r"$\hat T$ [-]",
-        title=r"Comparison of normalised $T$ tendencies from ZM and this routine on CAM grid.",
-    )
+    # profile_norm_comparison_plot(
+    #     [dqv_zm, dqv_yog],
+    #     ylab=r"$\hat p$ [-]",
+    #     xlab=r"$\hat q$ [-]",
+    #     title=r"Comparison of normalised $q$ tendencies from ZM and this routine on CAM grid.",
+    # )
+    # profile_norm_comparison_plot(
+    #     [dt_zm, dt_yog],
+    #     ylab=r"$\hat p$ [-]",
+    #     xlab=r"$\hat T$ [-]",
+    #     title=r"Comparison of normalised $T$ tendencies from ZM and this routine on CAM grid.",
+    # )
 
     hovmoller_comparison_plot(
         [dqv_yog, dqv_zm],
@@ -431,3 +446,5 @@ if __name__ == "__main__":
         diff=True,
         ratio=True,
         )
+
+    scalar_comparison_plot([prec_zm, prec_yog], xlab="timestep", ylab="precipitation [m / s]", title="Comparison of precipitaiton from YOG and ZM in simulation.")
