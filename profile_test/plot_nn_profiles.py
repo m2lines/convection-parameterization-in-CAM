@@ -37,7 +37,7 @@ def get_coord(data, coordname):
     }
 
 
-def profile_comparison_plot(vars, xlab="", ylab="", title="", n=0):
+def profile_comparison_plot(vars, xlab="", ylab="", title="", n=75):
     """
     Plot profiles for comparison based on inputs
 
@@ -53,6 +53,8 @@ def profile_comparison_plot(vars, xlab="", ylab="", title="", n=0):
     plt.xlabel(xlab)
     plt.ylabel(ylab)
     plt.gca().invert_yaxis()
+
+    plt.grid()
 
     plt.title(title)
 
@@ -148,7 +150,7 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
     plt.show()
 
 
-def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=0):
+def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=75):
     """
     Plot normalised profiles for shape comparison based on inputs
 
@@ -174,7 +176,7 @@ def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=0):
     plt.show()
 
 
-def profile_conversion_plot(vars, xlab="", ylab="", title="", n=0):
+def profile_conversion_plot(vars, xlab="", ylab="", title="", n=75):
     """
     Plot profiles for checking variable conversion based on inputs.
 
@@ -268,7 +270,7 @@ if __name__ == "__main__":
     hovmoller_comparison_plot(
         [tabs_sam_in, tabs_cam_in],
         ylab=r"$\hat p$ [-]",
-        xlab=r"$T$ [K]",
+        xlab=r"timestep",
         title=r"Comparison of T [K] for CAM and SAM grids to check interpolation.",
         )
 
@@ -281,7 +283,7 @@ if __name__ == "__main__":
     hovmoller_comparison_plot(
         [qv_sam_in, qv_cam_in],
         ylab=r"$\hat p$ [-]",
-        xlab=r"$q_{v}$ [-]",
+        xlab=r"timestep",
         title=r"Comparison of $q_v$ [-] for CAM and SAM grids to check interpolation.",
         )
 
@@ -432,7 +434,19 @@ if __name__ == "__main__":
     hovmoller_comparison_plot(
         [dqv_yog, dqv_zm],
         ylab=r"$p$ [-]",
-        xlab=r"$dq$ [-]",
+        xlab=r"timestep",
+        title=r"Comparison of d$q_v$ tendencies from ZM and YOG routines on CAM grid.",
+        diff=True,
+        ratio=True,
+        )
+
+    qv_zm = get_ncvar(data, "ZM_QV_OUT", "PNORM_CAM", varlabel=r"$q_v$ [-]")
+    qv_yog = get_ncvar(data, "YOG_QV_OUT", "PNORM_CAM", varlabel=r"$q_v$ [-]")
+
+    hovmoller_comparison_plot(
+        [qv_yog, qv_zm],
+        ylab=r"$p$ [-]",
+        xlab=r"timestep",
         title=r"Comparison of d$q_v$ tendencies from ZM and YOG routines on CAM grid.",
         diff=True,
         ratio=True,
@@ -441,7 +455,7 @@ if __name__ == "__main__":
     hovmoller_comparison_plot(
         [dt_yog, dt_zm],
         ylab=r"$p$ [-]",
-        xlab=r"$dT$ [-]",
+        xlab=r"timestep",
         title=r"Comparison of d$t$ tendencies from ZM and YOG routines on CAM grid.",
         diff=True,
         ratio=True,

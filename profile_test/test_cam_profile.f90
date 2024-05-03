@@ -99,6 +99,11 @@ program cam_profile_tests
       call nf_write_cam(zmdt_nc(1,1,size(zmdt):1:-1,i), "ZMDT")
       call nf_write_scalar(zmprec(1,1,i), "ZMPREC")
 
+      call nf_write_cam(qv(1,:) + dqv(1,:) * 1200D0, "YOG_QV_OUT")
+      call nf_write_cam(t(1,:) + ds(1,:) * 1200D0 / 1004D0, "YOG_T_OUT")
+      call nf_write_cam(qv(1,:) + zmdq(1,:) * 1200D0, "ZM_QV_OUT")
+      call nf_write_cam(t(1,:) + zmdt(1,:) * 1200D0, "ZM_T_OUT")
+
   end do
 
   ! Clean up
