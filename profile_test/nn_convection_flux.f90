@@ -141,7 +141,7 @@ contains
         
         != unit kg / m**2 :: precsfc
         real(8), intent(out), dimension(:)   :: precsfc
-            !! Surface precipitation due to sedimentation
+            !! Surface precipitation due to autoconversion and sedimentation
 
         ! -----------------------------------
         ! Local Variables
@@ -376,11 +376,12 @@ contains
             ! Calculate surface precipitation
             ! Combination of sedimentation at surface, and autoconversion in the column
             ! Apply sedimenting flux at surface to get rho*dq term
-            precsfc(i) = precsfc(i) - q_sed_flux(1) * irhoadzdz(1) * rho(k) * adz(k) !!  *dtn/dz
+            precsfc(i) = precsfc(i) - q_sed_flux(1) * irhoadzdz(1) * rho(1) * adz(1) !!  *dtn/dz
             ! Loop up column for all autoconverted precipitation
             do k=1,nrf
                 precsfc(i) = precsfc(i) - q_delta_auto(i,k) * rho(k) * adz(k)
             end do
+            precsfc(i) = precsfc(i) * dz
             
             ! As a final check enforce q must be >= 0.0
             do k = 1,nrf
