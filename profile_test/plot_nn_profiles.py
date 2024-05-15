@@ -325,15 +325,11 @@ if __name__ == "__main__":
         xlab=r"$q$ [-]",
         title=r"Comparison of $q_v$ [-] from CAM and $q$ [-] from SAM grids to check variable conversion. Should match as $q_i$ and $q_c$ are initially 0.",
     )
+    t_cam_tot = ncvar_add([tabs_sam_in, gamaz_sam], "T_CAM_TOT", varlabel=r"$t_CAM_tot$ [K]")
     profile_comparison_plot(
-        [tabs_sam_in, gamaz_sam, t_sam_in],
+        [tabs_sam_in, gamaz_sam, t_cam_tot, t_sam_in],
         ylab=r"$\hat p$ [-]",
         xlab=r"$T$ [K]",
-        title=r"Comparison of $T$ [K] from CAM, $gz/c_p$ component of SAM, and $t$ in SAM to check variable conversion.",
-    )
-    profile_conversion_plot(
-        [tabs_sam_in, gamaz_sam, t_sam_in],
-        ylab=r"$\hat p$ [-]",
         title=r"Comparison of $T$ [K] from CAM, $gz/c_p$ component of SAM, and $t$ in SAM to check variable conversion.",
     )
 
@@ -342,6 +338,46 @@ if __name__ == "__main__":
         ylab=r"$\hat p$ [-]",
         xlab=r"$q$ [-]",
         title=r"Comparison of $q$ components [-] from CAM, and $q$ value in SAM (sent to NN) to check variable conversion.",
+    )
+
+    # Check interpolation of outputs from SAM grid to CAM grid
+
+    ds_cam_out = get_ncvar(data, "DS_CAM_OUT", "PNORM_CAM", varlabel=r"$ds$ [J/kg]")
+    ds_sam_out = get_ncvar(data, "DS_SAM_OUT", "PNORM_SAM", varlabel=r"$ds$ [J/kg]")
+
+    dqv_cam_out = get_ncvar(data, "DQV_CAM_OUT", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
+    dqv_sam_out = get_ncvar(data, "DQV_SAM_OUT", "PNORM_SAM", varlabel=r"$dq_v$ [-]")
+
+    dqc_cam_out = get_ncvar(data, "DQC_CAM_OUT", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
+    dqc_sam_out = get_ncvar(data, "DQC_SAM_OUT", "PNORM_SAM", varlabel=r"$dq_c$ [-]")
+
+    dqi_cam_out = get_ncvar(data, "DQI_CAM_OUT", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
+    dqi_sam_out = get_ncvar(data, "DQI_SAM_OUT", "PNORM_SAM", varlabel=r"$dq_i$ [-]")
+
+    profile_comparison_plot(
+        [ds_cam_out, ds_sam_out],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$ds_{v}$ [-]",
+        title=r"Comparison of $ds$ [-] for SAM and CAM grids to check interpolation.",
+    )
+    profile_comparison_plot(
+        [dqv_cam_out, dqv_sam_out],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"timestep",
+        title=r"Comparison of $dq_v$ [-] for SAM and CAM grids to check interpolation.",
+        )
+
+    profile_comparison_plot(
+        [dqc_cam_out, dqc_sam_out],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$q_{v}$ [-]",
+        title=r"Comparison of $dq_c$ [-] for SAM and CAM grids to check interpolation.",
+    )
+    profile_comparison_plot(
+        [dqi_cam_out, dqi_sam_out],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$q_{v}$ [-]",
+        title=r"Comparison of $dq_i$ [-] for SAM and CAM grids to check interpolation.",
     )
 
     # From the NN
@@ -417,7 +453,45 @@ if __name__ == "__main__":
     dqv_zm = get_ncvar(data, "ZMDQ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
     dqi_zm = get_ncvar(data, "ZMDQICE", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
     dqc_zm = get_ncvar(data, "ZMDQCLD", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
+    dtevap_zm = get_ncvar(data, "ZMDTEVAP", "PNORM_CAM", varlabel=r"$dt_evap$ [K]")
+    dqvevap_zm = get_ncvar(data, "ZMDQEVAP", "PNORM_CAM", varlabel=r"$dq_evap$ [-]")
+
+    dt_tot_zm = ncvar_add([dt_zm, dtevap_zm], "ZMDT_TOT", varlabel=r"$dt_tot$ [K]")
+    dqv_tot_zm = ncvar_add([dqv_zm, dqvevap_zm], "ZMDQ_TOT", varlabel=r"$dq_tot$ [-]")
+
+    dt_clubb = get_ncvar(data, "CLUBBDT", "PNORM_CAM", varlabel=r"$dt$ [K]")
+    dqv_clubb = get_ncvar(data, "CLUBBDQ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
+    dqi_clubb = get_ncvar(data, "CLUBBDQICE", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
+    dqc_clubb = get_ncvar(data, "CLUBBDQCLD", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
+    dtadj_clubb = get_ncvar(data, "CLUBBDT_ADJ", "PNORM_CAM", varlabel=r"$dt$ [K]")
+    dqvadj_clubb = get_ncvar(data, "CLUBBDQ_ADJ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
+    dqiadj_clubb = get_ncvar(data, "CLUBBDQICE_ADJ", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
+
+    dt_tot_clubb = ncvar_add([dt_clubb, dtadj_clubb], "CLUBB_DT_TOT", varlabel=r"$dt_tot_clubb$ [K]")
+    dqv_tot_clubb = ncvar_add([dqv_clubb, dqvadj_clubb], "CLUBB_DQV_TOT", varlabel=r"$dq_tot$ [-]")
+    dqi_tot_clubb = ncvar_add([dqi_clubb, dqiadj_clubb], "CLUBB_DQCLD_TOT", varlabel=r"$dq_tot$ [-]")
+    dqc_tot_clubb = ncvar_add([dqc_clubb], "CLUBB_DQICE_TOT", varlabel=r"$dq_tot$ [-]")
+
+    dt_mphys = get_ncvar(data, "MPDT", "PNORM_CAM", varlabel=r"$dt$ [K]")
+    dqv_mphys= get_ncvar(data, "MPDQ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
+    dqi_mphys = get_ncvar(data, "MPDQCLD", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
+    dqc_mphys = get_ncvar(data, "MPDQICE", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
+
+    profile_comparison_plot(
+        [dt_tot_zm, dt_tot_clubb, dt_mphys, dt_yog],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$q$ [-]",
+        title=r"Comparison of $T$ tendencies [K] from schemes.",
+    )
+    profile_comparison_plot(
+        [dqv_tot_zm, dqv_tot_clubb, dqv_mphys, dqv_yog],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$q$ [-]",
+        title=r"Comparison of $q$ tendencies [-] from schemes.",
+    )
+
     prec_zm = get_ncvar(data, "ZMPREC", None, varlabel=r"prec. [ ]")
+
     profile_comparison_plot(
         [dqv_zm, dqv_yog],
         ylab=r"$\hat p$ [-]",
