@@ -131,6 +131,8 @@ contains
         real(8), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
         real(8), dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
 
+        real(8), dimension(nx, nz) :: rh_cam
+        real(8), dimension(nx, nrf) :: rh_sam
         integer :: k
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
@@ -149,7 +151,7 @@ contains
         call nf_write_cam(qi_cam(1,:), "QI_CAM_IN")
         call nf_write_cam(qc_cam(1,:), "QC_CAM_IN")
         call nf_write_cam(qv_cam(1,:), "QV_CAM_IN")
-        
+
         ! Interpolate CAM variables to the SAM pressure levels
         ! TODO Interpolate all variables in one call
         ! TODO Check Boundary Condition
@@ -190,6 +192,18 @@ contains
         call nf_write_cam(pres_cam(1,:) / pres_sfc_cam(1), "PNORM_CAM")
         call nf_write_sam(pres_mid(1:nrf) / presi(1), "PNORM_SAM")
         call nf_write_sam(gamaz(1:nrf), "GAMAZ_SAM")
+
+        !-----------------------------------------------------
+
+        ! Check relative humidities at inputs in CAM and SAM
+        do k = 1, nz
+            rh_cam(1,k) = qv_cam(1,k) / qsatw(tabs_cam(1,k), pres_cam(1,k))
+        end do
+        do k = 1, nrf
+            rh_sam(1,k) = qv_sam(1,k) / qsatw(tabs_sam(1,k), pres_mid(k))
+        end do
+        call nf_write_cam(rh_cam(1,:), "RH_CAM_IN")
+        call nf_write_sam(rh_sam(1,:), "RH_SAM_IN")
 
         !-----------------------------------------------------
         
