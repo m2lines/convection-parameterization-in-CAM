@@ -443,12 +443,32 @@ if __name__ == "__main__":
         title=r"Comparison of $T$ [K] on SAM grid before and after parameterisation.",
     )
 
+    # Compare to YOG tendencies output by CAM
+    dt_yog_nc = get_ncvar(data, "YOGDT_NC", "PNORM_CAM", varlabel=r"$dt$ [K]")
+    dqv_yog_nc = get_ncvar(data, "YOGDQ_NC", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
+    dqi_yog_nc = get_ncvar(data, "YOGDQICE_NC", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
+    dqc_yog_nc = get_ncvar(data, "YOGDQCLD_NC", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
+
     # Compare to ZM tendencies output by CAM
     dt_yog = get_ncvar(data, "YOGDT", "PNORM_CAM", varlabel=r"$dt$ [K]")
     dqv_yog = get_ncvar(data, "YOGDQ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
     dqi_yog = get_ncvar(data, "YOGDQICE", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
     dqc_yog = get_ncvar(data, "YOGDQCLD", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
     prec_yog = get_ncvar(data, "YOGPREC", None, varlabel=r"prec. [ ]")
+
+    profile_comparison_plot(
+        [dt_yog_nc, dt_yog],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$q$ [-]",
+        title=r"Comparison of $q$ tendencies [-] from YOG in CAM and YOG standalone.",
+    )
+    profile_comparison_plot(
+        [dqv_yog_nc, dqv_yog],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$q$ [-]",
+        title=r"Comparison of $T$ tendencies [K] from YOG in CAM and YOG standalone.",
+    )
+
     dt_zm = get_ncvar(data, "ZMDT", "PNORM_CAM", varlabel=r"$dt$ [K]")
     dqv_zm = get_ncvar(data, "ZMDQ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
     dqi_zm = get_ncvar(data, "ZMDQICE", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
