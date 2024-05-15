@@ -37,7 +37,19 @@ def get_coord(data, coordname):
     }
 
 
-def profile_comparison_plot(vars, xlab="", ylab="", title="", n=75):
+def ncvar_add(vars, varname, varlabel=""):
+    """Extract the normalised pressure coordinates"""
+    # return {"name": coordname, "values": get_ncvals(data, coordname), "coords": np.linspace(0, 1, len(get_ncvals(data, coordname)))}
+    return {
+        "name": varname,
+        "varlabel": varlabel,
+        "values": np.sum([var["values"] for var in vars], axis=0),
+        "coordlabel": vars[0]["coordlabel"],
+        "coords": vars[0]["coords"],
+    }
+
+
+def profile_comparison_plot(vars, xlab="", ylab="", title="", n=25):
     """
     Plot profiles for comparison based on inputs
 
@@ -150,7 +162,7 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
     plt.show()
 
 
-def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=75):
+def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=25):
     """
     Plot normalised profiles for shape comparison based on inputs
 
@@ -176,7 +188,7 @@ def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=75):
     plt.show()
 
 
-def profile_conversion_plot(vars, xlab="", ylab="", title="", n=75):
+def profile_conversion_plot(vars, xlab="", ylab="", title="", n=25):
     """
     Plot profiles for checking variable conversion based on inputs.
 
