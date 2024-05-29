@@ -505,19 +505,18 @@ contains
     !                write(*,*) "pc_l = ", pc_l
     !                write(*,*) "ps_u = ", ps_u
     !                write(*,*) "ps_l = ", ps_l
-                    var_cam(i,k) = var_cam(i,k) + (pc_u - pc_l)*var_sam(i, ks_u)/(ps_u-ps_l)
+                    var_cam(i,k) = var_cam(i,k) + var_sam(i,ks_u)
                 else
                   do c = ks_l, ks_u
                     if (c == ks_l) then
                       ! Bottom cell
-                      var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks_l+1)-pc_l)*var_sam(i,ks_l)/(p_int_norm_sam(ks_l+1)-ps_l)
+                      var_cam(i,k) = var_cam(i,k) + (pc_l-p_int_norm_sam(ks_l+1))*var_sam(i,ks_l) / (pc_l - pc_u)
                     elseif (c == ks_u) then
                       ! Top cell
-                      var_cam(i,k) = var_cam(i,k) + (pc_u - p_int_norm_sam(ks_u))*var_sam(i, ks_u)/(ps_u-p_int_norm_sam(ks_u))
+                      var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks_u)-pc_u)*var_sam(i, ks_u) / (pc_l - pc_u)
                     else
                       ! Intermediate cell (SAM Cell fully enclosed by CAM Cell => Absorb all)
-                      var_cam(i,k) = var_cam(i,k) + var_sam(i,c)
-
+                      var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(c)-p_int_norm_sam(c+1))*var_sam(i, c) / (pc_l - pc_u)
                     endif
 
                   enddo
