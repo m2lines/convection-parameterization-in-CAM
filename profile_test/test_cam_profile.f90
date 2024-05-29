@@ -63,8 +63,8 @@ program cam_profile_tests
       qc = qc_nc(1,:,:,i)
       qi = qi_nc(1,:,:,i)
       ! P saved as hPa so convert back to Pa
-      pint(1,:) = 100.0 * pint_nc
-      plev(1,:) = 100.0 * plev_nc
+      pint(1,:) = 100.0 * pint_nc(:)
+      plev(1,:) = 100.0 * plev_nc(:)
       ps = ps_nc(1,:,i)
 
       yogdt = yogdt_nc(1,:,:,i)
