@@ -19,10 +19,10 @@ module cam_profile
 
         character(len=136), intent(in) :: cam_filename
         
-        real(8), dimension(1,1,32,101) :: t, qv, qc, qi
+        real(8), dimension(1,1,32,150) :: t, qv, qc, qi
         real(8), dimension(32) :: plev
         real(8), dimension(33) :: pint
-        real(8), dimension(1,1,101) :: ps
+        real(8), dimension(1,1,150) :: ps
 
 
         integer :: nx = 1
@@ -45,10 +45,10 @@ module cam_profile
         call check( nf90_inq_varid(ncid, "Q", qv_id))
 !        write(*,*) "Q id = ", qv_id
         call check( nf90_get_var(ncid, qv_id, qv))
-        call check( nf90_inq_varid(ncid, "CLDLIQ", qc_id))
+        call check( nf90_inq_varid(ncid, "ICWMR", qc_id))
 !        write(*,*) "QC id = ", qc_id
         call check( nf90_get_var(ncid, qc_id, qc))
-        call check( nf90_inq_varid(ncid, "CLDICE", qi_id))
+        call check( nf90_inq_varid(ncid, "ICIMR", qi_id))
         call check( nf90_get_var(ncid, qi_id, qi))
 
         call check( nf90_inq_varid(ncid, "lev", plev_id))
@@ -69,15 +69,16 @@ module cam_profile
                                 zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc,zmdtevap_nc, zmdqevap_nc, &
                                 clubbdq, clubbds, clubbdqc, clubbdqi, clubbdtadj, clubbdqadj, clubbdqiadj, &
                                 mpdt, mpdq, mpdqc, mpdqi, &
-                                prec)
+                                prec, relhum_nc)
 
         character(len=136), intent(in) :: cam_out_file
         
-        real(8), dimension(1,1,32,101) :: yogdt_nc, yogdq_nc, yogdqi_nc, yogdqc_nc
-        real(8), dimension(1,1,32,101) :: zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc, zmdtevap_nc, zmdqevap_nc
-        real(8), dimension(1,1,101) :: prec
-        real(8), dimension(1,1,32,101) :: clubbdq, clubbds, clubbdqc, clubbdqi, clubbdtadj, clubbdqadj, clubbdqiadj
-        real(8), dimension(1,1,32,101) :: mpdt, mpdq, mpdqc, mpdqi
+        real(8), dimension(1,1,32,150) :: yogdt_nc, yogdq_nc, yogdqi_nc, yogdqc_nc
+        real(8), dimension(1,1,32,150) :: zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc, zmdtevap_nc, zmdqevap_nc
+        real(8), dimension(1,1,150) :: prec
+        real(8), dimension(1,1,32,150) :: clubbdq, clubbds, clubbdqc, clubbdqi, clubbdtadj, clubbdqadj, clubbdqiadj
+        real(8), dimension(1,1,32,150) :: mpdt, mpdq, mpdqc, mpdqi
+        real(8), dimension(1,1,32,150) :: relhum_nc
 
         integer :: nx = 1
         integer :: nlev = 32
@@ -88,6 +89,7 @@ module cam_profile
         integer :: zmdt_id, zmdq_id, zmdqi_id, zmdqc_id, zmdtevap_id, zmdqevap_id
         integer :: clubbdq_id, clubbds_id, clubbdqc_id, clubbdqi_id, clubbdtadj_id, clubbdqadj_id, clubbdqiadj_id
         integer :: mpdt_id, mpdq_id, mpdqc_id, mpdqi_id
+        integer :: relhum_id
 
         !-------------allocate arrays and read data-------------------
 
@@ -141,6 +143,9 @@ module cam_profile
         call check( nf90_get_var(ncid, mpdqc_id, mpdqc))
         call check( nf90_inq_varid(ncid, "MPDICE", mpdqi_id))
         call check( nf90_get_var(ncid, mpdqi_id, mpdqi))
+
+        call check( nf90_inq_varid(ncid, "RELHUM", relhum_id))
+        call check( nf90_get_var(ncid, relhum_id, relhum_nc))
 
         ! Close the nc file
         call check( nf90_close(ncid))

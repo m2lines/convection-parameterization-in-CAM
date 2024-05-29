@@ -23,18 +23,19 @@ program cam_profile_tests
   real(8), dimension(1,32) :: dqi, dqv, dqc, ds
 
   !> CAM input data
-  real(8), dimension(1,1,32,101) :: t_nc, qv_nc, qc_nc, qi_nc
+  real(8), dimension(1,1,32,150) :: t_nc, qv_nc, qc_nc, qi_nc
   real(8), dimension(32) :: plev_nc
   real(8), dimension(33) :: pint_nc
-  real(8), dimension(1,1,101) :: ps_nc
+  real(8), dimension(1,1,150) :: ps_nc
 
   !> Tendency outputs from parameterisation on CAM
-  real(8), dimension(1,1,32,101) :: yogdt_nc, yogdq_nc, yogdqi_nc, yogdqc_nc
-  real(8), dimension(1,1,32,101) :: zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc, zmdtevap_nc, zmdqevap_nc
-  real(8), dimension(1,1,32,101) :: clubbdq, clubbds, clubbdqc, clubbdqi, clubbdtadj, clubbdqadj, clubbdqiadj
-  real(8), dimension(1,1,32,101) :: mpdt, mpdq, mpdqc, mpdqi
-  real(8), dimension(1,1,101) :: zmprec
+  real(8), dimension(1,1,32,150) :: yogdt_nc, yogdq_nc, yogdqi_nc, yogdqc_nc
+  real(8), dimension(1,1,32,150) :: zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc, zmdtevap_nc, zmdqevap_nc
+  real(8), dimension(1,1,32,150) :: clubbdq, clubbds, clubbdqc, clubbdqi, clubbdtadj, clubbdqadj, clubbdqiadj
+  real(8), dimension(1,1,32,150) :: mpdt, mpdq, mpdqc, mpdqi
+  real(8), dimension(1,1,150) :: zmprec
   real(8), dimension(1,32) :: yogdt, yogdq, zmdt, zmdq, zmdqi, zmdqc
+  real(8), dimension(1,1,32,150) :: relhum_nc
 
   integer :: i
 
@@ -48,13 +49,13 @@ program cam_profile_tests
                         zmdt_nc, zmdq_nc, zmdqi_nc, zmdqc_nc, zmdtevap_nc, zmdqevap_nc, &
                         clubbdq, clubbds, clubbdqc, clubbdqi, clubbdtadj, clubbdqadj, clubbdqiadj, &
                         mpdt, mpdq, mpdqc, mpdqi, &
-                        zmprec)
+                        zmprec, relhum_nc)
 
   ! Prepare the netcdf file for writing output
   call nf_setup(lev_sam(1:30), int_sam(1:31), plev(1,:), pint(1,:))
 
   ! Loop over timesteps
-  do i = 1, 101
+  do i = 1, 150
       call nf_set_t(i)
 
       t = t_nc(1,:,:,i)
@@ -132,6 +133,8 @@ program cam_profile_tests
       call nf_write_cam(mpdq(1,1,size(zmdq):1:-1,i), "MPDQ")
       call nf_write_cam(mpdqc(1,1,size(zmdq):1:-1,i), "MPDQCLD")
       call nf_write_cam(mpdqi(1,1,size(zmdq):1:-1,i), "MPDQICE")
+
+      call nf_write_cam(relhum_nc(1,1,size(zmdq):1:-1,i) / 100D0, "RH_CAM_IN")
 
   end do
 
