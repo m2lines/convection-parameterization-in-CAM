@@ -10,7 +10,7 @@ module nn_interface_CAM
 use netcdf
 use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize, &
-                                  esati, qsati, qsatw, dtqsatw, dtqsati
+                                  esati, qsati, esatw, qsatw, dtqsatw, dtqsati
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
@@ -58,7 +58,7 @@ contains
     subroutine fetch_sam_data(pressam, presisam, gamazsam, rhosam, zsam)
         !! Temporary subroutine to extract SAM pressure profile
         real(8), dimension(48), intent(out) :: pressam, presisam, gamazsam, rhosam, zsam
-        pressam(:) = pres(:)
+        pressam(:) = pres_mid(:)
         presisam(:) = presi(:)
         gamazsam(:) = gamaz(:)
         rhosam(:) = rho(:)
@@ -134,6 +134,7 @@ contains
         real(8), dimension(nx, nz) :: rh_cam
         real(8), dimension(nx, nrf) :: rh_sam
         integer :: k
+        real(8) :: vap_pres
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
@@ -189,20 +190,19 @@ contains
         call nf_write_sam(qc_sam(1,:), "QC_SAM_IN")
         call nf_write_sam(qv_sam(1,:), "QV_SAM_IN")
         
+        call nf_write_cam(pres_cam(1,:), "P_CAM")
+        call nf_write_sam(pres_mid(1:nrf) * 100D0, "P_SAM")
         call nf_write_cam(pres_cam(1,:) / pres_sfc_cam(1), "PNORM_CAM")
         call nf_write_sam(pres_mid(1:nrf) / presi(1), "PNORM_SAM")
         call nf_write_sam(gamaz(1:nrf), "GAMAZ_SAM")
 
         !-----------------------------------------------------
 
-        ! Check relative humidities at inputs in CAM and SAM
-        do k = 1, nz
-            rh_cam(1,k) = qv_cam(1,k) / qsatw(tabs_cam(1,k), pres_cam(1,k))
-        end do
+        ! Check relative humidities at inputs in SAM
         do k = 1, nrf
-            rh_sam(1,k) = qv_sam(1,k) / qsatw(tabs_sam(1,k), pres_mid(k))
+            vap_pres = qv_sam(1,k) * pres_mid(k) / (qv_sam(1,k) + 0.622 * (1.0 - qv_sam(1,k)))
+            rh_sam(1,k) = vap_pres / esatw(tabs_sam(1,k))
         end do
-        call nf_write_cam(rh_cam(1,:), "RH_CAM_IN")
         call nf_write_sam(rh_sam(1,:), "RH_SAM_IN")
 
         !-----------------------------------------------------
@@ -345,7 +345,7 @@ contains
         ! Normalise pressures by surface value
         ! Note - We work in pressure space but use a 'midpoint' based on altitude from
         !        SAM as this is concurrent to the variable value at this location.
-        p_norm_sam(:) = pres(:) / presi(1)
+        p_norm_sam(:) = pres_mid(:) / presi(1)
         do k = 1,nz_cam
             p_norm_cam(:,k) = p_cam(:,k) / p_surf_cam(:)
         end do
@@ -742,16 +742,16 @@ contains
 
             ! Warm cloud:
             if(tabs1.ge.tbgmax) then
-                qsat = qsatw(tabs1,pres(k))
+                qsat = qsatw(tabs1,pres_mid(k))
 
             ! Ice cloud:
             elseif(tabs1.le.tbgmin) then
-                qsat = qsati(tabs1,pres(k))
+                qsat = qsati(tabs1,pres_mid(k))
 
             ! Mixed-phase cloud:
             else
                 om = an*tabs1-bn
-                qsat = om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
+                qsat = om*qsatw(tabs1,pres_mid(k))+(1.-om)*qsati(tabs1,pres_mid(k))
 
             endif
 
@@ -764,20 +764,20 @@ contains
                         om=1.
                         lstarn=fac_cond
                         dlstarn=0.
-                        qsat=qsatw(tabs1,pres(k))
-                        dqsat=dtqsatw(tabs1,pres(k))
+                        qsat=qsatw(tabs1,pres_mid(k))
+                        dqsat=dtqsatw(tabs1,pres_mid(k))
                            else if(tabs1.le.tbgmin) then
                         om=0.
                         lstarn=fac_sub
                         dlstarn=0.
-                        qsat=qsati(tabs1,pres(k))
-                        dqsat=dtqsati(tabs1,pres(k))
+                        qsat=qsati(tabs1,pres_mid(k))
+                        dqsat=dtqsati(tabs1,pres_mid(k))
                     else
                         om=an*tabs1-bn
                         lstarn=fac_cond+(1.-om)*fac_fus
                         dlstarn=an
-                        qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
-                        dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
+                        qsat=om*qsatw(tabs1,pres_mid(k))+(1.-om)*qsati(tabs1,pres_mid(k))
+                        dqsat=om*dtqsatw(tabs1,pres_mid(k))+(1.-om)*dtqsati(tabs1,pres_mid(k))
                     endif
 
                     fff = tabs(i,k)-tabs1+lstarn*(q(i,k)-qsat)

@@ -18,7 +18,7 @@ private
 !---------------------------------------------------------------------
 ! public interfaces
 public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize, &
-        esati, qsati, qsatw, dtqsatw, dtqsati
+        esati, qsati, esatw, qsatw, dtqsatw, dtqsati
 
 
 !---------------------------------------------------------------------
