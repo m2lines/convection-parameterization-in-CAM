@@ -8,7 +8,7 @@ module nn_convection_flux_mod
 ! Libraries to use
 use nn_cf_net_mod, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
 use SAM_consts_mod, only: fac_cond, fac_fus, tprmin, a_pr, input_ver_dim, &
-                          nrf, nrfq, dt_sam
+                          nrf, nrfq
 use nf_out, only: nf_write_sam
 
 implicit none

@@ -3,8 +3,6 @@ module nn_interface_CAM
     !! Reference: https://doi.org/10.1029/2020GL091363
     !! Also see YOG20: https://doi.org/10.1038/s41467-020-17142-3
 
-    ! TODO: Check for redundant variables once refactored (icycle, nstatis, precip etc.)
-
 !---------------------------------------------------------------------
 ! Libraries to use
 use netcdf
@@ -92,13 +90,12 @@ contains
                                       cp_cam, &
                                       dtn, &
                                       nx, nz, &
-                                      nstep, nstatis, icycle, &
                                       precsfc, &
                                       dqi, dqv, dqc, ds)
         !! Interface to the nn_convection parameterisation for the CAM model
 
         real(8), intent(in) :: dtn    ! Seconds
-        integer, intent(in) :: nx, nz, nstep, nstatis, icycle
+        integer, intent(in) :: nx, nz
 
         real(8), intent(in) :: cp_cam
             !! specific heat capacity of dry air from CAM [J/kg/K]
@@ -137,9 +134,7 @@ contains
         real(8) :: vap_pres
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
-        if(mod(nstep-1,nstatis).eq.0 .and. icycle.eq.1) then
-            precsfc(:)=0.
-        end if
+        precsfc(:)=0.
 
         ! distance to the equator
         ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM

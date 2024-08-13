@@ -87,7 +87,6 @@ program cam_profile_tests
                                   1004D0, &
                                   1200D0, &
                                   1, 32, &
-                                  1, 1, 1, &
                                   precsfc, &
                                   dqi(:,32:1:-1), dqv(:,32:1:-1), dqc(:,32:1:-1), ds(:,32:1:-1))
 
