@@ -49,7 +49,7 @@ def ncvar_add(vars, varname, varlabel=""):
     }
 
 
-def profile_comparison_plot(vars, xlab="", ylab="", title="", n=25):
+def profile_comparison_plot(vars, xlab="", ylab="", title="", n=55):
     """
     Plot profiles for comparison based on inputs
 
@@ -109,7 +109,7 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
         ax[i].set_ylim(y_min, y_max)
         ax[i].invert_yaxis()
         ax[i].set_ylabel(ylab)
-        plt.colorbar(im, ax=ax[i], label=xlab)
+        plt.colorbar(im, ax=ax[i], label=var["name"])
 
     if diff:
         i += 1
@@ -132,7 +132,7 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
         ax[i].set_ylim(y_min, y_max)
         ax[i].invert_yaxis()
         ax[i].set_ylabel(ylab)
-        plt.colorbar(im, ax=ax[i], label=xlab)
+        plt.colorbar(im, ax=ax[i], label=f"|{vars[0]['name']} - {vars[1]['name']}|")
     if ratio:
         i += 1
 
@@ -154,7 +154,7 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
         ax[i].set_ylim(y_min, y_max)
         ax[i].invert_yaxis()
         ax[i].set_ylabel(ylab)
-        plt.colorbar(im, ax=ax[i], label=xlab)
+        plt.colorbar(im, ax=ax[i], label=f"{vars[0]['name']}/{vars[1]['name']}")
 
     plt.xlabel(xlab)
     plt.suptitle(title)
@@ -162,7 +162,7 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
     plt.show()
 
 
-def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=25):
+def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=55):
     """
     Plot normalised profiles for shape comparison based on inputs
 
@@ -188,7 +188,7 @@ def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=25):
     plt.show()
 
 
-def profile_conversion_plot(vars, xlab="", ylab="", title="", n=25):
+def profile_conversion_plot(vars, xlab="", ylab="", title="", n=55):
     """
     Plot profiles for checking variable conversion based on inputs.
 
@@ -257,10 +257,30 @@ if __name__ == "__main__":
     pnorm_cam = get_coord(data, "PNORM_CAM")
     pnorm_sam = get_coord(data, "PNORM_SAM")
 
+    p_cam = get_coord(data, "P_CAM")
+    p_sam = get_coord(data, "P_SAM")
+    p_cam = get_ncvar(data, "P_CAM", "PNORM_CAM", varlabel=r"$p$ [Pa]")
+    p_sam = get_ncvar(data, "P_SAM", "PNORM_SAM", varlabel=r"$p$ [Pa]")
+
+    print(p_cam)
+    print(p_sam)
+
     # Check Coordinates
     #    coord_plot([pnorm_cam, pnorm_sam], ylab=r"$\hat p$ [-]", xlab=r"$i$ [-]")
+    profile_comparison_plot(
+        [p_cam, p_sam],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$p$ [Pa]",
+        title="Comparison of pressure [Pa] for CAM and SAM grids.",
+    )
 
+    # =================================================================================
+    # Check variable and grid interpolation
+    # =================================================================================
+
+    # =================================================================================
     # Check interpolation of inputs from CAM grid to SAM grid
+    print("Check interpolation of inputs from CAM grid to SAM grid...")
     tabs_cam_in = get_ncvar(data, "TABS_CAM_IN", "PNORM_CAM", varlabel=r"$T$ [-]")
     tabs_sam_in = get_ncvar(data, "TABS_SAM_IN", "PNORM_SAM", varlabel=r"$T$ [-]")
 
@@ -312,7 +332,11 @@ if __name__ == "__main__":
         title=r"Comparison of $q_i$ [-] for CAM and SAM grids to check interpolation.",
     )
 
+    print("Done.")
+
+    # =================================================================================
     # Check variable conversion from CAM variables to SAM variables
+    print("Check variable conversion of inputs from CAM to SAM...")
     t_sam_in = get_ncvar(data, "T_SAM_IN", "PNORM_SAM", varlabel=r"$t$ [K]")
     q_sam_in = get_ncvar(data, "Q_SAM_IN", "PNORM_SAM", varlabel=r"$q_{tot}$ [-]")
     gamaz_sam = get_ncvar(
@@ -339,8 +363,11 @@ if __name__ == "__main__":
         xlab=r"$q$ [-]",
         title=r"Comparison of $q$ components [-] from CAM, and $q$ value in SAM (sent to NN) to check variable conversion.",
     )
+    print("Done.")
 
+    # =================================================================================
     # Check interpolation of outputs from SAM grid to CAM grid
+    print("Check interpolation of outputs from SAM grid to CAM grid...")
 
     ds_cam_out = get_ncvar(data, "DS_CAM_OUT", "PNORM_CAM", varlabel=r"$ds$ [J/kg]")
     ds_sam_out = get_ncvar(data, "DS_SAM_OUT", "PNORM_SAM", varlabel=r"$ds$ [J/kg]")
@@ -357,8 +384,8 @@ if __name__ == "__main__":
     profile_comparison_plot(
         [ds_cam_out, ds_sam_out],
         ylab=r"$\hat p$ [-]",
-        xlab=r"$ds_{v}$ [-]",
-        title=r"Comparison of $ds$ [-] for SAM and CAM grids to check interpolation.",
+        xlab=r"$ds$ [K/kg]",
+        title=r"Comparison of $ds$ [J/kg] for SAM and CAM grids to check interpolation.",
     )
     profile_comparison_plot(
         [dqv_cam_out, dqv_sam_out],
@@ -379,7 +406,11 @@ if __name__ == "__main__":
         xlab=r"$q_{v}$ [-]",
         title=r"Comparison of $dq_i$ [-] for SAM and CAM grids to check interpolation.",
     )
+    print("Done.")
 
+    # =================================================================================
+    # Check Outputs from the Neural Net
+    # =================================================================================
     # From the NN
     # Fluxes
     t_flx_adv_sam = get_ncvar(data, "T_FLX_ADV", "PNORM_SAM", varlabel=r"$dt$ [K]")
@@ -397,7 +428,9 @@ if __name__ == "__main__":
     dq_auto_sam = get_ncvar(data, "DQ_AUTO", "PNORM_SAM", varlabel=r"$dq$ [-]")
     dq_sed_sam = get_ncvar(data, "DQ_SED", "PNORM_SAM", varlabel=r"$dq$ [-]")
 
+    # =================================================================================
     # Plot fluxes and tendencies for t and q as they come out of the NN
+    print("Examine raw outputs from the Neural Net...")
     profile_comparison_plot(
         [q_flx_adv_sam, q_tend_auto_sam, q_flx_sed_sam],
         ylab=r"$\hat p$ [-]",
@@ -410,8 +443,9 @@ if __name__ == "__main__":
         xlab=r"Flux $T$ [K]",
         title=r"Comparison of $t$-based outputs from the NN.",
     )
+    print("Done.")
 
-    # Plot deltas for T and q as calculated by the code
+    print("Examine SAM Deltas from the parameterisation...")
     profile_comparison_plot(
         [dq_adv_sam, dq_auto_sam, dq_sed_sam],
         ylab=r"$\hat p$ [-]",
@@ -425,10 +459,16 @@ if __name__ == "__main__":
         xlab=r"$dT$ [K]",
         title=r"Comparison of $t$ delta components [K] outputs from the parameterisation.",
     )
+    print("Done.")
+
+    # =================================================================================
 
     # After NN parameterisation
+    print("Examine SAM variables after the parameterisation with Deltas applied...")
+
     t_sam_out = get_ncvar(data, "T_SAM_OUT", "PNORM_SAM", varlabel=r"$t$ [K]")
     q_sam_out = get_ncvar(data, "Q_SAM_OUT", "PNORM_SAM", varlabel=r"$q_{tot}$ [-]")
+
     # Plot comparison to T/q before and after
     profile_comparison_plot(
         [q_sam_in, q_sam_out],
@@ -443,6 +483,9 @@ if __name__ == "__main__":
         title=r"Comparison of $T$ [K] on SAM grid before and after parameterisation.",
     )
 
+    print("Done.")
+
+    # =================================================================================
     # Compare to YOG tendencies output by CAM
     dt_yog_nc = get_ncvar(data, "YOGDT_NC", "PNORM_CAM", varlabel=r"$dt$ [K]")
     dqv_yog_nc = get_ncvar(data, "YOGDQ_NC", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
@@ -454,7 +497,6 @@ if __name__ == "__main__":
     dqv_yog = get_ncvar(data, "YOGDQ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
     dqi_yog = get_ncvar(data, "YOGDQICE", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
     dqc_yog = get_ncvar(data, "YOGDQCLD", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
-    prec_yog = get_ncvar(data, "YOGPREC", None, varlabel=r"prec. [ ]")
 
     profile_comparison_plot(
         [dt_yog_nc, dt_yog],
@@ -510,8 +552,6 @@ if __name__ == "__main__":
         title=r"Comparison of $q$ tendencies [-] from schemes.",
     )
 
-    prec_zm = get_ncvar(data, "ZMPREC", None, varlabel=r"prec. [ ]")
-
     profile_comparison_plot(
         [dqv_zm, dqv_yog],
         ylab=r"$\hat p$ [-]",
@@ -537,6 +577,7 @@ if __name__ == "__main__":
     #     title=r"Comparison of normalised $T$ tendencies from ZM and this routine on CAM grid.",
     # )
 
+    # =================================================================================
     hovmoller_comparison_plot(
         [dqv_yog, dqv_zm],
         ylab=r"$p$ [-]",
@@ -566,5 +607,32 @@ if __name__ == "__main__":
         diff=True,
         ratio=True,
         )
+
+    # =================================================================================
+
+    rh_cam_in = get_ncvar(data, "RH_CAM_IN", "PNORM_CAM", varlabel=r"$rh$ [%]")
+    rh_sam_in = get_ncvar(data, "RH_SAM_IN", "PNORM_SAM", varlabel=r"$rh$ [%]")
+
+    profile_comparison_plot(
+        [rh_cam_in, rh_sam_in],
+        ylab=r"$\hat p$ [-]",
+        xlab=r"$rh$ [%]",
+        title=r"Comparison of relative humidities in CAM and SAM.",
+        n=50
+    )
+
+    hovmoller_comparison_plot(
+        [rh_cam_in, rh_sam_in],
+        ylab=r"$p$ [-]",
+        xlab=r"timestep",
+        title=r"Comparison of relative humidities in CAM and SAM.",
+        diff=False,
+        ratio=False,
+        )
+
+    # =================================================================================
+
+    prec_yog = get_ncvar(data, "YOGPREC", None, varlabel=r"prec. [ ]")
+    prec_zm = get_ncvar(data, "ZMPREC", None, varlabel=r"prec. [ ]")
 
     scalar_comparison_plot([prec_zm, prec_yog], xlab="timestep", ylab="precipitation [m / s]", title="Comparison of precipitaiton from YOG and ZM in simulation.")
