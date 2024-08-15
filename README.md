@@ -29,7 +29,9 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 ```
 ├── NN_module
 │   └── ...
-└── torch_nets
+├── torch_nets
+│   └── ...
+└── CAM_interface
     └── ...
 ```
 
@@ -41,16 +43,22 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 This folder contains the fortran neural net extracted from the [code referenced above](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3), along with any dependencies, that may be compiled as a standalone fortran module.
 
 Currently there is code that can be built on CSD3 using the included shell script.
-
 This now needs cleaning up, testing, and a proper makefile creating (see open issues #9 and #10).
 
 ### ``torch_nets/``
 The directory contains the PyTorch versions of the neural networks we are interested in.
 
+### ``CAM_interface/``
+The directory contains the additional files or details to interface the code with the CAM atmospheric model
+as part of the CESM model suite. It also includes a link to an implementation in a fork of CAM.
+
 
 ## Contributing
 
-This repository is currently private as it is new and work in progress.
+Contributions to the repository are welcome, particularly from anyone seeking to implement the
+parameterisation in another atmospheric model.
+We welcome code and details for interfacing.
+
 Open tickets can be viewed at ['Issues'](https://github.com/m2lines/convection-parameterization-in-CAM/issues).
 
 To contribute find a relevant issue or open a new one and assign yourself to work on it.
