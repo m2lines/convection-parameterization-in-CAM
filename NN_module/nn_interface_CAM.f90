@@ -294,22 +294,22 @@ contains
         ! Loop over columns and SAM levels and interpolate each column
         do k = 1, nrf
         do i = 1, ncol_cam
-            ! Check we are within array
 
             ! If SAM cell centre is below lowest CAM centre - interpolate to surface value
             if (p_norm_sam(k) > p_norm_cam(i, 1)) then
-!                write(*,*) "Interpolating to surface."
                 var_sam(i, k) = var_cam_surface(i) &
                                 + (p_norm_sam(k)-1.0) &
                                 * (var_cam(i, 1)-var_cam_surface(i))/(p_norm_cam(i, 1)-1.0)
+
             ! Check CAM grid top cell is above SAM grid top
             elseif (p_norm_cam(i, nz_cam) > p_norm_sam(nrf)) then
                 ! This should not happen as CAM grid extends to higher altitudes than SAM
                 ! TODO This check is run on every iteration - move outside
-!                 write(*,*) "CAM upper pressure level is lower than that of SAM: Stopping."
+                 write(*,*) "CAM upper pressure level is lower than that of SAM: Stopping."
                 stop
+            
+            ! Locate the neighbouring CAM indices to interpolate between
             else
-                ! Locate the neighbouring CAM indices to interpolate between
                 ! TODO - this will be slow - speed up later
                 kc_u = 1
                 pc_u = p_norm_cam(i, kc_u)
@@ -319,11 +319,6 @@ contains
                 end do
                 kc_l = kc_u - 1
                 pc_l = p_norm_cam(i, kc_l)
-                ! Redundant following the lines above
-                ! do while (pc_l < p_norm_sam(k))
-                !     kc_l = kc_l - 1
-                !     pc_l = p_norm_cam(i, kc_l)
-                ! end do
 
                 ! interpolate variables - Repeat for as many variables as need interpolating
                 var_sam(i, k) = var_cam(i, kc_l) &
