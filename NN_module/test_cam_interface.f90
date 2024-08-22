@@ -4,6 +4,8 @@ module cam_tests
   !--------------------------------------------------------------------------
   ! Libraries to use
   use netcdf
+  use precision, only: dp
+
   use nn_cf_net_mod, only: relu, nn_cf_net_init, nn_cf_net_finalize, net_forward
   use nn_convection_flux_mod, only:   nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
@@ -16,7 +18,7 @@ module cam_tests
   character(len=15) :: fail = char(27)//'[31m'//'FAILED'//char(27)//'[0m'
   integer, parameter :: nrf = 30
   integer, parameter :: n_nn_out = 148
-  real(8), dimension(n_nn_out) :: nn_out_ones
+  real(dp), dimension(n_nn_out) :: nn_out_ones
 
   contains
 
@@ -28,13 +30,13 @@ module cam_tests
       
       integer :: i
 
-      real(8), dimension(4, 48) :: p_cam, p_int_cam
-      real(8), dimension(4, 48) :: var_cam
-      real(8), dimension(4) :: var_cam_surface
-      real(8), dimension(4) :: ps_cam
-      real(8), dimension(4, 48) :: var_sam, var_sam_exp
+      real(dp), dimension(4, 48) :: p_cam, p_int_cam
+      real(dp), dimension(4, 48) :: var_cam
+      real(dp), dimension(4) :: var_cam_surface
+      real(dp), dimension(4) :: ps_cam
+      real(dp), dimension(4, 48) :: var_sam, var_sam_exp
 
-      real(8), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
@@ -67,11 +69,11 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
-      real(8), dimension(4, 3) :: p_cam
-      real(8), dimension(4, 3) :: var_cam
-      real(8), dimension(4) :: var_cam_surface
-      real(8), dimension(4) :: ps_cam
-      real(8), dimension(4, 30) :: var_sam, var_sam_exp
+      real(dp), dimension(4, 3) :: p_cam
+      real(dp), dimension(4, 3) :: var_cam
+      real(dp), dimension(4) :: var_cam_surface
+      real(dp), dimension(4) :: ps_cam
+      real(dp), dimension(4, 30) :: var_sam, var_sam_exp
 
       p_cam = reshape((/ 1000.0, 1000.0, 1000.0, 1000.0, 500.0, 500.0, 500.0, 500.0, 10.0, 10.0, 10.0, 10.0 /), (/ 4, 3 /))
       ps_cam = (/ 1111.0, 1111.0, 1111.0, 1111.0/)
@@ -95,13 +97,13 @@ module cam_tests
 
       integer :: i
 
-      real(8), dimension(4, 3) :: p_cam
-      real(8), dimension(4, 3) :: var_cam
-      real(8), dimension(4) :: var_cam_surface
-      real(8), dimension(4) :: ps_cam
-      real(8), dimension(4, 30) :: var_sam, var_sam_exp
+      real(dp), dimension(4, 3) :: p_cam
+      real(dp), dimension(4, 3) :: var_cam
+      real(dp), dimension(4) :: var_cam_surface
+      real(dp), dimension(4) :: ps_cam
+      real(dp), dimension(4, 30) :: var_sam, var_sam_exp
 
-      real(8), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
@@ -135,12 +137,12 @@ module cam_tests
 
       integer :: i
 
-      real(8), dimension(4, 30) :: p_cam, var_cam, rho_cam, rho_cam_exp
-      real(8), dimension(4, 31) :: p_int_cam
-      real(8), dimension(4) :: ps_cam, var_cam_surface
-      real(8), dimension(4, 30) :: var_sam
+      real(dp), dimension(4, 30) :: p_cam, var_cam, rho_cam, rho_cam_exp
+      real(dp), dimension(4, 31) :: p_int_cam
+      real(dp), dimension(4) :: ps_cam, var_cam_surface
+      real(dp), dimension(4, 30) :: var_sam
 
-      real(8), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
@@ -181,13 +183,13 @@ module cam_tests
 
       integer :: i, j
 
-      real(8), dimension(4, 90) :: p_cam, var_cam, rho_cam, rho_cam_exp
-      real(8), dimension(4, 91) :: p_int_cam
-      real(8), dimension(4) :: var_cam_surface
-      real(8), dimension(4) :: ps_cam, sum_sam, sum_cam
-      real(8), dimension(4, 30) :: var_sam
+      real(dp), dimension(4, 90) :: p_cam, var_cam, rho_cam, rho_cam_exp
+      real(dp), dimension(4, 91) :: p_int_cam
+      real(dp), dimension(4) :: var_cam_surface
+      real(dp), dimension(4) :: ps_cam, sum_sam, sum_cam
+      real(dp), dimension(4, 30) :: var_sam
 
-      real(8), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
@@ -252,10 +254,10 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
-      real(8), dimension(4, 48) :: t, q, tabs, qv, qc, qi
-      real(8), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      real(dp), dimension(4, 48) :: t, q, tabs, qv, qc, qi
+      real(dp), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
       integer :: i
-      real(8), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
@@ -296,12 +298,12 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
-      real(8), dimension(4, 48) :: t, q, tabs, qv, qc, qi
-      real(8), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      real(dp), dimension(4, 48) :: t, q, tabs, qv, qc, qi
+      real(dp), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
       integer :: i
-      real(8), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
 
-      real(8), parameter :: rgas = 287.0
+      real(dp), parameter :: rgas = 287.0
           !! Gas constant for dry air used in SAM [j / kg / K]
 
       ! Fetch SAM grid data
@@ -344,15 +346,15 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
-      real(8), dimension(4, 48) :: t, q, tabs, qv, qc, qi
-      real(8), dimension(4, 48) :: r, p_sat, q_sat
-      real(8), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      real(dp), dimension(4, 48) :: t, q, tabs, qv, qc, qi
+      real(dp), dimension(4, 48) :: r, p_sat, q_sat
+      real(dp), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
       integer :: i
-      real(8), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
 
-      real(8), parameter :: rgas = 287.0
+      real(dp), parameter :: rgas = 287.0
           !! Gas constant for dry air used in SAM [j / kg / K]
-      real(8), parameter :: rvap = 461.0
+      real(dp), parameter :: rvap = 461.0
           !! Gas constant for vapour used in SAM [j / kg / K]
 
       ! Fetch SAM grid data
@@ -410,8 +412,8 @@ program run_cam_tests
 
   implicit none
 
-  real(8), dimension(4) :: a = [1.0, 2.0, 3.0, 4.0]
-  real(8), dimension(5) :: b = [1.0, 2.0, 3.0, 4.0, 6.0]
+  real(dp), dimension(4) :: a = [1.0, 2.0, 3.0, 4.0]
+  real(dp), dimension(5) :: b = [1.0, 2.0, 3.0, 4.0, 6.0]
   integer, dimension(4) :: aa = [1, 2, 3, 4]
   integer, dimension(4) :: bb = [1, 2, 3, 4]
 

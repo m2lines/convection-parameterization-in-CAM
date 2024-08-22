@@ -1,11 +1,8 @@
 module test_utils
 
-  ! use :: precision, only: sp, dp
+  use :: precision, only: sp, dp
 
   implicit none
-
-  integer, parameter :: sp = 4
-  integer, parameter :: dp = 8
 
   character(len=15) :: pass = char(27)//'[32m'//'PASSED'//char(27)//'[0m'
   character(len=15) :: fail = char(27)//'[31m'//'FAILED'//char(27)//'[0m'
