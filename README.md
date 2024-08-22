@@ -57,7 +57,8 @@ as part of the CESM model suite. It also includes a link to an implementation in
 
 Contributions to the repository are welcome, particularly from anyone seeking to implement the
 parameterisation in another atmospheric model.
-We welcome code and details for interfacing.
+We welcome the addition of details for interfacing to other models, including code,
+from anyone who has used the parameterisation in another model.
 
 Open tickets can be viewed at ['Issues'](https://github.com/m2lines/convection-parameterization-in-CAM/issues).
 
