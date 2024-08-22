@@ -15,10 +15,22 @@ Files:
 - `NN_weights_YOG_convection.nc` - NetCDF file with weights for the neural net
 - Makefile - Makefile to compile these files
 
+Note that you will need to generate the SAM sounding as a NetCDF file from the data
+files in `resources/` if you are using the CAM interface.\
+This can be done from within the `resources/` directory as follows:
+```
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python sounding_to_netcdf.py
+deactivate
+```
+
 ## Running tests
 
-To run the tests (requires `ifort` or `gfortran` and `netcdf`):
-Edit `Makefile` to select the appropriate compiler (`ifort` or `gfortran`) and then build with:
-```bash
-make test
+To run the tests (requires `ifort` or `gfortran` compiler and and `netcdf` and
+`netcdf-fortran` libraries) edit `Makefile` to select the appropriate compiler
+(`ifort` or `gfortran`), set flags, and select files, and then build with:
+```
+make
 ```
