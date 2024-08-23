@@ -585,7 +585,7 @@ contains
           do i = 1, nx
             q(i,k) = qv(i,k) + qc(i,k) + qi(i,k)
 
-            ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
+            ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))  ! There is no qp in CAM
             omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
             t(i,k) = tabs(i,k) &
                    ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &  ! There is no qp in CAM

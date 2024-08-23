@@ -6,8 +6,6 @@ module cam_tests
   use netcdf
   use precision, only: dp
 
-  use nn_cf_net_mod, only: relu, nn_cf_net_init, nn_cf_net_finalize, net_forward
-  use nn_convection_flux_mod, only:   nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
   interp_to_sam, interp_to_cam, fetch_sam_data, SAM_var_conversion, CAM_var_conversion
   use test_utils, only: assert_array_equal
