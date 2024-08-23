@@ -6,6 +6,8 @@ module nn_cf_net_mod
 !---------------------------------------------------------------------
 ! Libraries to use
 use netcdf
+use precision, only: sp
+
 implicit none
 private
 
@@ -35,32 +37,32 @@ integer :: n_h4
 integer :: n_out
 
 ! Weights at each hidden layer of the NN
-real(4), allocatable, dimension(:,:)     :: r_w1
-real(4), allocatable, dimension(:,:)     :: r_w2
-real(4), allocatable, dimension(:,:)     :: r_w3
-real(4), allocatable, dimension(:,:)     :: r_w4
-real(4), allocatable, dimension(:,:)     :: r_w5
+real(sp), allocatable, dimension(:,:)     :: r_w1
+real(sp), allocatable, dimension(:,:)     :: r_w2
+real(sp), allocatable, dimension(:,:)     :: r_w3
+real(sp), allocatable, dimension(:,:)     :: r_w4
+real(sp), allocatable, dimension(:,:)     :: r_w5
 
 ! Biases at each hidden layer of the NN
-real(4), allocatable, dimension(:)       :: r_b1
-real(4), allocatable, dimension(:)       :: r_b2
-real(4), allocatable, dimension(:)       :: r_b3
-real(4), allocatable, dimension(:)       :: r_b4
-real(4), allocatable, dimension(:)       :: r_b5
+real(sp), allocatable, dimension(:)       :: r_b1
+real(sp), allocatable, dimension(:)       :: r_b2
+real(sp), allocatable, dimension(:)       :: r_b3
+real(sp), allocatable, dimension(:)       :: r_b4
+real(sp), allocatable, dimension(:)       :: r_b5
 
 ! Scale factors for inputs
-real(4), allocatable, dimension(:)       :: xscale_mean
-real(4), allocatable, dimension(:)       :: xscale_stnd
+real(sp), allocatable, dimension(:)       :: xscale_mean
+real(sp), allocatable, dimension(:)       :: xscale_stnd
 
 ! vectors at each hidden layer of the NN
-real(4), allocatable, dimension(:)       :: z1
-real(4), allocatable, dimension(:)       :: z2
-real(4), allocatable, dimension(:)       :: z3
-real(4), allocatable, dimension(:)       :: z4
+real(sp), allocatable, dimension(:)       :: z1
+real(sp), allocatable, dimension(:)       :: z2
+real(sp), allocatable, dimension(:)       :: z3
+real(sp), allocatable, dimension(:)       :: z4
 
 ! Scale factors for outputs
-real(4), allocatable, dimension(:)       :: yscale_mean
-real(4), allocatable, dimension(:)       :: yscale_stnd
+real(sp), allocatable, dimension(:)       :: yscale_mean
+real(sp), allocatable, dimension(:)       :: yscale_stnd
 
 
 !---------------------------------------------------------------------
@@ -74,7 +76,7 @@ contains
     subroutine relu(logits)
         !! Applies ReLU to a vector.
 
-         real(4), dimension(:), intent(inout)   :: logits
+         real(sp), dimension(:), intent(inout)   :: logits
              !! vector to which ReLU will be applied
 
          where (logits .lt. 0.0)  logits = 0.0
@@ -85,9 +87,9 @@ contains
     subroutine net_forward(features, logits)
         !! Run forward method of the Neural Net.
 
-        real(4), dimension(:) :: features
+        real(sp), dimension(:) :: features
             !! Vector of input features
-        real(4), dimension(:), intent(out)  :: logits
+        real(sp), dimension(:), intent(out)  :: logits
             !! Output vector
         integer :: i
             !! Loop counter
@@ -149,7 +151,7 @@ contains
         integer :: xscale_mean_varid, xscale_stnd_varid
         integer :: yscale_mean_varid, yscale_stnd_varid
 
-        character(len=1024), intent(in) :: nn_filename
+        character(len=136), intent(in) :: nn_filename
             !! NetCDF filename from which to read model weights
 
 
