@@ -6,6 +6,7 @@ module cam_tests
   use netcdf
   use precision, only: dp
 
+  use SAM_consts_mod, only: nrf
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
   interp_to_sam, interp_to_cam, fetch_sam_data, SAM_var_conversion, CAM_var_conversion
   use test_utils, only: assert_array_equal
@@ -14,7 +15,6 @@ module cam_tests
 
   character(len=15) :: pass = char(27)//'[32m'//'PASSED'//char(27)//'[0m'
   character(len=15) :: fail = char(27)//'[31m'//'FAILED'//char(27)//'[0m'
-  integer, parameter :: nrf = 30
   integer, parameter :: n_nn_out = 148
   real(dp), dimension(n_nn_out) :: nn_out_ones
 
@@ -30,11 +30,11 @@ module cam_tests
       
       integer :: i
 
-      real(dp), dimension(4, 48) :: p_cam, p_int_cam
-      real(dp), dimension(4, 48) :: var_cam
+      real(dp), dimension(4, nrf) :: p_cam, p_int_cam
+      real(dp), dimension(4, nrf) :: var_cam
       real(dp), dimension(4) :: var_cam_surface
       real(dp), dimension(4) :: ps_cam
-      real(dp), dimension(4, 48) :: var_sam, var_sam_exp
+      real(dp), dimension(4, nrf) :: var_sam, var_sam_exp
 
       real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
@@ -43,13 +43,11 @@ module cam_tests
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       do i=1,4
-          p_cam(i, 1:48) = pres_sam(1:48)
-          p_int_cam(i, 1:47) = presi_sam(2:48)
+          p_cam(i, :) = pres_sam(1:nrf)
+          p_int_cam(i, :) = presi_sam(1:nrf)
           ! Set SAM variable equal to cell size (density 1.0)
-          var_cam(i, :) = pres_sam(1:48)
+          var_cam(i, :) = pres_sam(1:nrf)
       enddo
-      ! Set interface of top of CAM grid because the top interface in SAM is not provided
-      p_int_cam(:,48) = p_cam(:, 48) + (p_int_cam(:, 47)-p_cam(:, 48))
 
       ps_cam(:) = presi_sam(1)
       var_cam_surface(:) = presi_sam(1)
@@ -60,7 +58,6 @@ module cam_tests
       ! Set anything above 30 elems to zero as the parameterization and interpolation 
       ! code only uses the bottom 30 cells on the SAM grid
       var_sam_exp = var_cam
-      var_sam_exp(:, 31:48) = 0.0
       call assert_array_equal(var_sam, var_sam_exp, test_name)
 
     end subroutine test_interp_to_sam_match
