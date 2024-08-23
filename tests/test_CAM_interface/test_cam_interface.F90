@@ -21,8 +21,10 @@ module cam_tests
   contains
 
     subroutine test_interp_to_sam_match(test_name)
-      !! Check interpolation to SAM grid by interpolating variable of value 1.0
-      !! Define a CAM grid from 1111.0 to 10.0
+      !! Check interpolation to SAM grid by defining an idential CAM grid and
+      !! interpolating a variable equal to the pressure
+      !! Define a CAM grid consiting of 4 atmosperic columns
+      !! from 1111.0 to 10.0
 
       character(len=*), intent(in) :: test_name
       
@@ -46,7 +48,7 @@ module cam_tests
           ! Set SAM variable equal to cell size (density 1.0)
           var_cam(i, :) = pres_sam(1:48)
       enddo
-      ! Set interface of top of CAM grid
+      ! Set interface of top of CAM grid because the top interface in SAM is not provided
       p_int_cam(:,48) = p_cam(:, 48) + (p_int_cam(:, 47)-p_cam(:, 48))
 
       ps_cam(:) = presi_sam(1)
@@ -54,7 +56,9 @@ module cam_tests
 
       call interp_to_sam(p_cam, ps_cam, var_cam, var_sam, var_cam_surface)
 
-      ! Set anything above 30 elems to zero as per interpolation routine
+      ! Compare the results of the interpolation scheme to expected output
+      ! Set anything above 30 elems to zero as the parameterization and interpolation 
+      ! code only uses the bottom 30 cells on the SAM grid
       var_sam_exp = var_cam
       var_sam_exp(:, 31:48) = 0.0
       call assert_array_equal(var_sam, var_sam_exp, test_name)
