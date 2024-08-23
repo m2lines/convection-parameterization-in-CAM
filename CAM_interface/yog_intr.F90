@@ -190,7 +190,7 @@ subroutine yog_tend(ztodt, state, ptend)
 
    real(r8) :: ftem(pcols,pver)       ! Temporary workspace for outfld variables
 
-   logical  :: lq(pcnst)
+   logical  :: lq(pcnst)              ! Logical array corresponding to constituents present in state
 
    ! physics buffer fields
 
