@@ -25,22 +25,7 @@ python sounding_to_netcdf.py
 deactivate
 ```
 
-## Running tests
+## Tests
 
-There are some tests for the NN_module code in the test/ subdirectory.
-These require `ifort` or `gfortran` Fortran compiler, `netcdf` and
-`netcdf-fortran` libraries, and CMake.
-
-They can be built and run with CMake using the following commands:
-```
-cd test
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-This will create an executable `yogtest` in the test subdirectory which can be run to execute the tests using:
-```
-./yogtest
-```
-with output printed to the console.
+There are test routines associated with this code in `/tests/test_NN_module/`.
+Guidance on running these can be found in the main README.

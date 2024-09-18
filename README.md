@@ -31,19 +31,17 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 │   └── ...
 ├── torch_nets
 │   └── ...
-└── CAM_interface
+├── CAM_interface
+│   └── ...
+└── tests
     └── ...
+
 ```
-
-
 
 ### Contents
 
 ### `NN_module/`
 This folder contains the fortran neural net extracted from the [code referenced above](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3), along with any dependencies, that may be compiled as a standalone fortran module.
-
-Currently there is code that can be built on CSD3 using the included shell script.
-This now needs cleaning up, testing, and a proper makefile creating (see open issues #9 and #10).
 
 ### ``torch_nets/``
 The directory contains the PyTorch versions of the neural networks we are interested in.
@@ -52,6 +50,28 @@ The directory contains the PyTorch versions of the neural networks we are intere
 The directory contains the additional files or details to interface the code with the CAM atmospheric model
 as part of the CESM model suite. It also includes a link to an implementation in a fork of CAM.
 
+### ``tests/``
+
+There are some tests for the NN_module and interface code in the test/
+subdirectory.
+These require a Fortran compiler, `netcdf` and
+`netcdf-fortran` libraries, and CMake to build.
+
+They can be built and run with CMake using the following commands:
+```
+cd tests
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+This will create executables in the `build/` subdirectory which can be
+run to execute the tests using:
+```
+./test_NN_module
+./test_CAM_interface
+```
+with output printed to the console.
 
 ## Contributing
 
