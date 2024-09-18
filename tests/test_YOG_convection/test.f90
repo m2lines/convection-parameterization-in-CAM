@@ -41,7 +41,7 @@ module tests
       character(len=1024) :: nn_filename
       integer :: nin, nout
 
-      nn_filename = "../../NN_module/NN_weights_YOG_convection.nc"
+      nn_filename = "../../YOG_convection/NN_weights_YOG_convection.nc"
 
       call nn_cf_net_init(nn_filename, nin, nout, nrf)
 
@@ -71,7 +71,7 @@ module tests
 
       nn_in = 1.0
 
-      nn_filename = "../../NN_module/NN_weights_YOG_convection.nc"
+      nn_filename = "../../YOG_convection/NN_weights_YOG_convection.nc"
       call nn_cf_net_init(nn_filename, nin, nout, nrf)
 
       call net_forward(nn_in, nn_out)
@@ -113,7 +113,7 @@ module tests
       real(dp) :: t_rad_rest_tend_dat(1,nrf)
       real(dp) :: prec_sed_dat(1)
       
-      nn_filename = "../../NN_module/NN_weights_YOG_convection.nc"
+      nn_filename = "../../YOG_convection/NN_weights_YOG_convection.nc"
       call nn_convection_flux_init(nn_filename)
 
       call nn_convection_flux(tabs_i, q_i, y_in, &
@@ -124,7 +124,7 @@ module tests
 
       call nn_convection_flux_finalize()
 
-      nn_filename = "../test_NN_module/param_test.txt"
+      nn_filename = "../test_YOG_convection/param_test.txt"
 
       ! Writing data out to file from original code runniing
       ! open(newunit=io, file=trim(nn_filename), status="replace", action="write", &
@@ -204,7 +204,7 @@ program run_tests
   call test_relu("test_relu")
   call test_nn_cf_init("test_nn_cf_init")
 
-  call load_nn_out_ones("../test_NN_module/nn_ones.txt")
+  call load_nn_out_ones("../test_YOG_convection/nn_ones.txt")
   call test_nn("Test NN ones")
 
   call test_param("Test param simple")
