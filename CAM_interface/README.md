@@ -17,6 +17,7 @@ require revisions to these files in future.
 In addition to the files in `[/NN_Module](/NN_Module)` containing the parameterisation,
 the additional files here are required:
 
+- `nn_interface_CAM.F90` - The interface for performing conversion from CAM variables and grid into the variables/grid expected by the YOG parameterisation.
 - `yog_intr.F90` - The interface between the CAM model and the YOG parameterisation.
 
 Changes also have to be made to:
@@ -27,3 +28,9 @@ Changes also have to be made to:
 - `/src/physics/cam/physpkg.F90` - To call the new parameteristion routines detailed in `yog_intr.F90`.
 
 Full details of these can be seen in the specific implementation in CAM linked above.
+
+
+## Tests
+
+There are test routines associated with this code in `/tests/test_CAM_interface/`.
+Guidance on running these can be found in the main README.
