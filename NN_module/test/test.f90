@@ -41,7 +41,7 @@ module tests
       character(len=1024) :: nn_filename
       integer :: nin, nout
 
-      nn_filename = "./NN_weights_YOG_convection.nc"
+      nn_filename = "../NN_weights_YOG_convection.nc"
 
       call nn_cf_net_init(nn_filename, nin, nout, nrf)
 
@@ -71,7 +71,7 @@ module tests
 
       nn_in = 1.0
 
-      nn_filename = "./NN_weights_YOG_convection.nc"
+      nn_filename = "../NN_weights_YOG_convection.nc"
       call nn_cf_net_init(nn_filename, nin, nout, nrf)
 
       call net_forward(nn_in, nn_out)
@@ -113,17 +113,14 @@ module tests
       real(dp) :: t_rad_rest_tend_dat(1,nrf)
       real(dp) :: prec_sed_dat(1)
       
-      nn_filename = "./NN_weights_YOG_convection.nc"
+      nn_filename = "../NN_weights_YOG_convection.nc"
       call nn_convection_flux_init(nn_filename)
 
       call nn_convection_flux(tabs_i, q_i, y_in, &
                                   tabs, &
                                   t_0, q_0, &
                                   rho, adz, dz, dtn, &
-                                  t_rad_rest_tend, &
-                                  t_delta_adv, q_delta_adv, &
-                                  t_delta_auto, q_delta_auto, &
-                                  t_delta_sed, q_delta_sed, prec_sed)
+                                  prec_sed)
 
       call nn_convection_flux_finalize()
 

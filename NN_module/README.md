@@ -28,9 +28,20 @@ deactivate
 
 ## Running tests
 
-To run the tests (requires `ifort` or `gfortran` compiler and and `netcdf` and
-`netcdf-fortran` libraries) edit `Makefile` to select the appropriate compiler
-(`ifort` or `gfortran`), set flags, and select files, and then build with:
+There are some tests for the NN_module code in the test/ subdirectory.
+These require `ifort` or `gfortran` Fortran compiler, `netcdf` and
+`netcdf-fortran` libraries, and CMake.
+
+They can be built and run with CMake using the following commands:
 ```
-make
+cd test
+mkdir build
+cd build
+cmake ..
+cmake --build .
 ```
+This will create an executable `yogtest` in the test subdirectory which can be run to execute the tests using:
+```
+./yogtest
+```
+with output printed to the console.
