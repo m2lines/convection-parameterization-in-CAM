@@ -27,7 +27,7 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 ## Repository structure
 
 ```
-├── NN_module
+├── YOG_convection
 │   └── ...
 ├── torch_nets
 │   └── ...
@@ -40,14 +40,15 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 
 ### Contents
 
-### `NN_module/`
-This folder contains the fortran neural net extracted from the [code referenced above](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3), along with any dependencies, that may be compiled as a standalone fortran module.
+### `YOG_convection/`
+This directory contains the fortran code for the YOG convection parameterisation, along with any dependencies. 
+It can be included as a standalone fortran module in a larger model.
 
 ### ``torch_nets/``
-The directory contains the PyTorch versions of the neural networks we are interested in.
+This directory contains the PyTorch versions of the neural networks used in the YOG convection parameterisation.
 
 ### ``CAM_interface/``
-The directory contains the additional files or details to interface the code with the CAM atmospheric model
+The directory contains the additional files or details to interface the YOG code with the CAM atmospheric model
 as part of the CESM model suite. It also includes a link to an implementation in a fork of CAM.
 
 ### ``tests/``
@@ -68,7 +69,7 @@ cmake --build .
 This will create executables in the `build/` subdirectory which can be
 run to execute the tests using:
 ```
-./test_NN_module
+./test_YOG_convection
 ./test_CAM_interface
 ```
 with output printed to the console.

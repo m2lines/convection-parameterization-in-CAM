@@ -10,18 +10,16 @@ if(NOT CMAKE_Fortran_FLAGS)
     set(CMAKE_Fortran_FLAGS "-g -ffree-line-length-none")
 endif()
 
-
-set(NN_Module_DIR "../NN_module/")
+# Add variables for commonly used source directories
+set(YOG_DIR "../YOG_convection/")
 set(CAM_Interface_DIR "../CAM_interface/")
-
-
 
 #Add cmake directory to the environment module variable
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Find the NetCDF installations and set the relevant variables for compilation
 # Then link to executables
-# Requires more legwork as NetCDF not provided by default
+# Requires more legwork as NetCDF not provided by default (see cmake/FindNetCDF.cmake).
 find_package(PkgConfig)
 pkg_search_module(NETCDF_FORTRAN netcdf-fortran)
 if (NETCDF_FORTRAN_FOUND)
@@ -37,31 +35,27 @@ if (NETCDF_C_FOUND)
     list(APPEND NETCDF_INCLUDES "${NETCDF_C_INCLUDE_DIRS}")
 endif()
 
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../)
-
-# Generate the test_NN_module executable
-add_executable ( test_NN_module 
-  test_NN_module/test.f90
+# Generate the test_YOG_convection executable
+add_executable ( test_YOG_convection 
+  test_YOG_convection/test.f90
   test_utils.f90
-  ${NN_Module_DIR}/precision.f90
-  ${NN_Module_DIR}/SAM_consts.f90
-  ${NN_Module_DIR}/nn_cf_net.f90
-  ${NN_Module_DIR}/nn_convection_flux.f90
+  ${YOG_DIR}/precision.f90
+  ${YOG_DIR}/SAM_consts.f90
+  ${YOG_DIR}/nn_cf_net.f90
+  ${YOG_DIR}/nn_convection_flux.f90
 )
-
-target_link_libraries( test_NN_module PRIVATE ${NETCDF_LIBRARIES} )
-target_include_directories( test_NN_module PRIVATE ${NETCDF_INCLUDES} )
+target_link_libraries( test_YOG_convection PRIVATE ${NETCDF_LIBRARIES} )
+target_include_directories( test_YOG_convection PRIVATE ${NETCDF_INCLUDES} )
 
 # Generate the test_CAM_interface executable
 add_executable ( test_CAM_interface 
   test_CAM_interface/test_cam_interface.f90
   test_utils.f90
-  ${NN_Module_DIR}/precision.f90
-  ${NN_Module_DIR}/SAM_consts.f90
-  ${NN_Module_DIR}/nn_cf_net.f90
-  ${NN_Module_DIR}/nn_convection_flux.f90
+  ${YOG_DIR}/precision.f90
+  ${YOG_DIR}/SAM_consts.f90
+  ${YOG_DIR}/nn_cf_net.f90
+  ${YOG_DIR}/nn_convection_flux.f90
   ${CAM_Interface_DIR}/nn_interface_CAM.f90
 )
-
 target_link_libraries( test_CAM_interface PRIVATE ${NETCDF_LIBRARIES} )
 target_include_directories( test_CAM_interface PRIVATE ${NETCDF_INCLUDES} )
