@@ -10,7 +10,6 @@ Files:
 
 - `nn_cf_net.f90` - The core neural net routines
 - `nn_convection_flux.f90` - wrapper around the neural net routines to perform physics-based operations
-- `nn_interface_SAM.f90` - wrapper around the parameterisation routines to interface with the SAM model
 - `test.f90` - simple smoke tests for parameterisation routines
 - `NN_weights_YOG_convection.nc` - NetCDF file with weights for the neural net
 - Makefile - Makefile to compile these files
