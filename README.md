@@ -53,7 +53,7 @@ as part of the CESM model suite. It also includes a link to an implementation in
 
 ### ``tests/``
 
-There are some tests for the NN_module and interface code in the test/
+There are some tests for the NN_module and interface code in the `test/`
 subdirectory.
 These require a Fortran compiler, `netcdf` and
 `netcdf-fortran` libraries, and CMake to build.
