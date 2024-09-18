@@ -39,7 +39,7 @@ endif()
 
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../)
 
-# Generate the main executable
+# Generate the test_NN_module executable
 add_executable ( test_NN_module 
   test_NN_module/test.f90
   test_utils.f90
@@ -52,7 +52,7 @@ add_executable ( test_NN_module
 target_link_libraries( test_NN_module PRIVATE ${NETCDF_LIBRARIES} )
 target_include_directories( test_NN_module PRIVATE ${NETCDF_INCLUDES} )
 
-# Generate the main executable
+# Generate the test_CAM_interface executable
 add_executable ( test_CAM_interface 
   test_CAM_interface/test_cam_interface.f90
   test_utils.f90
