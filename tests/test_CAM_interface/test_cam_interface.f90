@@ -415,8 +415,8 @@ program run_cam_tests
   integer, dimension(4) :: aa = [1, 2, 3, 4]
   integer, dimension(4) :: bb = [1, 2, 3, 4]
 
-  character(len=1024) :: nn_file = "NN_weights_YOG_convection.nc"
-  character(len=1024) :: sounding_file = "resources/SAM_sounding.nc"
+  character(len=1024) :: nn_file = "../../NN_module/NN_weights_YOG_convection.nc"
+  character(len=1024) :: sounding_file = "../../NN_module/resources/SAM_sounding.nc"
 
   ! Initialise the NN module
   call nn_convection_flux_CAM_init(nn_file, sounding_file)
