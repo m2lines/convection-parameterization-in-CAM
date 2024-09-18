@@ -1,0 +1,39 @@
+cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+#policy CMP0076 - target_sources source files are relative to file where target_sources is run
+cmake_policy (SET CMP0076 NEW)
+
+set(PROJECT_NAME YOGTest)
+
+project(${PROJECT_NAME} LANGUAGES Fortran)
+
+if(NOT CMAKE_Fortran_FLAGS)
+    set(CMAKE_Fortran_FLAGS "-g -ffree-line-length-none")
+endif()
+
+# Find the NetCDF installations and set the relevant variables for compilation
+# Then link to executables
+# Requires more legwork as NetCDF not provided by default
+find_package(PkgConfig)
+pkg_search_module(NETCDF_FORTRAN netcdf-fortran)
+if (NETCDF_FORTRAN_FOUND)
+    set(NETCDF_LIBRARIES "${NETCDF_FORTRAN_LDFLAGS}")
+    set(NETCDF_INCLUDES "${NETCDF_FORTRAN_INCLUDE_DIRS}")
+else()
+    set(NETCDF_F90 "YES")
+    find_package(NetCDF REQUIRED)
+endif()
+pkg_search_module(NETCDF_C netcdf)
+if (NETCDF_C_FOUND)
+    list(APPEND NETCDF_LIBRARIES "${NETCDF_C_LDFLAGS}")
+    list(APPEND NETCDF_INCLUDES "${NETCDF_C_INCLUDE_DIRS}")
+endif()
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../)
+
+# Generate the main executable
+add_executable ( yogtest 
+  test.f90 ../precision.f90 test_utils.f90 ../SAM_consts.f90 ../nn_cf_net.f90 ../nn_convection_flux.f90
+)
+
+target_link_libraries( yogtest PRIVATE ${NETCDF_LIBRARIES} )
+target_include_directories( yogtest PRIVATE ${NETCDF_INCLUDES} )
