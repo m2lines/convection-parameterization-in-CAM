@@ -12,6 +12,7 @@ endif()
 
 
 set(NN_Module_DIR "../NN_module/")
+set(CAM_Interface_DIR "../CAM_interface/")
 
 
 
@@ -50,3 +51,17 @@ add_executable ( test_NN_module
 
 target_link_libraries( test_NN_module PRIVATE ${NETCDF_LIBRARIES} )
 target_include_directories( test_NN_module PRIVATE ${NETCDF_INCLUDES} )
+
+# Generate the main executable
+add_executable ( test_CAM_interface 
+  test_CAM_interface/test_cam_interface.f90
+  test_utils.f90
+  ${NN_Module_DIR}/precision.f90
+  ${NN_Module_DIR}/SAM_consts.f90
+  ${NN_Module_DIR}/nn_cf_net.f90
+  ${NN_Module_DIR}/nn_convection_flux.f90
+  ${CAM_Interface_DIR}/nn_interface_CAM.f90
+)
+
+target_link_libraries( test_CAM_interface PRIVATE ${NETCDF_LIBRARIES} )
+target_include_directories( test_CAM_interface PRIVATE ${NETCDF_INCLUDES} )
