@@ -73,6 +73,12 @@ run to execute the tests using:
 ```
 with output printed to the console.
 
+Note: To build only a specific subset of tests instead of all of them use:
+```
+cmake --build . --target <name_of_test_executable>
+```
+
+
 ## Contributing
 
 Contributions to the repository are welcome, particularly from anyone seeking to implement the
