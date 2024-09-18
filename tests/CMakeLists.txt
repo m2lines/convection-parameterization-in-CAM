@@ -10,6 +10,14 @@ if(NOT CMAKE_Fortran_FLAGS)
     set(CMAKE_Fortran_FLAGS "-g -ffree-line-length-none")
 endif()
 
+
+set(NN_Module_DIR "../NN_module/")
+
+
+
+#Add cmake directory to the environment module variable
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # Find the NetCDF installations and set the relevant variables for compilation
 # Then link to executables
 # Requires more legwork as NetCDF not provided by default
@@ -28,12 +36,17 @@ if (NETCDF_C_FOUND)
     list(APPEND NETCDF_INCLUDES "${NETCDF_C_INCLUDE_DIRS}")
 endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../)
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../)
 
 # Generate the main executable
-add_executable ( yogtest 
-  test.f90 ../precision.f90 test_utils.f90 ../SAM_consts.f90 ../nn_cf_net.f90 ../nn_convection_flux.f90
+add_executable ( test_NN_module 
+  test_NN_module/test.f90
+  test_utils.f90
+  ${NN_Module_DIR}/precision.f90
+  ${NN_Module_DIR}/SAM_consts.f90
+  ${NN_Module_DIR}/nn_cf_net.f90
+  ${NN_Module_DIR}/nn_convection_flux.f90
 )
 
-target_link_libraries( yogtest PRIVATE ${NETCDF_LIBRARIES} )
-target_include_directories( yogtest PRIVATE ${NETCDF_INCLUDES} )
+target_link_libraries( test_NN_module PRIVATE ${NETCDF_LIBRARIES} )
+target_include_directories( test_NN_module PRIVATE ${NETCDF_INCLUDES} )
