@@ -1,5 +1,7 @@
 """Script to plot the results from running the YOG parameterisation on CAM profiles."""
 
+#### WARNING: THIOS SCRIPT COULD DO WITH SUBSTANTIAL CLEANING UP ####
+
 import netCDF4 as nc4
 import matplotlib.pyplot as plt
 import numpy as np
@@ -58,8 +60,8 @@ def profile_comparison_plot(vars, xlab="", ylab="", title="", n=55):
     bottom.
     """
     for var in vars:
-        plt.plot(var["values"][n,:], var["coords"][n,:], label=var["name"])
-        plt.scatter(var["values"][n,:], var["coords"][n,:])
+        plt.plot(var["values"][n, :], var["coords"][n, :], label=var["name"])
+        plt.scatter(var["values"][n, :], var["coords"][n, :])
 
     plt.legend()
     plt.xlabel(xlab)
@@ -73,7 +75,9 @@ def profile_comparison_plot(vars, xlab="", ylab="", title="", n=55):
     plt.show()
 
 
-def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, ratio=False):
+def hovmoller_comparison_plot(
+    vars, xlab="", ylab="", title="", diff=False, ratio=False
+):
     """
     Plot profiles with time for comparison based on inputs
 
@@ -81,7 +85,7 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
     and variable is on x-axis. We also flip the y-axis so highest pressure is at the
     bottom.
     """
-    n_subplots = len(vars) 
+    n_subplots = len(vars)
     if diff:
         n_subplots += 1
     if ratio:
@@ -98,14 +102,15 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
 
     for i, var in enumerate(vars):
         im = ax[i].pcolormesh(
-                np.arange(len(var["values"][:,0])), var["coords"][0,:],
-                var["values"].T,
-                label=var["name"],
-                shading='nearest',
-                vmin = var_min,
-                vmax = var_max,
-                )
-        ax[i].set_title(f"{var["name"]}")
+            np.arange(len(var["values"][:, 0])),
+            var["coords"][0, :],
+            var["values"].T,
+            label=var["name"],
+            shading="nearest",
+            vmin=var_min,
+            vmax=var_max,
+        )
+        ax[i].set_title(f"{var['name']}")
         ax[i].set_ylim(y_min, y_max)
         ax[i].invert_yaxis()
         ax[i].set_ylabel(ylab)
@@ -114,21 +119,24 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
     if diff:
         i += 1
 
-        diff_dat = (vars[0]["values"] - vars[1]["values"])
+        diff_dat = vars[0]["values"] - vars[1]["values"]
         var_min = np.min(diff_dat)
         var_max = np.max(diff_dat)
         var_abs_max = max(var_min, var_max)
 
         im = ax[i].pcolormesh(
-                np.arange(len(vars[0]["values"][:,0])), vars[0]["coords"][0,:],
-                diff_dat.T / var_abs_max,
-                label=vars[0]["name"],
-                shading='nearest',
-                vmin = -1,
-                vmax = 1,
-                cmap="bwr"
-                )
-        ax[i].set_title(f"Normalised Diff: ({vars[0]["name"]} - {vars[1]["name"]}) / max(diff)")
+            np.arange(len(vars[0]["values"][:, 0])),
+            vars[0]["coords"][0, :],
+            diff_dat.T / var_abs_max,
+            label=vars[0]["name"],
+            shading="nearest",
+            vmin=-1,
+            vmax=1,
+            cmap="bwr",
+        )
+        ax[i].set_title(
+            f"Normalised Diff: ({vars[0]['name']} - {vars[1]['name']}) / max(diff)"
+        )
         ax[i].set_ylim(y_min, y_max)
         ax[i].invert_yaxis()
         ax[i].set_ylabel(ylab)
@@ -136,21 +144,22 @@ def hovmoller_comparison_plot(vars, xlab="", ylab="", title="", diff=False, rati
     if ratio:
         i += 1
 
-        rat_dat = (vars[0]["values"] / vars[1]["values"])
+        rat_dat = vars[0]["values"] / vars[1]["values"]
         var_min = np.min(rat_dat)
         var_max = np.max(rat_dat)
         var_abs_max = max(var_min, var_max)
 
         im = ax[i].pcolormesh(
-                np.arange(len(vars[0]["values"][:,0])), vars[0]["coords"][0,:],
-                rat_dat.T,
-                label=vars[0]["name"],
-                shading='nearest',
-                vmin = -var_abs_max,
-                vmax = var_abs_max,
-                cmap="bwr"
-                )
-        ax[i].set_title(f"Ratio: {vars[0]["name"]} / {vars[1]["name"]}")
+            np.arange(len(vars[0]["values"][:, 0])),
+            vars[0]["coords"][0, :],
+            rat_dat.T,
+            label=vars[0]["name"],
+            shading="nearest",
+            vmin=-var_abs_max,
+            vmax=var_abs_max,
+            cmap="bwr",
+        )
+        ax[i].set_title(f"Ratio: {vars[0]['name']} / {vars[1]['name']}")
         ax[i].set_ylim(y_min, y_max)
         ax[i].invert_yaxis()
         ax[i].set_ylabel(ylab)
@@ -172,10 +181,13 @@ def profile_norm_comparison_plot(vars, xlab="", ylab="", title="", n=55):
     """
     for var in vars:
         plt.plot(
-            var["values"][n,:] / np.max(np.abs(var["values"][n,:])), var["coords"][n,:], label=var["name"]
+            var["values"][n, :] / np.max(np.abs(var["values"][n, :])),
+            var["coords"][n, :],
+            label=var["name"],
         )
         plt.scatter(
-            var["values"][n,:] / np.max(np.abs(var["values"][n,:])), var["coords"][n,:]
+            var["values"][n, :] / np.max(np.abs(var["values"][n, :])),
+            var["coords"][n, :],
         )
 
     plt.legend()
@@ -202,8 +214,8 @@ def profile_conversion_plot(vars, xlab="", ylab="", title="", n=55):
     fig, ax = plt.subplots(1, len(vars), sharey=True)
 
     for ival, var in enumerate(vars):
-        ax[ival].plot(var["values"][n,:], var["coords"][n,:], label=var["name"])
-        ax[ival].scatter(var["values"][n,:], var["coords"][n,:])
+        ax[ival].plot(var["values"][n, :], var["coords"][n, :], label=var["name"])
+        ax[ival].scatter(var["values"][n, :], var["coords"][n, :])
         ax[ival].set_xlabel(var["varlabel"])
         ax[ival].legend()
     plt.gca().invert_yaxis()
@@ -220,11 +232,11 @@ def profile_coord_plot(vars, xlab="", ylab="", title=""):
     Plot coordinates for comparison.
 
     This assumes coordinates are pressures, so we flip the x-axis so highest pressure
-    is at the left.
+    is at the left. Use first index only (should be identical for all as coordinate).
     """
     for var in vars:
-        plt.plot(var["coords"][n,:], var["values"][n,:], label=var["name"])
-        plt.scatter(var["coords"][n,:], var["values"][n,:])
+        plt.plot(var["coords"][0, :], var["values"][0, :], label=var["name"])
+        plt.scatter(var["coords"][0, :], var["values"][0, :])
 
     plt.legend()
     plt.xlabel(xlab)
@@ -244,7 +256,7 @@ def scalar_comparison_plot(vars, xlab="", ylab="", title=""):
     plt.legend()
     plt.xlabel(xlab)
     plt.ylabel(ylab)
-    plt.yscale('log')
+    plt.yscale("log")
 
     plt.title(title)
 
@@ -304,7 +316,7 @@ if __name__ == "__main__":
         ylab=r"$\hat p$ [-]",
         xlab=r"timestep",
         title=r"Comparison of T [K] for CAM and SAM grids to check interpolation.",
-        )
+    )
 
     profile_comparison_plot(
         [qv_sam_in, qv_cam_in],
@@ -317,7 +329,7 @@ if __name__ == "__main__":
         ylab=r"$\hat p$ [-]",
         xlab=r"timestep",
         title=r"Comparison of $q_v$ [-] for CAM and SAM grids to check interpolation.",
-        )
+    )
 
     profile_comparison_plot(
         [qc_sam_in, qc_cam_in],
@@ -349,7 +361,9 @@ if __name__ == "__main__":
         xlab=r"$q$ [-]",
         title=r"Comparison of $q_v$ [-] from CAM and $q$ [-] from SAM grids to check variable conversion. Should match as $q_i$ and $q_c$ are initially 0.",
     )
-    t_cam_tot = ncvar_add([tabs_sam_in, gamaz_sam], "T_CAM_TOT", varlabel=r"$t_CAM_tot$ [K]")
+    t_cam_tot = ncvar_add(
+        [tabs_sam_in, gamaz_sam], "T_CAM_TOT", varlabel=r"$t_CAM_tot$ [K]"
+    )
     profile_comparison_plot(
         [tabs_sam_in, gamaz_sam, t_cam_tot, t_sam_in],
         ylab=r"$\hat p$ [-]",
@@ -392,7 +406,7 @@ if __name__ == "__main__":
         ylab=r"$\hat p$ [-]",
         xlab=r"timestep",
         title=r"Comparison of $dq_v$ [-] for SAM and CAM grids to check interpolation.",
-        )
+    )
 
     profile_comparison_plot(
         [dqc_cam_out, dqc_sam_out],
@@ -527,15 +541,23 @@ if __name__ == "__main__":
     dqc_clubb = get_ncvar(data, "CLUBBDQCLD", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
     dtadj_clubb = get_ncvar(data, "CLUBBDT_ADJ", "PNORM_CAM", varlabel=r"$dt$ [K]")
     dqvadj_clubb = get_ncvar(data, "CLUBBDQ_ADJ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
-    dqiadj_clubb = get_ncvar(data, "CLUBBDQICE_ADJ", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
+    dqiadj_clubb = get_ncvar(
+        data, "CLUBBDQICE_ADJ", "PNORM_CAM", varlabel=r"$dq_i$ [-]"
+    )
 
-    dt_tot_clubb = ncvar_add([dt_clubb, dtadj_clubb], "CLUBB_DT_TOT", varlabel=r"$dt_tot_clubb$ [K]")
-    dqv_tot_clubb = ncvar_add([dqv_clubb, dqvadj_clubb], "CLUBB_DQV_TOT", varlabel=r"$dq_tot$ [-]")
-    dqi_tot_clubb = ncvar_add([dqi_clubb, dqiadj_clubb], "CLUBB_DQCLD_TOT", varlabel=r"$dq_tot$ [-]")
+    dt_tot_clubb = ncvar_add(
+        [dt_clubb, dtadj_clubb], "CLUBB_DT_TOT", varlabel=r"$dt_tot_clubb$ [K]"
+    )
+    dqv_tot_clubb = ncvar_add(
+        [dqv_clubb, dqvadj_clubb], "CLUBB_DQV_TOT", varlabel=r"$dq_tot$ [-]"
+    )
+    dqi_tot_clubb = ncvar_add(
+        [dqi_clubb, dqiadj_clubb], "CLUBB_DQCLD_TOT", varlabel=r"$dq_tot$ [-]"
+    )
     dqc_tot_clubb = ncvar_add([dqc_clubb], "CLUBB_DQICE_TOT", varlabel=r"$dq_tot$ [-]")
 
     dt_mphys = get_ncvar(data, "MPDT", "PNORM_CAM", varlabel=r"$dt$ [K]")
-    dqv_mphys= get_ncvar(data, "MPDQ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
+    dqv_mphys = get_ncvar(data, "MPDQ", "PNORM_CAM", varlabel=r"$dq_v$ [-]")
     dqi_mphys = get_ncvar(data, "MPDQCLD", "PNORM_CAM", varlabel=r"$dq_i$ [-]")
     dqc_mphys = get_ncvar(data, "MPDQICE", "PNORM_CAM", varlabel=r"$dq_c$ [-]")
 
@@ -585,7 +607,7 @@ if __name__ == "__main__":
         title=r"Comparison of d$q_v$ tendencies from ZM and YOG routines on CAM grid.",
         diff=True,
         ratio=True,
-        )
+    )
 
     qv_zm = get_ncvar(data, "ZM_QV_OUT", "PNORM_CAM", varlabel=r"$q_v$ [-]")
     qv_yog = get_ncvar(data, "YOG_QV_OUT", "PNORM_CAM", varlabel=r"$q_v$ [-]")
@@ -597,7 +619,7 @@ if __name__ == "__main__":
         title=r"Comparison of d$q_v$ tendencies from ZM and YOG routines on CAM grid.",
         diff=True,
         ratio=True,
-        )
+    )
 
     hovmoller_comparison_plot(
         [dt_yog, dt_zm],
@@ -606,7 +628,7 @@ if __name__ == "__main__":
         title=r"Comparison of d$t$ tendencies from ZM and YOG routines on CAM grid.",
         diff=True,
         ratio=True,
-        )
+    )
 
     # =================================================================================
 
@@ -618,7 +640,7 @@ if __name__ == "__main__":
         ylab=r"$\hat p$ [-]",
         xlab=r"$rh$ [%]",
         title=r"Comparison of relative humidities in CAM and SAM.",
-        n=50
+        n=50,
     )
 
     hovmoller_comparison_plot(
@@ -628,11 +650,16 @@ if __name__ == "__main__":
         title=r"Comparison of relative humidities in CAM and SAM.",
         diff=False,
         ratio=False,
-        )
+    )
 
     # =================================================================================
 
     prec_yog = get_ncvar(data, "YOGPREC", None, varlabel=r"prec. [ ]")
     prec_zm = get_ncvar(data, "ZMPREC", None, varlabel=r"prec. [ ]")
 
-    scalar_comparison_plot([prec_zm, prec_yog], xlab="timestep", ylab="precipitation [m / s]", title="Comparison of precipitaiton from YOG and ZM in simulation.")
+    scalar_comparison_plot(
+        [prec_zm, prec_yog],
+        xlab="timestep",
+        ylab="precipitation [m / s]",
+        title="Comparison of precipitaiton from YOG and ZM in simulation.",
+    )
