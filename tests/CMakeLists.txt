@@ -37,25 +37,25 @@ endif()
 
 # Generate the test_YOG_convection executable
 add_executable ( test_YOG_convection 
-  test_YOG_convection/test.f90
-  test_utils.f90
-  ${YOG_DIR}/precision.f90
-  ${YOG_DIR}/SAM_consts.f90
-  ${YOG_DIR}/nn_cf_net.f90
-  ${YOG_DIR}/nn_convection_flux.f90
+  test_YOG_convection/test.F90
+  test_utils.F90
+  ${YOG_DIR}/precision.F90
+  ${YOG_DIR}/SAM_consts.F90
+  ${YOG_DIR}/nn_cf_net.F90
+  ${YOG_DIR}/nn_convection_flux.F90
 )
 target_link_libraries( test_YOG_convection PRIVATE ${NETCDF_LIBRARIES} )
 target_include_directories( test_YOG_convection PRIVATE ${NETCDF_INCLUDES} )
 
 # Generate the test_CAM_interface executable
 add_executable ( test_CAM_interface 
-  test_CAM_interface/test_cam_interface.f90
-  test_utils.f90
-  ${YOG_DIR}/precision.f90
-  ${YOG_DIR}/SAM_consts.f90
-  ${YOG_DIR}/nn_cf_net.f90
-  ${YOG_DIR}/nn_convection_flux.f90
-  ${CAM_Interface_DIR}/nn_interface_CAM.f90
+  test_CAM_interface/test_cam_interface.F90
+  test_utils.F90
+  ${YOG_DIR}/precision.F90
+  ${YOG_DIR}/SAM_consts.F90
+  ${YOG_DIR}/nn_cf_net.F90
+  ${YOG_DIR}/nn_convection_flux.F90
+  ${CAM_Interface_DIR}/nn_interface_CAM.F90
 )
 target_link_libraries( test_CAM_interface PRIVATE ${NETCDF_LIBRARIES} )
 target_include_directories( test_CAM_interface PRIVATE ${NETCDF_INCLUDES} )

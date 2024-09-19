@@ -52,7 +52,7 @@ contains
             stop
         end if
 
-        call check( NF90_CREATE('NN_test_output.nc', cmode, nfid) )
+        call check( NF90_CREATE('../NN_test_output.nc', cmode, nfid) )
 
         call check( NF90_DEF_DIM(nfid, "time"     , nf90_unlimited, tdim_id) )
         call check( NF90_DEF_DIM(nfid, "n_sam_lev", nrf, n_sam_lev_id) )

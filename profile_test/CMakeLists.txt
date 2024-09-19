@@ -35,18 +35,19 @@ if (NETCDF_C_FOUND)
     list(APPEND NETCDF_INCLUDES "${NETCDF_C_INCLUDE_DIRS}")
 endif()
 
-add_definitions(-DCAM_PROFILE)
+# Add the CAM_PROFILE preprocessor definition for writing out to file
+add_definitions( -DCAM_PROFILE )
 
 # Generate the test_YOG_convection executable
 add_executable ( CAM_profile
-  test_cam_profile.f90
-  cam_profile.f90
-  write_nf_data.f90
-  ${YOG_DIR}/precision.f90
-  ${YOG_DIR}/SAM_consts.f90
-  ${YOG_DIR}/nn_cf_net.f90
-  ${YOG_DIR}/nn_convection_flux.f90
-  ${CAM_Interface_DIR}/nn_interface_CAM.f90
+  test_cam_profile.F90
+  cam_profile.F90
+  write_nf_data.F90
+  ${YOG_DIR}/precision.F90
+  ${YOG_DIR}/SAM_consts.F90
+  ${YOG_DIR}/nn_cf_net.F90
+  ${YOG_DIR}/nn_convection_flux.F90
+  ${CAM_Interface_DIR}/nn_interface_CAM.F90
 )
 target_link_libraries( CAM_profile PRIVATE ${NETCDF_LIBRARIES} )
 target_include_directories( CAM_profile PRIVATE ${NETCDF_INCLUDES} )

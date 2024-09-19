@@ -6,6 +6,7 @@ module nn_interface_CAM
 !---------------------------------------------------------------------
 ! Libraries to use
 use netcdf
+use precision, only: dp
 use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize, &
                                   esati, qsati, esatw, qsatw, dtqsatw, dtqsati
@@ -13,7 +14,9 @@ use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
+#ifdef CAM_PROFILE
 use nf_out, only: nf_write_sam, nf_write_cam, nf_write_scalar
+#endif
 
 implicit none
 private
@@ -26,8 +29,11 @@ public  nn_convection_flux_CAM, &
 
 ! Make these routines public for purposes of testing,
 ! otherwise not required outside this module.
-public interp_to_sam, interp_to_cam, fetch_sam_data
+public interp_to_sam, interp_to_cam
 public SAM_var_conversion, CAM_var_conversion
+#ifdef CAM_PROFILE
+public fetch_sam_data
+#endif
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -41,11 +47,11 @@ integer :: nz_sam
 != unit kg m-3 :: rho
 != unit 1 :: adz
 != unit K :: gamaz
-real(8), allocatable, dimension(:) :: z, pres, presi, rho, adz, gamaz
+real(dp), allocatable, dimension(:) :: z, pres, presi, rho, adz, gamaz
     !! SAM sounding variables
 
 != unit m :: dz
-real(8) :: dz
+real(dp) :: dz
     !! grid spacing in z direction for the lowest grid layer
 
 !---------------------------------------------------------------------
@@ -55,7 +61,7 @@ contains
 
     subroutine fetch_sam_data(pressam, presisam, gamazsam, rhosam, zsam)
         !! Temporary subroutine to extract SAM pressure profile
-        real(8), dimension(48), intent(out) :: pressam, presisam, gamazsam, rhosam, zsam
+        real(dp), dimension(48), intent(out) :: pressam, presisam, gamazsam, rhosam, zsam
         pressam(:) = pres(:)
         presisam(:) = presi(:)
         gamazsam(:) = gamaz(:)
@@ -94,44 +100,46 @@ contains
                                       dqi, dqv, dqc, ds)
         !! Interface to the nn_convection parameterisation for the CAM model
 
-        real(8), intent(in) :: dtn    ! Seconds
+        real(dp), intent(in) :: dtn    ! Seconds
         integer, intent(in) :: nx, nz
 
-        real(8), intent(in) :: cp_cam
+        real(dp), intent(in) :: cp_cam
             !! specific heat capacity of dry air from CAM [J/kg/K]
-        real(8), dimension(:,:) :: pres_cam
+        real(dp), dimension(:,:) :: pres_cam
             !! pressure [Pa] from the CAM model
-        real(8), dimension(:,:) :: pres_int_cam
+        real(dp), dimension(:,:) :: pres_int_cam
             !! interface pressure [Pa] from the CAM model
-        real(8), dimension(:) :: pres_sfc_cam
+        real(dp), dimension(:) :: pres_sfc_cam
             !! surface pressure [Pa] from the CAM model
-        real(8), dimension(:,:) :: tabs_cam
+        real(dp), dimension(:,:) :: tabs_cam
             !! absolute temperature [K] from the CAM model
-        real(8), dimension(:,:) :: qv_cam, qc_cam, qi_cam
+        real(dp), dimension(:,:) :: qv_cam, qc_cam, qi_cam
             !! moisture content [kg/kg] from the CAM model
-        real(8), dimension(:) :: precsfc
+        real(dp), dimension(:) :: precsfc
 
         ! Outputs on the CAM grid
-        real(8), dimension(nx, nz), intent(out) :: dqi, dqv, dqc, ds
+        real(dp), dimension(nx, nz), intent(out) :: dqi, dqv, dqc, ds
 
-        real(8) :: y_in(nx)
+        real(dp) :: y_in(nx)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
-        real(8), dimension(nx)      :: precsfc_i
+        real(dp), dimension(nx)      :: precsfc_i
             !! precipitation at surface from one call to parameterisation
 
         ! Local input variables on the SAM grid
-        real(8), dimension(nx, nrf) :: q0_sam, tabs0_sam
-        real(8), dimension(nx, nrf) :: q_sam, t_sam, tabs_sam
-        real(8), dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
-        real(8), dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam
-        real(8), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
-        real(8), dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
+        real(dp), dimension(nx, nrf) :: q0_sam, tabs0_sam
+        real(dp), dimension(nx, nrf) :: q_sam, t_sam, tabs_sam
+        real(dp), dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
+        real(dp), dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam
+        real(dp), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
+        real(dp), dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
 
-        real(8), dimension(nx, nz) :: rh_cam
-        real(8), dimension(nx, nrf) :: rh_sam
+#ifdef CAM_PROFILE
+        real(dp), dimension(nx, nz) :: rh_cam
+        real(dp), dimension(nx, nrf) :: rh_sam
+        real(dp) :: vap_pres
+#endif
         integer :: k
-        real(8) :: vap_pres
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
@@ -143,14 +151,16 @@ contains
 
         !-----------------------------------------------------
         
+#ifdef CAM_PROFILE
         call nf_write_cam(tabs_cam(1,:), "TABS_CAM_IN")
         call nf_write_cam(qi_cam(1,:), "QI_CAM_IN")
         call nf_write_cam(qc_cam(1,:), "QC_CAM_IN")
         call nf_write_cam(qv_cam(1,:), "QV_CAM_IN")
+#endif
 
         ! Interpolate CAM variables to the SAM pressure levels
         ! TODO Interpolate all variables in one call
-        ! TODO Check Boundary Condition
+        ! Set surface values
         call extrapolate_to_surface(pres_cam, qi_cam, pres_sfc_cam, qi_surf)
         where (qi_surf>=0)
             qi_surf = qi_surf
@@ -180,6 +190,7 @@ contains
         call interp_to_sam(pres_cam, pres_sfc_cam, &
                            qv_cam, qv_sam, qv_surf)
 
+#ifdef CAM_PROFILE
         call nf_write_sam(tabs_sam(1,:), "TABS_SAM_IN")
         call nf_write_sam(qi_sam(1,:), "QI_SAM_IN")
         call nf_write_sam(qc_sam(1,:), "QC_SAM_IN")
@@ -200,10 +211,10 @@ contains
         end do
         call nf_write_sam(rh_sam(1,:), "RH_SAM_IN")
 
+#endif
         !-----------------------------------------------------
         
         ! Convert CAM Moistures and tabs to SAM q and t
-        !TODO FIX IN OTHER VERSIONS!!!
         call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, q_sam, tabs_sam, t_sam)
 
         ! Store variables on SAM grid at the start of the timestep
@@ -213,9 +224,10 @@ contains
         qi0_sam = qi_sam
         tabs0_sam = tabs_sam
 
+#ifdef CAM_PROFILE
         call nf_write_sam(q_sam(1,:), "Q_SAM_IN")
         call nf_write_sam(t_sam(1,:), "T_SAM_IN")
-        
+#endif
         !-----------------------------------------------------
 
         tabs0_sam = tabs_sam
@@ -233,9 +245,11 @@ contains
         ! Update precsfc with prec from this timestep
         precsfc = precsfc + precsfc_i
 
+#ifdef CAM_PROFILE
         call nf_write_sam(t_sam(1,:), "T_SAM_OUT")
         call nf_write_sam(q_sam(1,:), "Q_SAM_OUT")
         call nf_write_scalar(precsfc_i(1), "PREC_SAM_OUT")
+#endif
         !-----------------------------------------------------
         
         ! Formulate the output variables to CAM as required.
@@ -243,12 +257,12 @@ contains
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
         precsfc = precsfc * 1.0D-3
 
-
+#ifdef CAM_PROFILE
         call nf_write_sam(tabs_sam(1,:), "TABS_SAM_OUT")
         call nf_write_sam(qi_sam(1,:), "QI_SAM_OUT")
         call nf_write_sam(qc_sam(1,:), "QC_SAM_OUT")
         call nf_write_sam(qv_sam(1,:), "QV_SAM_OUT")
-        
+#endif
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
@@ -260,13 +274,12 @@ contains
         ! Convert precipitation from total in m to date in m / s by div by dtn
         precsfc = precsfc / dtn
 
-
+#ifdef CAM_PROFILE
         call nf_write_sam(ds_sam(1,:), "DS_SAM_OUT")
         call nf_write_sam(dqi_sam(1,:), "DQI_SAM_OUT")
         call nf_write_sam(dqc_sam(1,:), "DQC_SAM_OUT")
         call nf_write_sam(dqv_sam(1,:), "DQV_SAM_OUT")
-        
-
+#endif
         !-----------------------------------------------------
 
         ! Interpolate SAM variables to the CAM pressure levels
@@ -277,12 +290,12 @@ contains
         call interp_to_cam(pres_cam, pres_int_cam, pres_sfc_cam, dqi_sam, dqi)
         call interp_to_cam(pres_cam, pres_int_cam, pres_sfc_cam, ds_sam, ds)
 
+#ifdef CAM_PROFILE
         call nf_write_cam(ds(1,:), "DS_CAM_OUT")
         call nf_write_cam(dqi(1,:), "DQI_CAM_OUT")
         call nf_write_cam(dqc(1,:), "DQC_CAM_OUT")
         call nf_write_cam(dqv(1,:), "DQV_CAM_OUT")
-        
-
+#endif
     end subroutine nn_convection_flux_CAM
 
 
@@ -312,25 +325,25 @@ contains
         !!       with altitude, so comparisons are not intuitive: Pa > Pb => a is below b
 
         != unit hPa :: p_cam, p_surf_cam
-        real(8), dimension(:,:), intent(in) :: p_cam
-        real(8), dimension(:), intent(in) :: p_surf_cam
+        real(dp), dimension(:,:), intent(in) :: p_cam
+        real(dp), dimension(:), intent(in) :: p_surf_cam
             !! pressure [Pa] from the CAM model
         != unit 1 :: var_cam, var_sam
-        real(8), dimension(:,:), intent(in) :: var_cam
+        real(dp), dimension(:,:), intent(in) :: var_cam
             !! variable from CAM grid to be interpolated from
-        real(8), dimension(:), intent(in) :: var_cam_surface
+        real(dp), dimension(:), intent(in) :: var_cam_surface
             !! Surface value of CAM variable for interpolation/boundary condition
-        real(8), dimension(:,:), intent(out) :: var_sam
+        real(dp), dimension(:,:), intent(out) :: var_sam
             !! variable from SAM grid to be interpolated to
         != unit 1 :: p_norm_sam, p_norm_cam
-        real(8), dimension(nrf) :: p_mid_sam, p_norm_sam
-        real(8), dimension(:,:), allocatable :: p_norm_cam
+        real(dp), dimension(nrf) :: p_mid_sam, p_norm_sam
+        real(dp), dimension(:,:), allocatable :: p_norm_cam
             !! Normalised pressures (using surface pressure) as a sigma-coordinate
 
         integer :: i, k, nz_cam, ncol_cam
 
         integer :: kc_u, kc_l
-        real(8) :: pc_u, pc_l
+        real(dp) :: pc_u, pc_l
             !! Pressures of the CAM cell above and below the target SAM cell
 
         ncol_cam = size(p_cam, 1)
@@ -338,7 +351,7 @@ contains
         allocate(p_norm_cam(ncol_cam, nz_cam))
 
         ! Normalise pressures by surface value
-        ! Note - We work in pressure space but use a 'midpoint' based on altitude from
+        ! Note - We work in pressure space but use a pressure 'midpoint' based on altitude from
         !        SAM as this is concurrent to the variable value at this location.
         p_norm_sam(:) = pres(:) / presi(1)
         do k = 1,nz_cam
@@ -348,31 +361,22 @@ contains
         ! Loop over columns and SAM levels and interpolate each column
         do k = 1, nrf
         do i = 1, ncol_cam
-            ! Check we are within array
 
             ! If SAM cell centre is below lowest CAM centre - interpolate to surface value
             if (p_norm_sam(k) > p_norm_cam(i, 1)) then
-                ! TODO Remove warning and interpolate to boundary
-                ! TODO Add boundary conditions for any input variables as required.
-!                write(*,*) "Interpolating to surface."
                 var_sam(i, k) = var_cam_surface(i) &
                                 + (p_norm_sam(k)-1.0) &
                                 * (var_cam(i, 1)-var_cam_surface(i))/(p_norm_cam(i, 1)-1.0)
+
             ! Check CAM grid top cell is above SAM grid top
             elseif (p_norm_cam(i, nz_cam) > p_norm_sam(nrf)) then
-!                 write(*,*) i
-!                 write(*,*) "CAM upper pressure level is ", p_cam(i, nz_cam)
-!                 write(*,*) "SAM upper pressure level is ", pres(nrf)
-!                 write(*,*) "CAM surface pressure is ", p_surf_cam(i)
-!                 write(*,*) "SAM surface pressure is ", presi(1)
-!                 write(*,*) "CAM upper norm pressure level is ", p_norm_cam(i, nz_cam)
-!                 write(*,*) "SAM upper norm pressure level is ", p_norm_sam(nrf)
                 ! This should not happen as CAM grid extends to higher altitudes than SAM
                 ! TODO This check is run on every iteration - move outside
-!                 write(*,*) "CAM upper pressure level is lower than that of SAM: Stopping."
+                 write(*,*) "CAM upper pressure level is lower than that of SAM: Stopping."
                 stop
+            
+            ! Locate the neighbouring CAM indices to interpolate between
             else
-                ! Locate the neighbouring CAM indices to interpolate between
                 ! TODO - this will be slow - speed up later
                 kc_u = 1
                 pc_u = p_norm_cam(i, kc_u)
@@ -382,11 +386,6 @@ contains
                 end do
                 kc_l = kc_u - 1
                 pc_l = p_norm_cam(i, kc_l)
-                ! Redundant following the lines above
-                ! do while (pc_l < p_norm_sam(k))
-                !     kc_l = kc_l - 1
-                !     pc_l = p_norm_cam(i, kc_l)
-                ! end do
 
                 ! interpolate variables - Repeat for as many variables as need interpolating
                 var_sam(i, k) = var_cam(i, kc_l) &
@@ -412,26 +411,26 @@ contains
         !! (i.e. no grid-top value) for SAM.
 
         != unit Pa :: p_cam, p_int_cam
-        real(8), dimension(:,:), intent(in) :: p_cam
+        real(dp), dimension(:,:), intent(in) :: p_cam
             !! pressure [Pa] from the CAM model
-        real(8), dimension(:,:), intent(in) :: p_int_cam
+        real(dp), dimension(:,:), intent(in) :: p_int_cam
             !! interface pressures [Pa] for each column in CAM
-        real(8), dimension(:), intent(in) :: p_surf_cam
+        real(dp), dimension(:), intent(in) :: p_surf_cam
             !! surface pressures [Pa] for each column in CAM
         != unit 1 :: var_cam, var_sam
-        real(8), dimension(:,:), intent(out) :: var_cam
+        real(dp), dimension(:,:), intent(out) :: var_cam
             !! variable from CAM grid to be interpolated from
-        real(8), dimension(:,:), intent(in) :: var_sam
+        real(dp), dimension(:,:), intent(in) :: var_sam
             !! variable from SAM grid to be interpolated to
         != unit 1 :: p_norm_sam, p_norm_cam
-        real(8), dimension(nrf) :: p_norm_sam
-        real(8), dimension(nrf+1) :: p_int_norm_sam
-        real(8), dimension(:,:), allocatable :: p_norm_cam
-        real(8), dimension(:,:), allocatable :: p_int_norm_cam
+        real(dp), dimension(nrf) :: p_norm_sam
+        real(dp), dimension(nrf+1) :: p_int_norm_sam
+        real(dp), dimension(:,:), allocatable :: p_norm_cam
+        real(dp), dimension(:,:), allocatable :: p_int_norm_cam
 
         integer :: i, k, c, nz_cam, ncol_cam, ks, ks_u, ks_l
-        real(8) :: ps_u, ps_l, pc_u, pc_l
-        real(8) :: p_norm_sam_min
+        real(dp) :: ps_u, ps_l, pc_u, pc_l
+        real(dp) :: p_norm_sam_min
 
         ncol_cam = size(p_cam, 1)
         nz_cam = size(p_cam, 2)
@@ -485,21 +484,9 @@ contains
                 end do
 
                 ! Combine all SAM cells that this CAM_CELL(i, k) overlaps
-    !            write(*,*) i,k
-    !            write(*,*) shape(var_cam)
-    !            write(*,*) "var_cam(i,k) = ", var_cam(i,k)
                 var_cam(i,k) = 0.0
-
-
-                ! write(*,*) ks_l, ks_u
                 if (ks_u == ks_l) then
                     ! CAM cell fully enclosed by SAM cell => match 'density' of SAM cell
-    !                write(*,*) "var_cam(i,k) = ", var_cam(i,k)
-    !                write(*,*) "var_sam(i,k) = ", var_cam(i,ks_u)
-    !                write(*,*) "pc_u = ", pc_u
-    !                write(*,*) "pc_l = ", pc_l
-    !                write(*,*) "ps_u = ", ps_u
-    !                write(*,*) "ps_l = ", ps_l
                     var_cam(i,k) = var_cam(i,k) + var_sam(i,ks_u)
                 else
                   do c = ks_l, ks_u
@@ -512,6 +499,7 @@ contains
                     else
                       ! Intermediate cell (SAM Cell fully enclosed by CAM Cell => Absorb all)
                       var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(c)-p_int_norm_sam(c+1))*var_sam(i, c) / (pc_l - pc_u)
+
                     endif
 
                   enddo
@@ -530,18 +518,18 @@ contains
         !! Extrapolate variable profile to the surface, required for interpolation.
 
         != unit Pa :: p_cam
-        real(8), dimension(:,:), intent(in) :: p_cam
+        real(dp), dimension(:,:), intent(in) :: p_cam
             !! pressure [Pa] from the CAM model
-        real(8), dimension(:), intent(in) :: p_surf_cam
+        real(dp), dimension(:), intent(in) :: p_surf_cam
             !! surface pressures [Pa] for each column in CAM
         != unit 1 :: var_cam
-        real(8), dimension(:,:), intent(in) :: var_cam
+        real(dp), dimension(:,:), intent(in) :: var_cam
             !! variable from CAM grid to be interpolated from
-        real(8), dimension(:), intent(out) :: var_surf_cam
+        real(dp), dimension(:), intent(out) :: var_surf_cam
             !! variable from CAM grid to be interpolated from
 
         integer :: i, k
-        real(8) :: gdt(size(var_surf_cam))
+        real(dp) :: gdt(size(var_surf_cam))
 
         gdt(:) = (var_cam(:,2) - var_cam(:,1)) / (p_cam(:,2) - p_cam(:,1))
         var_surf_cam(:) = var_cam(:,1) + gdt(:) * (p_surf_cam(:) - p_cam(:,1))
@@ -634,25 +622,25 @@ contains
             !! array sizes
         integer :: i, k
             !! Counters
-        real(8) :: omn
+        real(dp) :: omn
             !! intermediate omn factor used in variable conversion
 
         ! ---------------------
         ! Fields from CAM/SAM
         ! ---------------------
         != unit 1 :: q, qv, qc, qi
-        real(8), intent(out) :: q(:, :)
+        real(dp), intent(out) :: q(:, :)
             !! Total non-precipitating water mixing ratio as required by SAM NN
-        real(8), intent(in) :: qv(:, :)
+        real(dp), intent(in) :: qv(:, :)
             !! Cloud water vapour from CAM
-        real(8), intent(in) :: qc(:, :)
+        real(dp), intent(in) :: qc(:, :)
             !! Cloud water from CAM
-        real(8), intent(in) :: qi(:, :)
+        real(dp), intent(in) :: qi(:, :)
             !! Cloud ice from CAM
 
-        real(8), intent(out) :: t(:, :)
+        real(dp), intent(out) :: t(:, :)
             !! Static energy as required by SAM NN
-        real(8), intent(in) :: tabs(:, :)
+        real(dp), intent(in) :: tabs(:, :)
             !! Absolute temperature from CAM
 
 
@@ -663,7 +651,7 @@ contains
           do i = 1, nx
             q(i,k) = qv(i,k) + qc(i,k) + qi(i,k)
 
-            ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
+            ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))  ! There is no qp in CAM
             omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
             t(i,k) = tabs(i,k) &
                    ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &  ! There is no qp in CAM
@@ -689,30 +677,29 @@ contains
         ! Fields from SAM/CAM
         ! ---------------------
         != unit K :: tabs, tabs1
-        real(8), intent(inout) :: tabs(:, :)
+        real(dp), intent(inout) :: tabs(:, :)
             !! absolute temperature
-        ! TODO FIX in others
-        real(8) :: tabs1
+        real(dp) :: tabs1
             !! Temporary variable for tabs
 
         != unit kg/kg :: q, qn, qv, qc, qi
-        real(8) :: q(:, :)
+        real(dp) :: q(:, :)
             !! Total non-precipitating water mixing ratio from SAM
-        real(8), intent(out) :: qv(:, :)
+        real(dp), intent(out) :: qv(:, :)
             !! Cloud water vapour in CAM
-        real(8), intent(out) :: qc(:, :)
+        real(dp), intent(out) :: qc(:, :)
             !! Cloud water (liquid) in CAM
-        real(8), intent(out) :: qi(:, :)
+        real(dp), intent(out) :: qi(:, :)
             !! Cloud ice in CAM
-        real(8) :: qn
+        real(dp) :: qn
             !! Cloud liquid + cloud ice
 
         != K :: t
-        real(8), intent(in) :: t(:, :)
+        real(dp), intent(in) :: t(:, :)
             !! normalised liquid ice static energy
 
         ! Intermediate variables
-        real(8) :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff
+        real(dp) :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff
 
         nx = size(tabs, 1)
         nz = size(tabs, 2)
