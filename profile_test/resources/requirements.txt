@@ -1,4 +1,0 @@
-certifi==2023.7.22
-cftime==1.6.2
-netCDF4==1.6.4
-numpy==1.21.6

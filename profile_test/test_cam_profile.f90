@@ -7,10 +7,10 @@ program cam_profile_tests
 
   implicit none
 
-  character(len=136) :: nn_file = "NN_weights_YOG_convection.nc"
-  character(len=136) :: sounding_file = "resources/SAM_sounding.nc"
-  character(len=136) :: cam_profile_file = "scam_gateIII_215_YOG_testing.cam.h2.1974-08-30-00000.nc"
-  character(len=136) :: cam_out_file = "scam_gateIII_215_YOG_testing.cam.h1.1974-08-30-00000.nc"
+  character(len=136) :: nn_file = "../../YOG_convection/NN_weights_YOG_convection.nc"
+  character(len=136) :: sounding_file = "../../YOG_convection/resources/SAM_sounding.nc"
+  character(len=136) :: cam_profile_file = "../scam_gateIII_215_YOG_testing.cam.h2.1974-08-30-00000.nc"
+  character(len=136) :: cam_out_file = "../scam_gateIII_215_YOG_testing.cam.h1.1974-08-30-00000.nc"
 
   !> SAM grid data
   real(8), dimension(48) :: lev_sam, int_sam, gamazsam, rhosam, zsam
