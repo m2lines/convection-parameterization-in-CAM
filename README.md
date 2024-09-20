@@ -8,18 +8,17 @@ A Neural Net providing a subgrid parameterization of atmospheric convection in a
 The work is described in a [GRL paper](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020GL091363) with [accompanying code available](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3). The repository contains the neural net and its implementation into a simple system for atmospheric modelling, [SAM](http://rossby.msrc.sunysb.edu/~marat/SAM.html).
 
 The aims of this repository are to:
-1. develop a standalone fortran module based on this neural net that can be used elsewhere,
+1. provide a standalone fortran module of the convection parameterisation based on this neural net that can be used elsewhere,
 2. deploy the module in another atmospheric model, and
-3. evaluate its performance.
+3. evaluate its performance (and provide instructions/code to do this).
 
-We may also perform an investigation into interfacing the pytorch implementation of the Neural Net using the [pytorch-fortran bridging code](https://github.com/Cambridge-ICCS/fortran-pytorch-lib) developed at the [Institute of Computing for Climate Science](https://cambridge-iccs.github.io/).
+We have also started to perform an investigation into interfacing the pytorch implementation of the Neural Net using the [pytorch-fortran bridging code](https://github.com/Cambridge-ICCS/fortran-pytorch-lib) developed at the [Institute of Computing for Climate Science](https://cambridge-iccs.github.io/).
 
-The model will first be deployed into the [Single Column Atmospheric Model (SCAM)](https://www.cesm.ucar.edu/models/simple/scam) - a single column version of the CESM.
-We plan to evaluate performance using SCAM in the gateIII configuration for tropical convection in a similar manner described by the [SCAM6 pulication in JAMES](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018MS001578).
-This will compare model performance to data from an intense observation period (IOP) described in an [AMS publication](https://journals.ametsoc.org/view/journals/atsc/36/1/1520-0469_1979_036_0053_saposs_2_0_co_2.xml).
+The model was first deployed into the [Single Column Atmospheric Model (SCAM)](https://www.cesm.ucar.edu/models/simple/scam) - a single column version of the CESM.
+We evaluate performance using Single Column CAM (SCAM) in the gateIII configuration for tropical convection in a similar manner described by the [SCAM6 pulication in JAMES](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018MS001578).
+This compares model performance to data from an intense observation period (IOP) described in an [AMS publication](https://journals.ametsoc.org/view/journals/atsc/36/1/1520-0469_1979_036_0053_saposs_2_0_co_2.xml).
 
 Long term developments of this project will seek to re-deploy more complex ML parameterizations into mode complex atmospheric models such as the [Community Atmospheric Model (CAM)](https://www.cesm.ucar.edu/models/cam) part of the CESM.
-
 
 ## Repository structure
 
@@ -39,9 +38,9 @@ Long term developments of this project will seek to re-deploy more complex ML pa
 
 ### `YOG_convection/`
 
-This code is a standalone fortran module containing the fortran neural net and any dependencies extracted from the [original codebase](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3).
+This code is a standalone fortran convection parameterisation consisting of a fortran neural net and accompanying physics code and any dependencies extracted from the [original codebase](https://github.com/yaniyuval/Neural_nework_parameterization/tree/v.1.0.3).
 
-It can be included as a standalone fortran module in a larger model.
+It can be integrated as a standalone fortran convection parameterisation in a larger atmospheric model.
 
 It has dependencies on the NetCDF and NetCDF-Fortran libraries and can be built using the included makefile (may need modification).
 
@@ -53,8 +52,8 @@ Files:
 - `NN_weights_YOG_convection.nc` - NetCDF file with weights for the neural net
 - Makefile - Makefile to compile these files
 
-Note that you will need to generate the SAM sounding as a NetCDF file from the data
-files in `resources/` if you are using the CAM interface.\
+Note that you will need to generate the SAM sounding (an [atmospheric sounding](https://en.wikipedia.org/wiki/Atmospheric_sounding) that defines the SAM grid that the parameterisation is operating on -- 
+we need this grid for the parameterisation, but also to interpolate any inputs from a different model on to this grid so that they can be used in the neural net) as a NetCDF file from the data files in `resources/` if you are using the CAM interface.\
 This can be done from within the `resources/` directory as follows:
 ```
 python -m venv venv
@@ -74,17 +73,14 @@ This directory contains the PyTorch versions of the neural networks used in the 
 ### ``CAM_interface/``
 The directory contains the additional files or details to interface the YOG code with the CAM atmospheric model as part of the CESM model suite. 
 
-An implementation of this code within CAM, following the process outlined below, is 
-available in the [m2lines/CAM-ML](https://github.com/m2lines/CAM-ML/tree/CAM-ML)
-repository.
+An implementation of this code within CAM, following the process outlined below, is available in the [m2lines/CAM-ML](https://github.com/m2lines/CAM-ML/tree/CAM-ML) repository.
 This contains a full description of how to install and run the code as part of the CESM model suite.
 
-That specific implementation is run within CESM v2.1.5 and is based of a version of CAM
-with the `cam_cesm2_1_rel_60` release tag.
+That specific implementation is run within CESM v2.1.5 and is based of a version of CAM with the `cam_cesm2_1_rel_60` release tag.
 There are notable future changes to the CAM source for CESM v2.2 and v3.0 that may
 require revisions to these files in future.
 
-In addition to the files in `[/NN_Module](/NN_Module)` containing the parameterisation,
+In addition to the files in `[/YOG_convection](/YOG_convection)` containing the parameterisation,
 the additional files here are required:
 
 - `nn_interface_CAM.F90` - The interface for performing conversion from CAM variables and grid into the variables/grid expected by the YOG parameterisation.
@@ -95,7 +91,7 @@ Changes also have to be made to:
 - `bld/namelist_files/namelist_definition.xml` - To add the new namelist variables.
 - `bld/namelist_files/namelist_defaults_cam.xml` - To set the new namelist variable defaults.
 - `/src/physics/cam/physcontrol.F90` - To read in the new namelist variables and broadcast them.
-- `/src/physics/cam/physpkg.F90` - To call the new parameteristion routines detailed in `yog_intr.F90`.
+- `/src/physics/cam/physpkg.F90` - To call the new parameterisation routines detailed in `yog_intr.F90`.
 
 Full details of these can be seen in the specific implementation in CAM linked above.
 
@@ -135,10 +131,8 @@ cmake --build . --target <name_of_test_executable>
 
 ## Contributing
 
-Contributions to the repository are welcome, particularly from anyone seeking to implement the
-parameterisation in another atmospheric model.
-We welcome the addition of details for interfacing to other models, including code,
-from anyone who has used the parameterisation in another model.
+Contributions to the repository are welcome, particularly from anyone seeking to implement the parameterisation in another atmospheric model.
+We welcome the addition of details for interfacing to other models, including code, from anyone who has used the parameterisation in another model.
 
 Open tickets can be viewed at ['Issues'](https://github.com/m2lines/convection-parameterization-in-CAM/issues).
 
