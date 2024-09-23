@@ -96,7 +96,7 @@ Changes also have to be made to:
 Full details of these can be seen in the specific implementation in CAM linked above.
 
 There are test routines associated with this code in `/tests/test_CAM_interface/`.
-Guidance on running these can be found in the main README.
+Guidance on running these can be found below.
 
 
 
