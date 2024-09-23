@@ -63,7 +63,7 @@ python sounding_to_netcdf.py
 deactivate
 
 ```
-There are test routines associated with this code in `/tests/test_NN_module/`.
+There are test routines associated with this code in `/tests/test_YOG_convection/`.
 Guidance on running these can be found below.
 
 
