@@ -126,10 +126,7 @@ def save_to_netcdf(
         array of adz grid values as floats corrresponding to altitudes, alt
     """
     # All input arguments are variables to be written to netCDF file
-    # pylint: disable=too-many-arguments
-    ncfile = nc4.Dataset(  # pylint: disable=no-member
-        filename, mode="w", format="NETCDF4_CLASSIC"
-    )
+    ncfile = nc4.Dataset(filename, mode="w", format="NETCDF4_CLASSIC")
 
     ncfile.title = "SAM Soundings for neural net convection parameterisation"
     ncfile.history = f"Created: {time.ctime(time.time())} by user {os.getlogin()}"

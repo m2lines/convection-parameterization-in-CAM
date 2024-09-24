@@ -1,7 +1,4 @@
 torch
-black
-pytest
-pydocstyle
-pylint
-mypy
 netcdf4
+ruff
+pytest
