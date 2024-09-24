@@ -45,7 +45,7 @@ class ANN(nn.Sequential):
 
     """
 
-    def __init__(  # pylint: disable=too-many-arguments,too-many-locals
+    def __init__(
         self,
         n_in: int = 61,
         n_out: int = 148,
@@ -101,7 +101,7 @@ class ANN(nn.Sequential):
 
         self.to(torch.device(device))
 
-    def forward(self, input: Tensor):  # pylint: disable=redefined-builtin
+    def forward(self, input: Tensor):
         """Pass the input through the model.
 
         Override the forward method of nn.Sequential to add normalization
@@ -168,7 +168,7 @@ def load_from_netcdf_params(nc_file: str, dtype: str = "float32") -> ANN:
         The data type to cast the parameters to.
 
     """
-    data_set = nc.Dataset(nc_file)  # pylint: disable=no-member
+    data_set = nc.Dataset(nc_file)
 
     model = ANN(
         features_mean=data_set["fscale_mean"][:].astype(dtype),
