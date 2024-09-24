@@ -126,8 +126,7 @@ def save_to_netcdf(
         array of adz grid values as floats corrresponding to altitudes, alt
     """
     # All input arguments are variables to be written to netCDF file
-    # pylint: disable=too-many-arguments
-    ncfile = nc4.Dataset(  # pylint: disable=no-member
+    ncfile = nc4.Dataset(
         filename, mode="w", format="NETCDF4_CLASSIC"
     )
 
