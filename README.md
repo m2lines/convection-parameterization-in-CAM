@@ -15,7 +15,7 @@ The aims of this repository are to:
 We have also started to perform an investigation into interfacing the pytorch implementation of the Neural Net using the [pytorch-fortran bridging code](https://github.com/Cambridge-ICCS/fortran-pytorch-lib) developed at the [Institute of Computing for Climate Science](https://cambridge-iccs.github.io/).
 
 The model was first deployed into the [Single Column Atmospheric Model (SCAM)](https://www.cesm.ucar.edu/models/simple/scam) - a single column version of the CESM.
-We evaluate performance using Single Column CAM (SCAM) in the gateIII configuration for tropical convection in a similar manner described by the [SCAM6 pulication in JAMES](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018MS001578).
+We evaluate performance using Single Column CAM (SCAM) in the gateIII configuration for tropical convection in a similar manner described by the [SCAM6 pulication in JAMES](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018MS001578), as well as the TOGA II configuration described in the same paper.
 This compares model performance to data from an intense observation period (IOP) described in an [AMS publication](https://journals.ametsoc.org/view/journals/atsc/36/1/1520-0469_1979_036_0053_saposs_2_0_co_2.xml).
 
 Long term developments of this project will seek to re-deploy more complex ML parameterizations into mode complex atmospheric models such as the [Community Atmospheric Model (CAM)](https://www.cesm.ucar.edu/models/cam) part of the CESM.
