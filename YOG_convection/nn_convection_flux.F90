@@ -10,6 +10,9 @@ use precision, only: dp, sp
 use nn_cf_net_mod, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
 use SAM_consts_mod, only: fac_cond, fac_fus, tprmin, a_pr, input_ver_dim, &
                           nrf, nrfq
+#ifdef CAM_PROFILE
+use nf_out, only: nf_write_sam
+#endif
 
 implicit none
 private
@@ -18,7 +21,7 @@ private
 !---------------------------------------------------------------------
 ! public interfaces
 public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize, &
-        esati, qsati, qsatw, dtqsatw, dtqsati
+        esati, qsati, esatw, qsatw, dtqsatw, dtqsati
 
 
 !---------------------------------------------------------------------
@@ -264,6 +267,14 @@ contains
             ! total non-precip. water mix. ratio ice-sedimenting flux
             q_sed_flux(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
             
+#ifdef CAM_PROFILE
+            call nf_write_sam(q_flux_adv(:), "Q_FLX_ADV")
+            call nf_write_sam(t_flux_adv(:), "T_FLX_ADV")
+            call nf_write_sam(q_tend_auto(:), "Q_TEND_AUTO")
+            call nf_write_sam(-q_tend_auto(:)*fac(1:nrf), "T_TEND_AUTO")
+            call nf_write_sam(q_sed_flux(:), "Q_FLX_SED")
+            call nf_write_sam(-q_sed_flux(:)*(fac_fus+fac_cond), "T_FLX_SED")
+#endif
             !-----------------------------------------------------
             ! Apply physical constraints and update q and t
 
@@ -302,6 +313,11 @@ contains
             q(i,1:nrf) = q(i,1:nrf) + q_delta_adv(i,1:nrf)
             t(i,1:nrf) = t(i,1:nrf) + t_delta_adv(i,1:nrf)
 
+#ifdef CAM_PROFILE
+            call nf_write_sam(q_delta_adv(1,:), "DQ_ADV")
+            call nf_write_sam(t_delta_adv(1,:), "DT_ADV")
+#endif
+
             ! ensure autoconversion tendency won't reduce q below 0
             do k=1,nrf
                 omp(k) = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
@@ -317,6 +333,11 @@ contains
             q(i,1:nrf) = q(i,1:nrf) + q_delta_auto(i,1:nrf)
             t_delta_auto(i,1:nrf) = - q_delta_auto(i,1:nrf)*fac(1:nrf)
             t(i,1:nrf) = t(i,1:nrf) + t_delta_auto(i,1:nrf)
+
+#ifdef CAM_PROFILE
+            call nf_write_sam(q_delta_auto(1,:), "DQ_AUTO")
+            call nf_write_sam(t_delta_auto(1,:), "DT_AUTO")
+#endif
 
             ! Ensure sedimenting ice will not reduce q below zero anywhere
             do k=2,nrf
@@ -350,6 +371,11 @@ contains
             ! Update q and t with sed q and t deltas (dt = -dq*(latent_heat/cp))
             q(i,1:nrf) = q(i,1:nrf) + q_delta_sed(i,1:nrf)
             t(i,1:nrf) = t(i,1:nrf) - q_delta_sed(i,1:nrf)*(fac_fus+fac_cond)
+
+#ifdef CAM_PROFILE
+            call nf_write_sam(q_delta_sed(1,:), "DQ_SED")
+            call nf_write_sam(-q_delta_sed(1,:)*(fac_fus+fac_cond), "DT_SED")
+#endif
 
             ! Radiation is not applied in this scheme for now.
             ! ! Apply radiation rest tendency to variables (multiply by dtn to get dt)

@@ -9,11 +9,14 @@ use netcdf
 use precision, only: dp
 use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize, &
-                                  esati, qsati, qsatw, dtqsatw, dtqsati
+                                  esati, qsati, esatw, qsatw, dtqsatw, dtqsati
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
+#ifdef CAM_PROFILE
+use nf_out, only: nf_write_sam, nf_write_cam, nf_write_scalar
+#endif
 
 implicit none
 private
@@ -28,7 +31,9 @@ public  nn_convection_flux_CAM, &
 ! otherwise not required outside this module.
 public interp_to_sam, interp_to_cam
 public SAM_var_conversion, CAM_var_conversion
+#ifdef CAM_PROFILE
 public fetch_sam_data
+#endif
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -129,6 +134,11 @@ contains
         real(dp), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
         real(dp), dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
 
+#ifdef CAM_PROFILE
+        real(dp), dimension(nx, nz) :: rh_cam
+        real(dp), dimension(nx, nrf) :: rh_sam
+        real(dp) :: vap_pres
+#endif
         integer :: k
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
@@ -141,6 +151,13 @@ contains
 
         !-----------------------------------------------------
         
+#ifdef CAM_PROFILE
+        call nf_write_cam(tabs_cam(1,:), "TABS_CAM_IN")
+        call nf_write_cam(qi_cam(1,:), "QI_CAM_IN")
+        call nf_write_cam(qc_cam(1,:), "QC_CAM_IN")
+        call nf_write_cam(qv_cam(1,:), "QV_CAM_IN")
+#endif
+
         ! Interpolate CAM variables to the SAM pressure levels
         ! TODO Interpolate all variables in one call
         ! Set surface values
@@ -173,6 +190,28 @@ contains
         call interp_to_sam(pres_cam, pres_sfc_cam, &
                            qv_cam, qv_sam, qv_surf)
 
+#ifdef CAM_PROFILE
+        call nf_write_sam(tabs_sam(1,:), "TABS_SAM_IN")
+        call nf_write_sam(qi_sam(1,:), "QI_SAM_IN")
+        call nf_write_sam(qc_sam(1,:), "QC_SAM_IN")
+        call nf_write_sam(qv_sam(1,:), "QV_SAM_IN")
+        
+        call nf_write_cam(pres_cam(1,:), "P_CAM")
+        call nf_write_sam(pres(1:nrf) * 100D0, "P_SAM")
+        call nf_write_cam(pres_cam(1,:) / pres_sfc_cam(1), "PNORM_CAM")
+        call nf_write_sam(pres(1:nrf) / presi(1), "PNORM_SAM")
+        call nf_write_sam(gamaz(1:nrf), "GAMAZ_SAM")
+
+        !-----------------------------------------------------
+
+        ! Check relative humidities at inputs in SAM
+        do k = 1, nrf
+            vap_pres = qv_sam(1,k) * pres(k) / (qv_sam(1,k) + 0.622 * (1.0 - qv_sam(1,k)))
+            rh_sam(1,k) = vap_pres / esatw(tabs_sam(1,k))
+        end do
+        call nf_write_sam(rh_sam(1,:), "RH_SAM_IN")
+
+#endif
         !-----------------------------------------------------
         
         ! Convert CAM Moistures and tabs to SAM q and t
@@ -185,6 +224,10 @@ contains
         qi0_sam = qi_sam
         tabs0_sam = tabs_sam
 
+#ifdef CAM_PROFILE
+        call nf_write_sam(q_sam(1,:), "Q_SAM_IN")
+        call nf_write_sam(t_sam(1,:), "T_SAM_IN")
+#endif
         !-----------------------------------------------------
 
         tabs0_sam = tabs_sam
@@ -202,6 +245,11 @@ contains
         ! Update precsfc with prec from this timestep
         precsfc = precsfc + precsfc_i
 
+#ifdef CAM_PROFILE
+        call nf_write_sam(t_sam(1,:), "T_SAM_OUT")
+        call nf_write_sam(q_sam(1,:), "Q_SAM_OUT")
+        call nf_write_scalar(precsfc_i(1), "PREC_SAM_OUT")
+#endif
         !-----------------------------------------------------
         
         ! Formulate the output variables to CAM as required.
@@ -209,6 +257,12 @@ contains
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
         precsfc = precsfc * 1.0D-3
 
+#ifdef CAM_PROFILE
+        call nf_write_sam(tabs_sam(1,:), "TABS_SAM_OUT")
+        call nf_write_sam(qi_sam(1,:), "QI_SAM_OUT")
+        call nf_write_sam(qc_sam(1,:), "QC_SAM_OUT")
+        call nf_write_sam(qv_sam(1,:), "QV_SAM_OUT")
+#endif
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
@@ -220,6 +274,12 @@ contains
         ! Convert precipitation from total in m to date in m / s by div by dtn
         precsfc = precsfc / dtn
 
+#ifdef CAM_PROFILE
+        call nf_write_sam(ds_sam(1,:), "DS_SAM_OUT")
+        call nf_write_sam(dqi_sam(1,:), "DQI_SAM_OUT")
+        call nf_write_sam(dqc_sam(1,:), "DQC_SAM_OUT")
+        call nf_write_sam(dqv_sam(1,:), "DQV_SAM_OUT")
+#endif
         !-----------------------------------------------------
 
         ! Interpolate SAM variables to the CAM pressure levels
@@ -230,6 +290,12 @@ contains
         call interp_to_cam(pres_cam, pres_int_cam, pres_sfc_cam, dqi_sam, dqi)
         call interp_to_cam(pres_cam, pres_int_cam, pres_sfc_cam, ds_sam, ds)
 
+#ifdef CAM_PROFILE
+        call nf_write_cam(ds(1,:), "DS_CAM_OUT")
+        call nf_write_cam(dqi(1,:), "DQI_CAM_OUT")
+        call nf_write_cam(dqc(1,:), "DQC_CAM_OUT")
+        call nf_write_cam(dqv(1,:), "DQV_CAM_OUT")
+#endif
     end subroutine nn_convection_flux_CAM
 
 
