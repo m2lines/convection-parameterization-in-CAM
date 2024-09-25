@@ -100,6 +100,12 @@ Full details of these can be seen in the specific implementation in CAM linked a
 There are test routines associated with this code in `/tests/test_CAM_interface/`.
 Guidance on running these can be found below.
 
+### ``profile_test/``
+
+The CAM Profile Test code is a standalone test rig around the YOG convection parameterisation routines for debugging. 
+
+The [README in the subdirectory](https://github.com/m2lines/convection-parameterization-in-CAM/blob/main/profile_test/README.md) contains detailed information how to run these tests.
+
 
 ### ``tests/``
 
