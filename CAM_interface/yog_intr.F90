@@ -198,7 +198,7 @@ subroutine yog_tend(ztodt, state, ptend)
    real(r8), pointer, dimension(:)   :: snow         ! snow
    real(r8), pointer, dimension(:,:) :: cld
 
-   real(r8) :: yog_precsfc(pcols)  ! scattered precip flux at each level
+   real(r8) :: yog_precsfc(ncols)  ! scattered precip flux at each level
 
    lchnk = state%lchnk
    ncol  = state%ncol

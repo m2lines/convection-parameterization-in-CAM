@@ -9,7 +9,7 @@ use netcdf
 use precision, only: dp
 use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize, &
-                                  esati, qsati, esatw, qsatw, dtqsatw, dtqsati
+                                  esati, rsati, esatw, rsatw, dtrsatw, dtrsati
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
@@ -31,9 +31,7 @@ public  nn_convection_flux_CAM, &
 ! otherwise not required outside this module.
 public interp_to_sam, interp_to_cam
 public SAM_var_conversion, CAM_var_conversion
-#ifdef CAM_PROFILE
 public fetch_sam_data
-#endif
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -105,34 +103,42 @@ contains
 
         real(dp), intent(in) :: cp_cam
             !! specific heat capacity of dry air from CAM [J/kg/K]
-        real(dp), dimension(:,:) :: pres_cam
+        real(dp), dimension(:,:), intent(in) :: pres_cam
             !! pressure [Pa] from the CAM model
-        real(dp), dimension(:,:) :: pres_int_cam
+        real(dp), dimension(:,:), intent(in) :: pres_int_cam
             !! interface pressure [Pa] from the CAM model
-        real(dp), dimension(:) :: pres_sfc_cam
+        real(dp), dimension(:), intent(in) :: pres_sfc_cam
             !! surface pressure [Pa] from the CAM model
-        real(dp), dimension(:,:) :: tabs_cam
+        real(dp), dimension(:,:), intent(in) :: tabs_cam
             !! absolute temperature [K] from the CAM model
-        real(dp), dimension(:,:) :: qv_cam, qc_cam, qi_cam
+        real(dp), dimension(:,:), intent(in) :: qv_cam, qc_cam, qi_cam
             !! moisture content [kg/kg] from the CAM model
-        real(dp), dimension(:) :: precsfc
 
-        ! Outputs on the CAM grid
         real(dp), dimension(nx, nz), intent(out) :: dqi, dqv, dqc, ds
+            !! Output tendencies - CAM variables on the CAM grid
+        real(dp), dimension(:), intent(out) :: precsfc
+            !! Output surface precipitation in CAM
 
+! Local input variables on the SAM grid
+        real(dp), dimension(nx, nrf) :: tabs_sam
+            !! absolute temperature [K] on the SAM grid
+        real(dp), dimension(nx, nrf) :: r_sam
+            !! non-precipitating water mixing ratio [kg/kg] on the SAM grid
+        real(dp), dimension(nx, nrf) :: t_sam
+            !! static energy [J/kg] on the SAM grid
+        real(dp), dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
+            !! mixing ratios [kg/kg] on the SAM grid
+        real(dp), dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam, tabs0_sam, r0_sam
+            !! Variables at the start of the parameterisation on the SAM grid - used to calculate tendencies
+        real(dp), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
+            !! CAM variable tendencies calculated on the SAM grid
+        real(dp), dimension(nx)      :: qi_surf, qv_surf, qc_surf, tabs_surf
+            !! Surface values
         real(dp) :: y_in(nx)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
 
         real(dp), dimension(nx)      :: precsfc_i
             !! precipitation at surface from one call to parameterisation
-
-        ! Local input variables on the SAM grid
-        real(dp), dimension(nx, nrf) :: q0_sam, tabs0_sam
-        real(dp), dimension(nx, nrf) :: q_sam, t_sam, tabs_sam
-        real(dp), dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
-        real(dp), dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam
-        real(dp), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
-        real(dp), dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
 
 #ifdef CAM_PROFILE
         real(dp), dimension(nx, nz) :: rh_cam
@@ -215,7 +221,7 @@ contains
         !-----------------------------------------------------
         
         ! Convert CAM Moistures and tabs to SAM q and t
-        call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, q_sam, tabs_sam, t_sam)
+        call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, r_sam, tabs_sam, t_sam)
 
         ! Store variables on SAM grid at the start of the timestep
         ! for calculating tendencies later
@@ -225,21 +231,21 @@ contains
         tabs0_sam = tabs_sam
 
 #ifdef CAM_PROFILE
-        call nf_write_sam(q_sam(1,:), "Q_SAM_IN")
+        call nf_write_sam(r_sam(1,:), "R_SAM_IN")
         call nf_write_sam(t_sam(1,:), "T_SAM_IN")
 #endif
         !-----------------------------------------------------
 
         tabs0_sam = tabs_sam
-        q0_sam = q_sam
+        r0_sam = r_sam
         ! Run the neural net parameterisation
         ! Updates q and t with delta values
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs0_sam(:,1:nrf), q0_sam(:,1:nrf), y_in, &
+        call nn_convection_flux(tabs0_sam(:,1:nrf), r0_sam(:,1:nrf), y_in, &
                                 tabs_sam(:,1:nrf), &
-                                t_sam(:,1:nrf), q_sam(:,1:nrf), &
+                                t_sam(:,1:nrf), r_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
                                 precsfc_i)
         ! Update precsfc with prec from this timestep
@@ -247,13 +253,13 @@ contains
 
 #ifdef CAM_PROFILE
         call nf_write_sam(t_sam(1,:), "T_SAM_OUT")
-        call nf_write_sam(q_sam(1,:), "Q_SAM_OUT")
+        call nf_write_sam(r_sam(1,:), "R_SAM_OUT")
         call nf_write_scalar(precsfc_i(1), "PREC_SAM_OUT")
 #endif
         !-----------------------------------------------------
         
         ! Formulate the output variables to CAM as required.
-        call SAM_var_conversion(t_sam, q_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
+        call SAM_var_conversion(t_sam, r_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
         precsfc = precsfc * 1.0D-3
 
@@ -322,7 +328,7 @@ contains
         !! coarser than the target (SAM) grid.
 
         !! NOTE: When reading this code remember that pressure DECREASES monotonically
-        !!       with altitude, so comparisons are not intuitive: Pa > Pb => a is below b
+        !!       with altitude, so comparisons are not intuitive: Pa > Pb => a is lower altitude than b
 
         != unit hPa :: p_cam, p_surf_cam
         real(dp), dimension(:,:), intent(in) :: p_cam
@@ -607,12 +613,12 @@ contains
     end subroutine sam_sounding_finalize
 
 
-    subroutine CAM_var_conversion(qv, qc, qi, q, tabs, t)
-        !! Convert CAM qv, qc, qi to q to used by SAM parameterisation
+    subroutine CAM_var_conversion(qv, qc, qi, r, tabs, t)
+        !! Convert CAM moist mixing ratios for species qv, qc, qi to
+        !! dry mixing ratio r to used by SAM parameterisation
         !! q is total water qv/c/i is cloud vapor/liquid/ice
         !! Convert CAM absolute temperature to moist static energy t used by SAM
         !! by inverting lines 49-53 of diagnose.f90 from SAM where
-        !! qn is cloud water + ice, qp is precipitable water (0 here)
 
         !! WARNING: This routine uses gamaz(k) which is defined on the SAM grid.
         !!          Using a grid that does not match the SAM grid for input/output
@@ -624,12 +630,14 @@ contains
             !! Counters
         real(dp) :: omn
             !! intermediate omn factor used in variable conversion
+        real(dp) :: rv, rc, ri
+            !! intermediate r values to hold dry mixing ratios of vapour, cld, ice
 
         ! ---------------------
         ! Fields from CAM/SAM
         ! ---------------------
-        != unit 1 :: q, qv, qc, qi
-        real(dp), intent(out) :: q(:, :)
+        != unit 1 :: r
+        real(dp), intent(out) :: r(:, :)
             !! Total non-precipitating water mixing ratio as required by SAM NN
         real(dp), intent(in) :: qv(:, :)
             !! Cloud water vapour from CAM
@@ -644,18 +652,22 @@ contains
             !! Absolute temperature from CAM
 
 
-        nx = size(q, 1)
-        nz = size(q, 2)
+        nx = size(r, 1)
+        nz = size(r, 2)
 
         do k = 1, nz
           do i = 1, nx
-            q(i,k) = qv(i,k) + qc(i,k) + qi(i,k)
+            ! Calculate dry mixing ratio as required by SAM from moist variables as provided by CAM
+            rv = qv(i,k) / (1. - qv(i,k))
+            rc = qc(i,k) * (1.+rv)
+            ri = qi(i,k) * (1.+rv)
+            r(i,k) = rv + rc + ri
 
             ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))  ! There is no qp in CAM
             omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
             t(i,k) = tabs(i,k) &
                    ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &  ! There is no qp in CAM
-                     - (fac_cond+(1.-omn)*fac_fus)*(qc(i,k) + qi(i,k)) &
+                     - (fac_cond+(1.-omn)*fac_fus)*(rc + ri) &
                      + gamaz(k)
           end do
         end do
@@ -663,9 +675,9 @@ contains
     end subroutine CAM_var_conversion
     
 
-    subroutine SAM_var_conversion(t, q, tabs, qv, qc, qi)
-        !! Convert SAM t and q to tabs, qv, qc, qi used by CAM
-        !! t is normalised liquid ice static energy, q is total water
+    subroutine SAM_var_conversion(t, r, tabs, qv, qc, qi)
+        !! Convert SAM t and r to tabs, qv, qc, qi used by CAM
+        !! t is normalised liquid ice static energy, r is a dry mixing ratio
         !! tabs is absolute temperature, q is cloud vapor/liquid/ice,
 
         integer :: nx, nz
@@ -682,8 +694,8 @@ contains
         real(dp) :: tabs1
             !! Temporary variable for tabs
 
-        != unit kg/kg :: q, qn, qv, qc, qi
-        real(dp) :: q(:, :)
+        != unit kg/kg :: q, qv, qc, qi
+        real(dp), intent(in) :: r(:, :)
             !! Total non-precipitating water mixing ratio from SAM
         real(dp), intent(out) :: qv(:, :)
             !! Cloud water vapour in CAM
@@ -691,96 +703,100 @@ contains
             !! Cloud water (liquid) in CAM
         real(dp), intent(out) :: qi(:, :)
             !! Cloud ice in CAM
-        real(dp) :: qn
-            !! Cloud liquid + cloud ice
 
         != K :: t
         real(dp), intent(in) :: t(:, :)
             !! normalised liquid ice static energy
 
         ! Intermediate variables
-        real(dp) :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff
+        real(dp) :: rsat, om, omn, dtabs, drsat, lstarn, dlstarn, fff, dfff, rv, rn, r_temp
 
         nx = size(tabs, 1)
         nz = size(tabs, 2)
 
+        ! Loop over all cells and iterate until equilibrium of condensed species is achieved.
+        ! This code is adapted from cloud.f90 in SAM
         do k = 1, nz
         do i = 1, nx
         
-            ! Enforce q >= 0.0
-            q(i,k)=max(0.,q(i,k))
+            ! Enforce r >= 0.0
+            r_temp=max(0.,r(i,k))
 
             ! Initial guess for temperature assuming no cloud water/ice:
             tabs(i,k) = t(i,k)-gamaz(k)
             tabs1=tabs(i,k)
 
+            ! Set saturation vapour based on cloud type
             ! Warm cloud:
             if(tabs1.ge.tbgmax) then
-                qsat = qsatw(tabs1,pres(k))
-
+                rsat = rsatw(tabs1,pres(k))
             ! Ice cloud:
             elseif(tabs1.le.tbgmin) then
-                qsat = qsati(tabs1,pres(k))
-
+                rsat = rsati(tabs1,pres(k))
             ! Mixed-phase cloud:
             else
                 om = an*tabs1-bn
-                qsat = om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
-
+                rsat = om*rsatw(tabs1,pres(k))+(1.-om)*rsati(tabs1,pres(k))
             endif
 
-            !  Test if condensation is possible and iterate:
-            if(q(i,k) .gt. qsat) then
+            ! Test if condensation is possible (humidity is above saturation) and iterate:
+            if(r_temp .gt. rsat) then
                 niter=0
                 dtabs = 100.
                 do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+                ! Warm cloud regime
                     if(tabs1.ge.tbgmax) then
                         om=1.
                         lstarn=fac_cond
                         dlstarn=0.
-                        qsat=qsatw(tabs1,pres(k))
-                        dqsat=dtqsatw(tabs1,pres(k))
-                           else if(tabs1.le.tbgmin) then
+                        rsat=rsatw(tabs1,pres(k))
+                        drsat=dtrsatw(tabs1,pres(k))
+                    ! Ice cloud regime
+                    else if(tabs1.le.tbgmin) then
                         om=0.
                         lstarn=fac_sub
                         dlstarn=0.
-                        qsat=qsati(tabs1,pres(k))
-                        dqsat=dtqsati(tabs1,pres(k))
+                        rsat=rsati(tabs1,pres(k))
+                        drsat=dtrsati(tabs1,pres(k))
+                    ! Mixed cloud regime
                     else
                         om=an*tabs1-bn
                         lstarn=fac_cond+(1.-om)*fac_fus
                         dlstarn=an
-                        qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
-                        dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
+                        rsat=om*rsatw(tabs1,pres(k))+(1.-om)*rsati(tabs1,pres(k))
+                        drsat=om*dtrsatw(tabs1,pres(k))+(1.-om)*dtrsati(tabs1,pres(k))
                     endif
 
-                    fff = tabs(i,k)-tabs1+lstarn*(q(i,k)-qsat)
-                    dfff=dlstarn*(q(i,k)-qsat)-lstarn*dqsat-1.
+                    ! Update thermodynamics and check for convergence
+                    fff = tabs(i,k)-tabs1+lstarn*(r_temp-rsat)
+                    dfff=dlstarn*(r_temp-rsat)-lstarn*drsat-1.
                     dtabs=-fff/dfff
                     niter=niter+1
                     tabs1=tabs1+dtabs
                end do
 
-               qsat = qsat + dqsat * dtabs
-               qn = max(0., q(i,k)-qsat)
-               qv(i,k) = max(0., q(i,k)-qn)
+               ! Update saturation point and then calculate water and residual vapour content
+               rsat = rsat + drsat * dtabs
+               rn = max(0., r_temp-rsat)
+               rv = max(0., r_temp-rn)
 
-            ! If condensation not possible qn is 0.0
+            ! If condensation not possible rn is 0.0
             else
-              qn = 0.
-              qv(i,k) = q(i,k)
+              rn = 0.
+              rv = r_temp
 
             endif
 
             ! Set tabs to iterated tabs after convection
             tabs(i,k) = tabs1
 
-            !! Code for calculating qcc and qii from qn.
-            !! Assumes dokruegermicro=.false. in SAM.
-            !! Taken from statistics.f90
+            ! Code for calculating qc and qi from rn.
+            ! Adapted from statistics.f90 in SAM assuming dokruegermicro=.false.
+            ! Also implements conversion from SAM dry mixing ratios to CAM moist mixing ratios
             omn = omegan(tabs(i,k))
-            qc(i,k) = qn*omn
-            qi(i,k) = qn*(1.-omn)
+            qc(i,k) = rn*omn/(1.+rv)
+            qi(i,k) = rn*(1.-omn)/(1.+rv)
+            qv(i,k) = rv/(1.+rv)
 
         end do
         end do
