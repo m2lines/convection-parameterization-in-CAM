@@ -54,9 +54,9 @@ Files:
 - `NN_weights_YOG_convection.nc` - NetCDF file with weights for the neural net
 - Makefile - Makefile to compile these files
 
-Note that you will need to generate the SAM sounding (an [atmospheric sounding](https://en.wikipedia.org/wiki/Atmospheric_sounding) that defines the SAM grid that the parameterisation is operating on -- 
-we need this grid for the parameterisation, but also to interpolate any inputs from a different model onto this grid so that they can be used in the neural net) as a NetCDF file from the data files in `resources/` if you are using the CAM interface.\
-This can be done from within the `resources/` directory as follows:
+Note that you will need to generate the SAM sounding (an [atmospheric sounding](https://en.wikipedia.org/wiki/Atmospheric_sounding) that defines the SAM grid that the parameterisation is operating on --
+we need this grid for the parameterisation, but also to interpolate any inputs from a different model onto this grid so that they can be used in the neural net) as a NetCDF file from the data files in `YOG_convection/rresources/` if you are using the CAM interface.\
+This can be done from within the `YOG_convection/resources/` directory as follows:
 ```
 python -m venv venv
 source venv/bin/activate
@@ -65,6 +65,8 @@ python sounding_to_netcdf.py
 deactivate
 
 ```
+, with a Python version >= 3.7 and < 3.11.
+
 There are test routines associated with this code in `/tests/test_YOG_convection/`.
 Guidance on running these can be found below.
 
@@ -73,7 +75,7 @@ Guidance on running these can be found below.
 This directory contains the PyTorch versions of the neural networks used in the YOG convection parameterisation.
 
 ### ``CAM_interface/``
-The directory contains the additional files or details to interface the YOG code with the CAM atmospheric model as part of the CESM model suite. 
+The directory contains the additional files or details to interface the YOG code with the CAM atmospheric model as part of the CESM model suite.
 
 An implementation of this code within CAM, following the process outlined below, is available in the [m2lines/CAM-ML](https://github.com/m2lines/CAM-ML/tree/CAM-ML) repository.
 This contains a full description of how to install and run the code as part of the CESM model suite.
@@ -82,8 +84,8 @@ That specific implementation is run within CESM v2.1.5 and is based of a version
 There are notable future changes to the CAM source for CESM v2.2 and v3.0 that may
 require revisions to these files in future.
 
-In addition to the files in `[/YOG_convection](/YOG_convection)` containing the parameterisation,
-the additional files here are required:
+In addition to the files in [/YOG_convection](/YOG_convection) containing the parameterisation,
+this files here are required:
 
 - `nn_interface_CAM.F90` - The interface for performing conversion from CAM variables and grid into the variables/grid expected by the YOG parameterisation.
 - `yog_intr.F90` - The interface between the CAM model and the YOG parameterisation.
@@ -102,7 +104,7 @@ Guidance on running these can be found below.
 
 ### ``profile_test/``
 
-The CAM Profile Test code is a standalone test rig around the YOG convection parameterisation routines for debugging. 
+The CAM Profile Test code is a standalone test rig around the YOG convection parameterisation routines for debugging.
 
 The [README in the subdirectory](https://github.com/m2lines/convection-parameterization-in-CAM/blob/main/profile_test/README.md) contains detailed information how to run these tests.
 
