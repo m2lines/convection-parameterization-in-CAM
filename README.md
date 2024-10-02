@@ -85,7 +85,7 @@ There are notable future changes to the CAM source for CESM v2.2 and v3.0 that m
 require revisions to these files in future.
 
 In addition to the files in [/YOG_convection](/YOG_convection) containing the parameterisation,
-this files here are required:
+these files here are also required:
 
 - `nn_interface_CAM.F90` - The interface for performing conversion from CAM variables and grid into the variables/grid expected by the YOG parameterisation.
 - `yog_intr.F90` - The interface between the CAM model and the YOG parameterisation.
