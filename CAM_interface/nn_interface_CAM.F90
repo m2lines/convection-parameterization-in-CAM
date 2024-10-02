@@ -814,7 +814,7 @@ contains
             ! Set tabs to iterated tabs after convection
             tabs(i,k) = tabs1
 
-            ! Calculating qc and qi from rn and converst from SAM dry
+            ! Calculating qc and qi from rn, converting from SAM dry
             ! mixing ratios to CAM moist mixing ratios
             omn = omegan(tabs(i,k))
             call calculate_moist_mixing_ratio(rv, rn, omn, qc(i,k), qi(i, k), qv(i, k))

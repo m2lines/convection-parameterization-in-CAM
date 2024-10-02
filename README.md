@@ -55,7 +55,7 @@ Files:
 - Makefile - Makefile to compile these files
 
 Note that you will need to generate the SAM sounding (an [atmospheric sounding](https://en.wikipedia.org/wiki/Atmospheric_sounding) that defines the SAM grid that the parameterisation is operating on --
-we need this grid for the parameterisation, but also to interpolate any inputs from a different model onto this grid so that they can be used in the neural net) as a NetCDF file from the data files in `YOG_convection/rresources/` if you are using the CAM interface.\
+we need this grid for the parameterisation, but also to interpolate any inputs from a different model onto this grid so that they can be used in the neural net) as a NetCDF file from the data files in `YOG_convection/resources/` if you are using the CAM interface.\
 This can be done from within the `YOG_convection/resources/` directory as follows:
 ```
 python -m venv venv
