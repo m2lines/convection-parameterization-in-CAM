@@ -22,7 +22,7 @@ pip install -r requirements.txt
 ```
 
 Before running the code generate the SAM sounding profiles in the `YOG_convection/resources/`
-directory as described in `YOG_convection/README.md`:
+directory as described in [the main README](https://github.com/m2lines/convection-parameterization-in-CAM/blob/main/README.md) in the Contents section about `YOG_convection/`.
 
 Then build and run the fortran code using CMake.\
 ```

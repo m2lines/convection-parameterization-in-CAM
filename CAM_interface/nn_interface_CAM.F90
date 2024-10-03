@@ -32,6 +32,7 @@ public  nn_convection_flux_CAM, &
 public interp_to_sam, interp_to_cam
 public SAM_var_conversion, CAM_var_conversion
 public fetch_sam_data
+public calculate_dry_mixing_ratio, calculate_moist_mixing_ratio
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -156,7 +157,7 @@ contains
         y_in(:) = 0.0
 
         !-----------------------------------------------------
-        
+
 #ifdef CAM_PROFILE
         call nf_write_cam(tabs_cam(1,:), "TABS_CAM_IN")
         call nf_write_cam(qi_cam(1,:), "QI_CAM_IN")
@@ -201,7 +202,7 @@ contains
         call nf_write_sam(qi_sam(1,:), "QI_SAM_IN")
         call nf_write_sam(qc_sam(1,:), "QC_SAM_IN")
         call nf_write_sam(qv_sam(1,:), "QV_SAM_IN")
-        
+
         call nf_write_cam(pres_cam(1,:), "P_CAM")
         call nf_write_sam(pres(1:nrf) * 100D0, "P_SAM")
         call nf_write_cam(pres_cam(1,:) / pres_sfc_cam(1), "PNORM_CAM")
@@ -219,7 +220,7 @@ contains
 
 #endif
         !-----------------------------------------------------
-        
+
         ! Convert CAM Moistures and tabs to SAM q and t
         call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, r_sam, tabs_sam, t_sam)
 
@@ -257,7 +258,7 @@ contains
         call nf_write_scalar(precsfc_i(1), "PREC_SAM_OUT")
 #endif
         !-----------------------------------------------------
-        
+
         ! Formulate the output variables to CAM as required.
         call SAM_var_conversion(t_sam, r_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
@@ -315,8 +316,34 @@ contains
 
 
     !-----------------------------------------------------------------
+    subroutine calculate_dry_mixing_ratio(qv, qc, qi, r)
+        !! Calculate dry mixing ratio as required by SAM from moist variables as
+        !! provided by CAM
+        real(dp), intent(in) :: qv, qc, qi
+        real(dp), intent(out) :: r
+        real(dp) :: rv, rc, ri
+            rv = qv / (1. - qv)
+            rc = qc * (1.+rv)
+            ri = qi * (1.+rv)
+            r = rv + rc + ri
+    end subroutine
+
+    !-----------------------------------------------------------------
+    subroutine calculate_moist_mixing_ratio(rv, rn, omegan, qc, qi, qv)
+        !! Code for calculating qc and qi from rn.
+        !! Adapted from statistics.f90 in SAM assuming dokruegermicro=.false.
+        !! Also implements conversion from SAM dry mixing ratios to CAM moist mixing
+        !! ratios
+        real(dp), intent(in) :: rv, rn, omegan
+        real(dp), intent(out) :: qc, qi, qv
+        qc = rn*omegan/(1.+rv)
+        qi = rn*(1.-omegan)/(1.+rv)
+        qv = rv/(1.+rv)
+    end subroutine
+
+    !-----------------------------------------------------------------
     ! Private Subroutines
-    
+
     subroutine interp_to_sam(p_cam, p_surf_cam, var_cam, var_sam, var_cam_surface)
         !! Interpolate from the CAM pressure grid to the SAM pressure grid.
         !! Uses linear interpolation between nearest grid points on domain (CAM) grid.
@@ -380,7 +407,7 @@ contains
                 ! TODO This check is run on every iteration - move outside
                  write(*,*) "CAM upper pressure level is lower than that of SAM: Stopping."
                 stop
-            
+
             ! Locate the neighbouring CAM indices to interpolate between
             else
                 ! TODO - this will be slow - speed up later
@@ -657,11 +684,8 @@ contains
 
         do k = 1, nz
           do i = 1, nx
-            ! Calculate dry mixing ratio as required by SAM from moist variables as provided by CAM
-            rv = qv(i,k) / (1. - qv(i,k))
-            rc = qc(i,k) * (1.+rv)
-            ri = qi(i,k) * (1.+rv)
-            r(i,k) = rv + rc + ri
+            ! Calculate dry mixing ratio from moist variables
+            call calculate_dry_mixing_ratio(qv(i,k), qc(i,k), qi(i,k), r(i,k))
 
             ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))  ! There is no qp in CAM
             omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
@@ -673,7 +697,7 @@ contains
         end do
 
     end subroutine CAM_var_conversion
-    
+
 
     subroutine SAM_var_conversion(t, r, tabs, qv, qc, qi)
         !! Convert SAM t and r to tabs, qv, qc, qi used by CAM
@@ -718,7 +742,7 @@ contains
         ! This code is adapted from cloud.f90 in SAM
         do k = 1, nz
         do i = 1, nx
-        
+
             ! Enforce r >= 0.0
             r_temp=max(0.,r(i,k))
 
@@ -790,13 +814,10 @@ contains
             ! Set tabs to iterated tabs after convection
             tabs(i,k) = tabs1
 
-            ! Code for calculating qc and qi from rn.
-            ! Adapted from statistics.f90 in SAM assuming dokruegermicro=.false.
-            ! Also implements conversion from SAM dry mixing ratios to CAM moist mixing ratios
+            ! Calculating qc and qi from rn, converting from SAM dry
+            ! mixing ratios to CAM moist mixing ratios
             omn = omegan(tabs(i,k))
-            qc(i,k) = rn*omn/(1.+rv)
-            qi(i,k) = rn*(1.-omn)/(1.+rv)
-            qv(i,k) = rv/(1.+rv)
+            call calculate_moist_mixing_ratio(rv, rn, omn, qc(i,k), qi(i, k), qv(i, k))
 
         end do
         end do
