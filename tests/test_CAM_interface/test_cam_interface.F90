@@ -6,6 +6,7 @@ module cam_tests
   use netcdf
   use precision, only: dp
 
+  use SAM_consts_mod, only: nrf
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
   interp_to_sam, interp_to_cam, fetch_sam_data, SAM_var_conversion, CAM_var_conversion
   use test_utils, only: assert_array_equal
@@ -14,25 +15,26 @@ module cam_tests
 
   character(len=15) :: pass = char(27)//'[32m'//'PASSED'//char(27)//'[0m'
   character(len=15) :: fail = char(27)//'[31m'//'FAILED'//char(27)//'[0m'
-  integer, parameter :: nrf = 30
   integer, parameter :: n_nn_out = 148
   real(dp), dimension(n_nn_out) :: nn_out_ones
 
   contains
 
     subroutine test_interp_to_sam_match(test_name)
-      !! Check interpolation to SAM grid by interpolating variable of value 1.0
-      !! Define a CAM grid from 1111.0 to 10.0
+      !! Check interpolation to SAM grid by defining an idential CAM grid and
+      !! interpolating a variable equal to the pressure
+      !! Define a CAM grid consiting of 4 atmosperic columns
+      !! from 1111.0 to 10.0
 
       character(len=*), intent(in) :: test_name
       
       integer :: i
 
-      real(dp), dimension(4, 48) :: p_cam, p_int_cam
-      real(dp), dimension(4, 48) :: var_cam
+      real(dp), dimension(4, nrf) :: p_cam, p_int_cam
+      real(dp), dimension(4, nrf) :: var_cam
       real(dp), dimension(4) :: var_cam_surface
       real(dp), dimension(4) :: ps_cam
-      real(dp), dimension(4, 48) :: var_sam, var_sam_exp
+      real(dp), dimension(4, nrf) :: var_sam, var_sam_exp
 
       real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
@@ -41,29 +43,28 @@ module cam_tests
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       do i=1,4
-          p_cam(i, 1:48) = pres_sam(1:48)
-          p_int_cam(i, 1:47) = presi_sam(2:48)
+          p_cam(i, :) = pres_sam(1:nrf)
+          p_int_cam(i, :) = presi_sam(1:nrf)
           ! Set SAM variable equal to cell size (density 1.0)
-          var_cam(i, :) = pres_sam(1:48)
+          var_cam(i, :) = pres_sam(1:nrf)
       enddo
-      ! Set interface of top of CAM grid
-      p_int_cam(:,48) = p_cam(:, 48) + (p_int_cam(:, 47)-p_cam(:, 48))
 
       ps_cam(:) = presi_sam(1)
       var_cam_surface(:) = presi_sam(1)
 
       call interp_to_sam(p_cam, ps_cam, var_cam, var_sam, var_cam_surface)
 
-      ! Set anything above 30 elems to zero as per interpolation routine
+      ! Compare the results of the interpolation scheme to expected output
+      ! Set anything above 30 elems to zero as the parameterization and interpolation 
+      ! code only uses the bottom 30 cells on the SAM grid
       var_sam_exp = var_cam
-      var_sam_exp(:, 31:48) = 0.0
       call assert_array_equal(var_sam, var_sam_exp, test_name)
 
     end subroutine test_interp_to_sam_match
 
     subroutine test_interp_to_sam_one(test_name)
-      !! Check interpolation to SAM grid by interpolating variable of value 1.0
-      !! Define a CAM grid from 1111.0 to 10.0
+      !! Check interpolation to SAM grid by setting up a coarse CAM grid with every variable being 1.0
+      !! interpolating to a new grid should also have of value 1.0 everywhere.
 
       character(len=*), intent(in) :: test_name
 
@@ -73,6 +74,7 @@ module cam_tests
       real(dp), dimension(4) :: ps_cam
       real(dp), dimension(4, 30) :: var_sam, var_sam_exp
 
+      ! Set up a coarse CAM grid of 4 columns of pressures [1000, 500, 10] hPa with surface pressure 1111 hPa
       p_cam = reshape((/ 1000.0, 1000.0, 1000.0, 1000.0, 500.0, 500.0, 500.0, 500.0, 10.0, 10.0, 10.0, 10.0 /), (/ 4, 3 /))
       ps_cam = (/ 1111.0, 1111.0, 1111.0, 1111.0/)
 
@@ -88,8 +90,8 @@ module cam_tests
 
     subroutine test_interp_to_sam_pres(test_name)
       !! Check interpolation to SAM grid by interpolating pressure to pressure
-      !! Set top of CAM to 1.0d-4
-      !! => should match pres from SAM
+      !! Use a coarse CAM grid of 3 cells and 4 columns
+      !! => expected variable on SAM grid should be pressure at that point
 
       character(len=*), intent(in) :: test_name
 
@@ -107,22 +109,25 @@ module cam_tests
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
-      p_cam(:, 1) = pres_sam(5)
-      p_cam(:, 2) = pres_sam(10)
-      p_cam(:, 3) = 1.0d-4
+      ! Set up coarse CAM grid with surface pressure equal to SAM surface,
+      ! a top pressure of 1.0d-4 above the SAM grid, and other at 10 and 20 from the SAM grid
       ps_cam = presi_sam(1)
-      var_cam(:, 1) = pres_sam(5)
-      var_cam(:, 2) = pres_sam(10)
-      var_cam(:, 3) = 1.0d-4
-      var_cam_surface = presi_sam(1)
+      p_cam(:, 1) = pres_sam(10)
+      p_cam(:, 2) = pres_sam(20)
+      p_cam(:, 3) = 1.0d-4
 
+      ! Set the variable on the CAM grid equal to the pressure
+      var_cam_surface = ps_cam
+      var_cam = p_cam
+
+      ! Expected variable value on the SAM grid will be equal to pressure at that point
       do i = 1,4
         var_sam_exp(i, :) = pres_sam(1:30)
       end do
 
       call interp_to_sam(p_cam, ps_cam, var_cam, var_sam, var_cam_surface)
 
-      call assert_array_equal(var_sam_exp, var_sam, test_name)
+      call assert_array_equal(var_sam_exp, var_sam, test_name, rtol_opt=1.0d-14)
 
     end subroutine test_interp_to_sam_pres
 
@@ -135,10 +140,10 @@ module cam_tests
 
       integer :: i
 
-      real(dp), dimension(4, 30) :: p_cam, var_cam, rho_cam, rho_cam_exp
-      real(dp), dimension(4, 31) :: p_int_cam
+      real(dp), dimension(4, nrf) :: p_cam, var_cam, rho_cam, rho_cam_exp
+      real(dp), dimension(4, nrf+1) :: p_int_cam
       real(dp), dimension(4) :: ps_cam, var_cam_surface
-      real(dp), dimension(4, 30) :: var_sam
+      real(dp), dimension(4, nrf) :: var_sam
 
       real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
@@ -147,16 +152,17 @@ module cam_tests
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       do i=1,4
-          p_cam(i, 1:30) = pres_sam(1:30)
-          p_int_cam(i, 1:31) = presi_sam(1:31)
+          ! Set up a CAM grid that matches the lower nrf cells of the SAM grid
+          p_cam(i, :) = pres_sam(:)
+          p_int_cam(i, :) = presi_sam(1:nrf+1)
           ! Set SAM variable equal to cell size ("density" 1.0)
-          var_sam(i, :) = (presi_sam(1:30) - presi_sam(2:31))
-          ! var_sam(i, :) = 1.0
+          var_sam(i, :) = (presi_sam(1:nrf) - presi_sam(2:nrf+1))
       enddo
 
       call interp_to_cam(p_cam, p_int_cam, p_int_cam(:, 1), var_sam, var_cam)
 
-      do i=1,30
+      ! Calculate resulting density by dividing by cell size
+      do i=1,nrf
           rho_cam(:, i) = var_cam(:, i) / (p_int_cam(:, i)-p_int_cam(:, i+1))
       end do
       
