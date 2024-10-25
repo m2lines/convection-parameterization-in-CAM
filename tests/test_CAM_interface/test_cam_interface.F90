@@ -6,7 +6,7 @@ module cam_tests
   use netcdf
   use precision, only: dp
 
-  use SAM_consts_mod, only: nrf
+  use SAM_consts_mod, only: nrf, num_cols, sam_sounding, num_cells, num_cam_cells_fine, num_sam_cells
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
   interp_to_sam, interp_to_cam, fetch_sam_data, SAM_var_conversion, CAM_var_conversion
   use test_utils, only: assert_array_equal
@@ -23,26 +23,26 @@ module cam_tests
     subroutine test_interp_to_sam_match(test_name)
       !! Check interpolation to SAM grid by defining an idential CAM grid and
       !! interpolating a variable equal to the pressure
-      !! Define a CAM grid consiting of 4 atmosperic columns
+      !! Define a CAM grid consiting of 4 atmospheric columns
       !! from 1111.0 to 10.0
 
       character(len=*), intent(in) :: test_name
       
       integer :: i
 
-      real(dp), dimension(4, nrf) :: p_cam, p_int_cam
-      real(dp), dimension(4, nrf) :: var_cam
-      real(dp), dimension(4) :: var_cam_surface
-      real(dp), dimension(4) :: ps_cam
-      real(dp), dimension(4, nrf) :: var_sam, var_sam_exp
+      real(dp), dimension(num_cols, nrf) :: p_cam, p_int_cam
+      real(dp), dimension(num_cols, nrf) :: var_cam
+      real(dp), dimension(num_cols) :: var_cam_surface
+      real(dp), dimension(num_cols) :: ps_cam
+      real(dp), dimension(num_cols, nrf) :: var_sam, var_sam_exp
 
-      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
-      do i=1,4
+      do i = 1,num_cols
           p_cam(i, :) = pres_sam(1:nrf)
           p_int_cam(i, :) = presi_sam(1:nrf)
           ! Set SAM variable equal to cell size (density 1.0)
@@ -68,14 +68,14 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
-      real(dp), dimension(4, 3) :: p_cam
-      real(dp), dimension(4, 3) :: var_cam
-      real(dp), dimension(4) :: var_cam_surface
-      real(dp), dimension(4) :: ps_cam
-      real(dp), dimension(4, 30) :: var_sam, var_sam_exp
+      real(dp), dimension(num_cols, num_cells) :: p_cam
+      real(dp), dimension(num_cols, num_cells) :: var_cam
+      real(dp), dimension(num_cols) :: var_cam_surface
+      real(dp), dimension(num_cols) :: ps_cam
+      real(dp), dimension(num_cols, num_sam_cells) :: var_sam, var_sam_exp
 
       ! Set up a coarse CAM grid of 4 columns of pressures [1000, 500, 10] hPa with surface pressure 1111 hPa
-      p_cam = reshape((/ 1000.0, 1000.0, 1000.0, 1000.0, 500.0, 500.0, 500.0, 500.0, 10.0, 10.0, 10.0, 10.0 /), (/ 4, 3 /))
+      p_cam = reshape((/ 1000.0, 1000.0, 1000.0, 1000.0, 500.0, 500.0, 500.0, 500.0, 10.0, 10.0, 10.0, 10.0 /), (/ num_cols, num_cells /))
       ps_cam = (/ 1111.0, 1111.0, 1111.0, 1111.0/)
 
       var_cam = 1.0
@@ -97,13 +97,13 @@ module cam_tests
 
       integer :: i
 
-      real(dp), dimension(4, 3) :: p_cam
-      real(dp), dimension(4, 3) :: var_cam
-      real(dp), dimension(4) :: var_cam_surface
-      real(dp), dimension(4) :: ps_cam
-      real(dp), dimension(4, 30) :: var_sam, var_sam_exp
+      real(dp), dimension(num_cols, num_cells) :: p_cam
+      real(dp), dimension(num_cols, num_cells) :: var_cam
+      real(dp), dimension(num_cols) :: var_cam_surface
+      real(dp), dimension(num_cols) :: ps_cam
+      real(dp), dimension(num_cols, num_sam_cells) :: var_sam, var_sam_exp
 
-      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
@@ -121,13 +121,13 @@ module cam_tests
       var_cam = p_cam
 
       ! Expected variable value on the SAM grid will be equal to pressure at that point
-      do i = 1,4
-        var_sam_exp(i, :) = pres_sam(1:30)
+      do i = 1, num_cols
+        var_sam_exp(i, :) = pres_sam(1:num_sam_cells)
       end do
 
       call interp_to_sam(p_cam, ps_cam, var_cam, var_sam, var_cam_surface)
 
-      call assert_array_equal(var_sam_exp, var_sam, test_name, rtol_opt=1.0d-14)
+      call assert_array_equal(var_sam_exp, var_sam, test_name, rtol_opt = 1.0d-14)
 
     end subroutine test_interp_to_sam_pres
 
@@ -140,30 +140,30 @@ module cam_tests
 
       integer :: i
 
-      real(dp), dimension(4, nrf) :: p_cam, var_cam, rho_cam, rho_cam_exp
-      real(dp), dimension(4, nrf+1) :: p_int_cam
-      real(dp), dimension(4) :: ps_cam, var_cam_surface
-      real(dp), dimension(4, nrf) :: var_sam
+      real(dp), dimension(num_cols, nrf) :: p_cam, var_cam, rho_cam, rho_cam_exp
+      real(dp), dimension(num_cols, nrf + 1) :: p_int_cam
+      real(dp), dimension(num_cols) :: ps_cam, var_cam_surface
+      real(dp), dimension(num_cols, nrf) :: var_sam
 
-      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
-      do i=1,4
+      do i = 1,num_cols
           ! Set up a CAM grid that matches the lower nrf cells of the SAM grid
-          p_cam(i, :) = pres_sam(:)
-          p_int_cam(i, :) = presi_sam(1:nrf+1)
+          p_cam(i, :) = pres_sam(1 : num_sam_cells)
+          p_int_cam(i, :) = presi_sam(1 : nrf + 1)
           ! Set SAM variable equal to cell size ("density" 1.0)
-          var_sam(i, :) = (presi_sam(1:nrf) - presi_sam(2:nrf+1))
+          var_sam(i, :) = (presi_sam(1 : nrf) - presi_sam(2 : nrf + 1))
       enddo
 
       call interp_to_cam(p_cam, p_int_cam, p_int_cam(:, 1), var_sam, var_cam)
 
       ! Calculate resulting density by dividing by cell size
-      do i=1,nrf
-          rho_cam(:, i) = var_cam(:, i) / (p_int_cam(:, i)-p_int_cam(:, i+1))
+      do i = 1,nrf
+          rho_cam(:, i) = var_cam(:, i) / (p_int_cam(:, i) - p_int_cam(:, i + 1))
       end do
       
       rho_cam_exp = 1.0
@@ -187,65 +187,49 @@ module cam_tests
 
       integer :: i, j
 
-      real(dp), dimension(4, 90) :: p_cam, var_cam, rho_cam, rho_cam_exp
-      real(dp), dimension(4, 91) :: p_int_cam
-      real(dp), dimension(4) :: var_cam_surface
-      real(dp), dimension(4) :: ps_cam, sum_sam, sum_cam
-      real(dp), dimension(4, 30) :: var_sam
+      real(dp), dimension(num_cols, num_cam_cells_fine) :: p_cam, var_cam, rho_cam, rho_cam_exp
+      real(dp), dimension(num_cols, num_cam_cells_fine + 1) :: p_int_cam
+      real(dp), dimension(num_cols) :: var_cam_surface
+      real(dp), dimension(num_cols) :: ps_cam, sum_sam, sum_cam
+      real(dp), dimension(num_cols, num_sam_cells) :: var_sam
 
-      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       ! CAM grid finer than SAM grid
-      do j=0, 29
-      do i=1,4
+      do j = 0, num_sam_cells - 1
+        do i = 1, num_cols
           p_int_cam(i, 3*j+1) = presi_sam(j+1)
-          p_int_cam(i, 3*j+2) = presi_sam(j+1) + (presi_sam(j+2)-presi_sam(j+1))/3
-          p_int_cam(i, 3*j+3) = presi_sam(j+1) + 2*(presi_sam(j+2)-presi_sam(j+1))/3
+          p_int_cam(i, 3*j+2) = presi_sam(j+1) + (presi_sam(j+2) - presi_sam(j+1)) / 3
+          p_int_cam(i, 3*j+3) = presi_sam(j+1) + 2*(presi_sam(j+2) - presi_sam(j+1)) / 3
+        enddo
       enddo
-      enddo
-      p_int_cam(:, 91) = presi_sam(31)
+      p_int_cam(:, num_cam_cells_fine + 1) = presi_sam(num_sam_cells + 1)
 
-      do j=1, 90
-          p_cam(:, j) = (p_int_cam(:, j+1)+p_int_cam(:, j)) / 2.0
+      do j = 1, num_cam_cells_fine
+        p_cam(:, j) = (p_int_cam(:, j+1) + p_int_cam(:, j)) / 2.0
       end do
 
-      do j=1, 4
+      do j = 1, num_cols
           ! Set SAM variable equal to cell size
-          var_sam(j, :) = (presi_sam(1:30) - presi_sam(2:31))
+          var_sam(j, :) = (presi_sam(1 : num_sam_cells) - presi_sam(2 : num_sam_cells + 1))
       end do
 
       call interp_to_cam(p_cam, p_int_cam, p_int_cam(:, 1), var_sam, var_cam)
 
-      do i=1,92
-          rho_cam(:, i) = var_cam(:, i) / (p_int_cam(:, i)-p_int_cam(:, i+1))
+      do i = 1, num_cam_cells_fine + 2
+        rho_cam(:, i) = var_cam(:, i) / (p_int_cam(:, i) - p_int_cam(:, i+1))
       end do
 
       rho_cam_exp = 1.0
 
-!       ! Compare individual cells of regridded data
-!       do i = 1,30
-!         write(*,*) i, var_sam(1,i), presi_sam(i)
-!         ! write(*,*) i, p_int_cam(1,i)
-!         ! write(*,*) i, p_cam(1,i)
-!       enddo
-!       write(*,*) presi_sam(31)
-!       do i = 1,90
-!         write(*,*) i, var_cam(1,i), rho_cam(1,i), rho_cam_exp(1,i), p_int_cam(1, i)
-!         ! write(*,*) i, p_int_cam(1,i)
-!         ! write(*,*) i, p_cam(1,i)
-!       enddo
-!       write(*,*) p_int_cam(1, 91)
-!       do j=0, 30
-!           write(*,*) var_sam(1, j+1), sum(var_cam(1, 3*j+1:3*j+3)), var_cam(1, 3*j+1:3*j+3)
-!       enddo
-      call assert_array_equal(rho_cam, rho_cam_exp, test_name, rtol_opt=2.0D-5)
+      call assert_array_equal(rho_cam, rho_cam_exp, test_name, rtol_opt = 2.0D-5)
 
       ! Compare sums of the variables to check conservation between grids
-      do i=1,4
+      do i = 1, num_cols
         sum_sam(i) = sum(var_sam(i,:))
         sum_cam(i) = sum(var_cam(i,:))
       enddo
@@ -258,10 +242,10 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
-      real(dp), dimension(4, 48) :: t, q, tabs, qv, qc, qi
-      real(dp), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      real(dp), dimension(num_cols, sam_sounding) :: t, q, tabs, qv, qc, qi
+      real(dp), dimension(num_cols, sam_sounding) :: tabs_exp, qv_exp, qc_exp, qi_exp
       integer :: i
-      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
           !! Data from the SAM soundings used in tests
 
       ! Fetch SAM grid data
@@ -283,7 +267,7 @@ module cam_tests
       qi = qi + 1.0
 
       ! Check that, without moisture, tabs is (t - gamaz)
-      do i=1,48
+      do i = 1, sam_sounding
         tabs_exp(:,i) = 0.0 - gamaz_sam(i)
       end do
       qv_exp = 1.0
@@ -302,10 +286,10 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
-      real(dp), dimension(4, 48) :: t, q, tabs, qv, qc, qi
-      real(dp), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      real(dp), dimension(num_cols, sam_sounding) :: t, q, tabs, qv, qc, qi
+      real(dp), dimension(num_cols, sam_sounding) :: tabs_exp, qv_exp, qc_exp, qi_exp
       integer :: i
-      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
 
       real(dp), parameter :: rgas = 287.0
           !! Gas constant for dry air used in SAM [j / kg / K]
@@ -314,7 +298,7 @@ module cam_tests
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       ! Set up dry saturated air
-      do i = 1,48
+      do i = 1, sam_sounding
         tabs(:, i) = 100.0 * pres_sam(i) / (rho_sam(i) * rgas)
       end do
       qv = 0.0
@@ -350,11 +334,11 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
-      real(dp), dimension(4, 48) :: t, q, tabs, qv, qc, qi
-      real(dp), dimension(4, 48) :: r, p_sat, q_sat
-      real(dp), dimension(4, 48) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      real(dp), dimension(num_cols, sam_sounding) :: t, q, tabs, qv, qc, qi
+      real(dp), dimension(num_cols, sam_sounding) :: r, p_sat, q_sat
+      real(dp), dimension(num_cols, sam_sounding) :: tabs_exp, qv_exp, qc_exp, qi_exp
       integer :: i
-      real(dp), dimension(48) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
 
       real(dp), parameter :: rgas = 287.0
           !! Gas constant for dry air used in SAM [j / kg / K]
@@ -365,7 +349,7 @@ module cam_tests
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
       ! Set up moist air
-      do i = 1,48
+      do i = 1, sam_sounding
         qv(:, i) = 0.01 * exp(-5.0d-4 * z_sam(i))
         r(:, i) = qv(:, i) / (1.0 - qv(:, i))
 
@@ -416,10 +400,10 @@ program run_cam_tests
 
   implicit none
 
-  real(dp), dimension(4) :: a = [1.0, 2.0, 3.0, 4.0]
+  real(dp), dimension(num_cols) :: a = [1.0, 2.0, 3.0, 4.0]
   real(dp), dimension(5) :: b = [1.0, 2.0, 3.0, 4.0, 6.0]
-  integer, dimension(4) :: aa = [1, 2, 3, 4]
-  integer, dimension(4) :: bb = [1, 2, 3, 4]
+  integer, dimension(num_cols) :: aa = [1, 2, 3, 4]
+  integer, dimension(num_cols) :: bb = [1, 2, 3, 4]
 
   character(len=1024) :: nn_file = "../../YOG_convection/NN_weights_YOG_convection.nc"
   character(len=1024) :: sounding_file = "../../YOG_convection/resources/SAM_sounding.nc"
