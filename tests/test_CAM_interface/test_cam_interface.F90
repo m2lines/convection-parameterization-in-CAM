@@ -68,6 +68,8 @@ module cam_tests
 
       character(len=*), intent(in) :: test_name
 
+      integer :: i
+
       real(dp), dimension(num_cols, num_cells) :: p_cam
       real(dp), dimension(num_cols, num_cells) :: var_cam
       real(dp), dimension(num_cols) :: var_cam_surface
@@ -75,9 +77,13 @@ module cam_tests
       real(dp), dimension(num_cols, num_sam_cells) :: var_sam, var_sam_exp
 
       ! Set up a coarse CAM grid of 4 columns of pressures [1000, 500, 10] hPa with surface pressure 1111 hPa
-      p_cam = reshape((/ 1000.0, 1000.0, 1000.0, 1000.0, 500.0, 500.0, 500.0, 500.0, 10.0, 10.0, 10.0, 10.0 /), (/ num_cols, num_cells /))
+      do i = 1, num_cols
+          p_cam(i, 1) = 1000.0
+          p_cam(i, 2) = 500.0
+          p_cam(i, 3) = 10.0
+      end do
       ps_cam = (/ 1111.0, 1111.0, 1111.0, 1111.0/)
-
+      
       var_cam = 1.0
       var_cam_surface = 1.0
       var_sam_exp = 1.0
