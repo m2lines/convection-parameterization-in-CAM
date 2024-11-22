@@ -6,7 +6,8 @@ module cam_tests
   use netcdf
   use precision, only: dp
 
-  use SAM_consts_mod, only: nrf, num_cols, sam_sounding, num_cells, num_cam_cells_fine, num_sam_cells
+  use SAM_consts_mod, only: nrf, num_cols, sam_sounding, num_cells, num_cam_cells_fine, num_sam_cells, & 
+  num_cam_cells_coarse
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
   interp_to_sam, interp_to_cam, fetch_sam_data, SAM_var_conversion, CAM_var_conversion
   use test_utils, only: assert_array_equal
@@ -42,7 +43,7 @@ module cam_tests
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
-      do i = 1,num_cols
+      do i = 1, num_cols
           p_cam(i, :) = pres_sam(1:nrf)
           p_int_cam(i, :) = presi_sam(1:nrf)
           ! Set SAM variable equal to cell size (density 1.0)
@@ -157,7 +158,7 @@ module cam_tests
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
-      do i = 1,num_cols
+      do i = 1, num_cols
           ! Set up a CAM grid that matches the lower nrf cells of the SAM grid
           p_cam(i, :) = pres_sam(1 : num_sam_cells)
           p_int_cam(i, :) = presi_sam(1 : nrf + 1)
@@ -168,7 +169,7 @@ module cam_tests
       call interp_to_cam(p_cam, p_int_cam, p_int_cam(:, 1), var_sam, var_cam)
 
       ! Calculate resulting density by dividing by cell size
-      do i = 1,nrf
+      do i = 1, nrf
           rho_cam(:, i) = var_cam(:, i) / (p_int_cam(:, i) - p_int_cam(:, i + 1))
       end do
       
@@ -176,13 +177,73 @@ module cam_tests
 
       call assert_array_equal(rho_cam_exp, rho_cam, test_name)
 
-      ! Could do an additional check on the sums of the variables to check
-      ! variable has been conserved
-      ! do i=1,4
-      !     write(*,*) sum(var_sam(i,:)), sum(var_cam(i,:))
-      ! enddo
-
+      ! Here in this test, we have conservation
+      !do i = 1, num_cols
+      !  write(*,*) sum(var_sam(i, :)), sum(var_cam(i, :))
+      !enddo
+    
     end subroutine test_interp_to_cam_match
+
+    subroutine test_interp_to_cam_coarse(test_name)
+      !! Check conservative regridding to CAM coarse grid
+      !! => should conserve density
+
+      character(len=*), intent(in) :: test_name
+      integer :: i, j
+
+      real(dp), dimension(num_cols, num_cam_cells_coarse) :: p_cam, var_cam, rho_cam, rho_cam_exp
+      real(dp), dimension(num_cols, num_cam_cells_coarse - 1) :: p_int_cam
+      real(dp), dimension(num_cols) :: ps_cam, sum_sam, sum_cam, var_cam_surface
+      real(dp), dimension(num_cols, num_sam_cells) :: var_sam 
+
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+        !! Data from the SAM soundings used in tests
+
+      ! Fetch SAM grid data
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
+
+      ! Define CAM grid coarser than SAM grid
+      do j = 1, num_cam_cells_coarse - 1
+          p_int_cam(:,j) = presi_sam(3 * (j - 1) + 1)
+      enddo
+
+      !write(*,*) p_int_cam(:,1)
+
+      ! Get the CAM pressures from average interface pressures
+      do j = 1, num_cam_cells_coarse - 1 
+        p_cam(:, j) = (p_int_cam(:, j + 1) + p_int_cam(:, j)) / 2.0
+      end do
+
+      !write(*,*) p_cam(:,1)
+      !write(*,*) p_cam(:,2)
+
+      do j = 1, num_cols
+        ! Set SAM variable equal to cell size
+        var_sam(j, :) = (presi_sam(1 : num_sam_cells) - presi_sam(2 : num_sam_cells + 1))
+      end do
+
+      call interp_to_cam(p_cam, p_int_cam, p_int_cam(:, 1), var_sam, var_cam)
+
+      ! Loop over cam coarse cells
+      do i = 1, num_cam_cells_coarse - 1
+        rho_cam(:, i) = var_cam(:, i) / (p_int_cam(:, i) - p_int_cam(:, i + 1))
+      enddo
+      
+      write(*,*) rho_cam(1,:)
+      write(*,*) var_cam(1,:)
+      write(*,*) p_int_cam(1,:)
+      
+      ! Expected density 
+      rho_cam_exp = 1.0
+
+      call assert_array_equal(rho_cam, rho_cam_exp, test_name, rtol_opt = 2.0D-5)
+
+      ! checking conservation here (not yet conserved)
+      do i = 1, num_cols
+        write(*,*) sum(var_sam(i, :)), sum(var_cam(i, :))
+      enddo
+
+    end subroutine test_interp_to_cam_coarse
 
     subroutine test_interp_to_cam_fine(test_name)
       !! Check conservative regridding to CAM grid by interpolating constant density
@@ -214,7 +275,9 @@ module cam_tests
         enddo
       enddo
       p_int_cam(:, num_cam_cells_fine + 1) = presi_sam(num_sam_cells + 1)
-
+      
+      !write(*,*) p_int_cam(1, 1:9)
+      !write(*,*) presi_sam(1:3)
       do j = 1, num_cam_cells_fine
         p_cam(:, j) = (p_int_cam(:, j+1) + p_int_cam(:, j)) / 2.0
       end do
@@ -223,6 +286,8 @@ module cam_tests
           ! Set SAM variable equal to cell size
           var_sam(j, :) = (presi_sam(1 : num_sam_cells) - presi_sam(2 : num_sam_cells + 1))
       end do
+
+      !write(*,*) var_sam
 
       call interp_to_cam(p_cam, p_int_cam, p_int_cam(:, 1), var_sam, var_cam)
 
@@ -233,6 +298,8 @@ module cam_tests
       rho_cam_exp = 1.0
 
       call assert_array_equal(rho_cam, rho_cam_exp, test_name, rtol_opt = 2.0D-5)
+
+      !write(*,*) rho_cam
 
       ! Compare sums of the variables to check conservation between grids
       do i = 1, num_cols
@@ -426,6 +493,7 @@ program run_cam_tests
   ! SAM to CAM grid interpolation
   call test_interp_to_cam_match("Test interpolation to CAM mapping density 1:1 match grid")
   call test_interp_to_cam_fine("Test interpolation to CAM mapping density 1:1 fine grid")
+  call test_interp_to_cam_coarse("Test interpolation to CAM mapping density 1:1 coarse grid")
 
   ! Variable conversion
   call test_var_conv_sam_zero("Test variable conversion SAM->CAM for 0.0")

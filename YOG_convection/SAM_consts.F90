@@ -110,6 +110,8 @@ module SAM_consts_mod
         !!  Number of cells
     integer, parameter :: num_cam_cells_fine  = 90
         !!  Number of fine CAM cells
+    integer, parameter :: num_cam_cells_coarse = 10
+        !! Number of coarse CAM cells
 ! Functions and Subroutines
 
 contains
