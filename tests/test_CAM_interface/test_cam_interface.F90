@@ -514,17 +514,14 @@ module cam_tests
       qc = 0.0
       qi = 0.0
 
-      tabs_exp = -100.0
-      qv_exp = -100.0
-      qc_exp = -100.0
-      qi_exp = -100.0
+      tabs_exp = tabs
+      ! Store existing qv, qc, qi values before CAM->SAM conversion
+      qv_exp = qv
+      qc_exp = qc
+      qi_exp = qi
 
       call CAM_var_conversion(qv, qc, qi, q, tabs, t)
-      call SAM_var_conversion(t, q, tabs_exp, qv_exp, qc_exp, qi_exp)
-
-      ! Add 1.0 to q values (they should be 0.0) to avoid division by 0.0 errors in check
-      qc = qc + 1.0
-      qi = qi + 1.0
+      call SAM_var_conversion(t, q, tabs, qv, qc, qi)
 
       ! Note: in the assertions,
       ! add 1.0 to the q values (that should be 0.0) to avoid division by 0.0 errors in check
