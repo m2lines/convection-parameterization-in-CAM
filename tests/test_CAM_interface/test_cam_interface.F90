@@ -526,13 +526,14 @@ module cam_tests
       qc = qc + 1.0
       qi = qi + 1.0
 
-      qc_exp = 1.0
-      qi_exp = 1.0
+      ! Note: in the assertions,
+      ! add 1.0 to the q values (that should be 0.0) to avoid division by 0.0 errors in check
 
+      ! Compare pre-conversion with post-conversion values
       call assert_array_equal(tabs, tabs_exp, test_name//": tabs")
       call assert_array_equal(qv, qv_exp, test_name//": qv")
-      call assert_array_equal(qc, qc_exp, test_name//": qc")
-      call assert_array_equal(qi, qi_exp, test_name//": qi")
+      call assert_array_equal(qc+1.0, qc_exp+1.0, test_name//": qc")
+      call assert_array_equal(qi+1.0, qi_exp+1.0, test_name//": qi")
 
     end subroutine test_rev_var_conv_moist
 
