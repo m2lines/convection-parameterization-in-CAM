@@ -380,7 +380,6 @@ module cam_tests
 
     end subroutine test_interp_to_cam_fine_variable_density      
 
-
     subroutine test_var_conv_sam_zero(test_name)
       !! Check variable conversion SAM->CAM with 0.0 results in 0.0 on the other side
 
@@ -563,12 +562,12 @@ program run_cam_tests
 
   ! SAM to CAM grid interpolation
   call test_interp_to_cam_match("Test interpolation to CAM mapping density 1:1 match grid")
-  call test_interp_to_cam_fine("Test interpolation to CAM mapping density 1:1 fine grid")
   call test_interp_to_cam_coarse("Test interpolation to CAM mapping density 1:1 coarse grid")
+  call test_interp_to_cam_fine("Test interpolation to CAM mapping density 1:1 fine grid")
 
   ! SAM to CAM grid interpolation with variable densities
   call test_interp_to_cam_coarse_variable_density("Test interpolation to CAM mapping with variable density coarse grid")
-  call test_interp_to_cam_fine_variable_density("Test interpolation to CAM mapping with variable density coarse grid")
+  call test_interp_to_cam_fine_variable_density("Test interpolation to CAM mapping with variable density fine grid")
 
   ! Variable conversion
   call test_var_conv_sam_zero("Test variable conversion SAM->CAM for 0.0")
