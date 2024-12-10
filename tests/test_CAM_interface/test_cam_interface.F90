@@ -378,7 +378,62 @@ module cam_tests
     
       call assert_array_equal(sum_sam, sum_cam, test_name//": integrated sum")
 
-    end subroutine test_interp_to_cam_fine_variable_density      
+    end subroutine test_interp_to_cam_fine_variable_density
+    
+    subroutine test_interp_to_cam_coarse_interlocking(test_name)
+      !! Check conservative regridding to CAM coarse grid (Interlocking)
+      !! => With integrated sum, this test should conserve density
+
+      character(len=*), intent(in) :: test_name
+      integer :: i, j
+
+      real(dp), dimension(num_cols, num_cam_cells_coarse) :: p_cam, var_cam, var_cam_exp
+      real(dp), dimension(num_cols, num_cam_cells_coarse + 1) :: p_int_cam
+      real(dp), dimension(num_cols) :: ps_cam, sum_sam, sum_cam, var_cam_surface
+      real(dp), dimension(num_cols, num_sam_cells) :: var_sam 
+
+      real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
+        !! Data from the SAM soundings used in tests
+
+      ! Fetch SAM grid data
+      call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
+
+      ! Set CAM grid == SAM grid at the top 
+      p_int_cam(:, 1) = presi_sam(1)
+      
+      ! Define CAM grid contained in the SAM grid => this gives the interlocking grid
+      do j = 2, num_cam_cells_coarse
+        p_int_cam(:, j) = presi_sam((3 * (j - 1) + 1) / 2)
+      enddo
+
+      ! Set CAM grid == SAM grid the bottom 
+      p_int_cam(:, num_cam_cells_coarse + 1) = presi_sam(num_sam_cells + 1)
+
+      ! Get CAM pressures from average interface pressures
+      do j = 2, num_cam_cells_coarse
+        p_cam(:, j) = (p_int_cam(:, j + 1) + p_int_cam(:, j)) / 2.0
+      enddo
+
+      ! Get SAM variable
+      do j = 1, num_cols
+        do i = 1, num_sam_cells
+          ! Set SAM variable density not equal to 1.0
+          var_sam(j, i) = 7.0 * i * j
+        end do
+      end do
+
+      ! Call interpolation to CAM to get CAM variable
+      call interp_to_cam(p_cam, p_int_cam, p_int_cam(:, 1), var_sam, var_cam)
+
+      ! Check for conservation between grids by comparing sums of variables
+      do i = 1, num_cols
+        sum_sam(i) = sum(var_sam(i, :) * (presi_sam(1 : num_sam_cells) - presi_sam(2 : num_sam_cells + 1)))
+        sum_cam(i) = sum(var_cam(i, :) * (p_int_cam(i, 1 : num_cam_cells_coarse) - p_int_cam(i, 2 : num_cam_cells_coarse + 1)))
+      enddo
+
+      call assert_array_equal(sum_sam, sum_cam, test_name//": integrated sum")
+
+    end subroutine test_interp_to_cam_coarse_interlocking
 
     subroutine test_var_conv_sam_zero(test_name)
       !! Check variable conversion SAM->CAM with 0.0 results in 0.0 on the other side
@@ -568,6 +623,9 @@ program run_cam_tests
   ! SAM to CAM grid interpolation with variable densities
   call test_interp_to_cam_coarse_variable_density("Test interpolation to CAM mapping with variable density coarse grid")
   call test_interp_to_cam_fine_variable_density("Test interpolation to CAM mapping with variable density fine grid")
+
+  ! SAM to CAM grid interpolation: Interlocking Grid
+  call test_interp_to_cam_coarse_interlocking("Test interpolation to CAM mapping density 1:1 interlocking grid")
 
   ! Variable conversion
   call test_var_conv_sam_zero("Test variable conversion SAM->CAM for 0.0")
