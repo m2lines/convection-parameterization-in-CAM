@@ -400,14 +400,14 @@ module cam_tests
 
       ! Set CAM grid == SAM grid at the top 
       p_int_cam(:, 1) = presi_sam(1)
-      
-      ! Define CAM grid contained in the SAM grid => this gives the interlocking grid
-      do j = 2, num_cam_cells_coarse
-        p_int_cam(:, j) = presi_sam((3 * (j - 1) + 1) / 2)
-      enddo
 
       ! Set CAM grid == SAM grid the bottom 
       p_int_cam(:, num_cam_cells_coarse + 1) = presi_sam(num_sam_cells + 1)
+
+      ! Define CAM grid contained in the SAM grid => this gives the interlocking grid
+      do j = 2, num_cam_cells_coarse
+        p_int_cam(:, j) = presi_sam(j) + (j - 1) * (p_int_cam(:, 1) - p_int_cam(:, num_cam_cells_coarse + 1)) / num_cam_cells_coarse
+      enddo
 
       ! Get CAM pressures from average interface pressures
       do j = 2, num_cam_cells_coarse
