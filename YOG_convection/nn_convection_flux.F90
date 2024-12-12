@@ -160,6 +160,9 @@ contains
 
         ! Other variables
         real(dp),   dimension(nrf) :: omp, fac
+
+        != unit s m**3 / kg  :: irhoadz
+        != unit s m**2 / kg  :: irhoadzdz
         real(dp),   dimension(size(tabs_i, 2)) :: rsat, irhoadz, irhoadzdz
 
         ! -----------------------------------
