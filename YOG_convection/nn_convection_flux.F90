@@ -173,8 +173,13 @@ contains
         real(sp), dimension(n_outputs) :: outputs
             !! vector of output features from the NN
         ! NN outputs
-        real(dp),   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
-                                  q_sed_flux
+
+        real(dp),   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto
+
+        != unit kg / s m**2 :: q_sed_flux
+        real(dp),   dimension(nrf) :: q_sed_flux
+            !! total non-precip. water mix. ratio ice-sedimenting flux
+
         ! Output variable t_rad_rest_tend is also an output from the NN (defined above)
 
         nx = size(tabs_i, 1)
