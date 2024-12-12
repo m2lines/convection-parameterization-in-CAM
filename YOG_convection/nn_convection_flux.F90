@@ -176,7 +176,7 @@ contains
 
         real(dp),   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto
 
-        != unit kg / s m**2 :: q_sed_flux
+        != unit kg / (s m**2) :: q_sed_flux
         real(dp),   dimension(nrf) :: q_sed_flux
             !! total non-precip. water mix. ratio ice-sedimenting flux
 
