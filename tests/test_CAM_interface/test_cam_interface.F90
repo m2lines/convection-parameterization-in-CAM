@@ -24,7 +24,7 @@ module cam_tests
     subroutine test_interp_to_sam_match(test_name)
       !! Check interpolation to SAM grid by defining an idential CAM grid and
       !! interpolating a variable equal to the pressure
-      !! Define a CAM grid consiting of 4 atmospheric columns
+      !! Define a CAM grid consisting of 4 atmospheric columns
       !! from 1111.0 to 10.0
 
       character(len=*), intent(in) :: test_name
