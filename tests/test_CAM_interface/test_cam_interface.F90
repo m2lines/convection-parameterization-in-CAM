@@ -192,7 +192,7 @@ module cam_tests
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
-      ! Define CAM grid coarser than SAM grid
+      ! Define CAM grid coarser than SAM grid - one CAM cell to every 3 SAM cells.
       do j = 1, num_cam_cells_coarse + 1
           p_int_cam(:,j) = presi_sam(3 * (j - 1) + 1)
       enddo
