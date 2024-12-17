@@ -97,6 +97,8 @@ module cam_tests
 
     subroutine test_interp_to_sam_pres(test_name)
       !! Check interpolation to SAM grid by interpolating pressure to pressure
+      !! We set a varible equal to the coordinates (pressure) on the CAM grid, y=x
+      !! and we expect the interpolated values on the SAM grid to satisfy y=x
       !! Use a coarse CAM grid of 3 cells and 4 columns
       !! => expected variable on SAM grid should be pressure at that point
 
@@ -176,7 +178,7 @@ module cam_tests
 
     subroutine test_interp_to_cam_coarse(test_name)
       !! Check conservative regridding to CAM coarse grid
-      !! => should conserve density
+      !! => should conserve mass
 
       character(len=*), intent(in) :: test_name
       integer :: i, j
@@ -192,7 +194,11 @@ module cam_tests
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
+<<<<<<< HEAD
       ! Define CAM grid coarser than SAM grid - one CAM cell to every 3 SAM cells.
+=======
+      ! Define CAM grid coarser than SAM grid - one CAM cell to every 3 SAM cells
+>>>>>>> ad4a77c (clean up with suggestions)
       do j = 1, num_cam_cells_coarse + 1
           p_int_cam(:,j) = presi_sam(3 * (j - 1) + 1)
       enddo
@@ -327,7 +333,7 @@ module cam_tests
 
     subroutine test_interp_to_cam_fine_variable_density(test_name)
       !! Check conservative regridding to CAM fine grid with variable density
-      !! => With integrated sum, this test should conserve density
+      !! => With integrated sum, this test should conserve mass
 
       character(len=*), intent(in) :: test_name
 
@@ -380,7 +386,7 @@ module cam_tests
     
     subroutine test_interp_to_cam_coarse_interlocking(test_name)
       !! Check conservative regridding to CAM coarse grid (Interlocking)
-      !! => With integrated sum, this test should conserve density
+      !! => With integrated sum, this test should conserve mass
 
       character(len=*), intent(in) :: test_name
       integer :: i, j
