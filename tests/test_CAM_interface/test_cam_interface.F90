@@ -202,10 +202,8 @@ module cam_tests
         p_cam(:, j) = (p_int_cam(:, j + 1) + p_int_cam(:, j)) / 2.0
       end do
 
-      do j = 1, num_cols
-        ! Set SAM variable (density) equal to 1.0
-        var_sam(j, :) = 1.0
-      end do
+      ! Set SAM variable (density) equal to 1.0
+      var_sam(:, :) = 1.0
 
       call interp_to_cam(p_cam, p_int_cam, p_int_cam(:, 1), var_sam, var_cam)
 
