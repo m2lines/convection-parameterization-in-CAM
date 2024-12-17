@@ -224,7 +224,7 @@ module cam_tests
 
     subroutine test_interp_to_cam_coarse_variable_density(test_name)
       !! Check conservative regridding to CAM coarse grid with variable density
-      !! => With integrated sum, this test should conserve density
+      !! => With integrated sum, this test should conserve mass
 
       character(len=*), intent(in) :: test_name
       integer :: i, j
