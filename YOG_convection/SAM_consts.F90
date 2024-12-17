@@ -83,10 +83,8 @@ module SAM_consts_mod
   ! ---------------------------
   ! SAM Grid Variables
   ! ---------------------------
-  integer, parameter :: input_ver_dim = 30
-      !! The number of cells in a SAM atmospheric column on which the neural net was trained
   integer, parameter :: num_sam_cells = 30
-      !! number of SAM cells
+      !! The number of cells in a SAM atmospheric column on which the neural net was trained
   integer, parameter :: sam_sounding = 48
       !! SAM sounding data  
   ! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,

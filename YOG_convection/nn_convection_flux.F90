@@ -8,7 +8,7 @@ module nn_convection_flux_mod
 ! Libraries to use
 use precision, only: dp, sp
 use nn_cf_net_mod, only: nn_cf_net_init, net_forward, nn_cf_net_finalize
-use SAM_consts_mod, only: fac_cond, fac_fus, tprmin, a_pr, input_ver_dim, &
+use SAM_consts_mod, only: fac_cond, fac_fus, tprmin, a_pr, num_sam_cells, &
                           nrf, nrfq
 #ifdef CAM_PROFILE
 use nf_out, only: nf_write_sam
@@ -211,8 +211,8 @@ contains
             ! Combine all features into one vector
 
             ! Add temperature as input feature
-            features(dim_counter+1:dim_counter + input_ver_dim) = real(tabs_i(i,1:input_ver_dim),4)
-            dim_counter = dim_counter + input_ver_dim
+            features(dim_counter+1:dim_counter + num_sam_cells) = real(tabs_i(i,1:num_sam_cells),4)
+            dim_counter = dim_counter + num_sam_cells
 
             ! Add non-precipitating water mixing ratio as input feature using random forest (rf) approach from earlier paper
             ! Currently we do not use rf_uses_rh option, but may add it back in later
@@ -222,12 +222,12 @@ contains
             !         omn = omegan(tabs(i,j,k))
             !         rsat(k) = omn * rsatw(tabs(i,j,k),pres(k)) + (1.-omn) * rsati(tabs(i,j,k),pres(k))
             !     end do
-            !     features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim)/rsat(1:input_ver_dim),4)
-            !     dim_counter = dim_counter + input_ver_dim
+            !     features(dim_counter+1:dim_counter+num_sam_cells) = real(q_i(i,j,1:num_sam_cells)/rsat(1:num_sam_cells),4)
+            !     dim_counter = dim_counter + num_sam_cells
             ! else
             ! ! if using non-precipitating water as water content
-                features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,1:input_ver_dim),4)
-                dim_counter =  dim_counter + input_ver_dim
+                features(dim_counter+1:dim_counter+num_sam_cells) = real(q_i(i,1:num_sam_cells),4)
+                dim_counter =  dim_counter + num_sam_cells
             ! endif
 
             ! Add distance to the equator as input feature
