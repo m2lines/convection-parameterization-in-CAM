@@ -142,7 +142,7 @@ module cam_tests
 
     subroutine test_interp_to_cam_match(test_name)
       !! Check conservative regridding to CAM grid by interpolating constant density
-      !! => should conserve density
+      !! => should conserve mass
       !! For case CAM and SAM grids match and CAM grid inside SAM grid
 
       character(len=*), intent(in) :: test_name
@@ -151,7 +151,7 @@ module cam_tests
 
       real(dp), dimension(num_cols, nrf) :: p_cam, var_cam, var_cam_exp
       real(dp), dimension(num_cols, nrf + 1) :: p_int_cam
-      real(dp), dimension(num_cols) :: ps_cam, var_cam_surface
+      real(dp), dimension(num_cols) :: ps_cam, var_cam_surface, sum_sam, sum_cam
       real(dp), dimension(num_cols, nrf) :: var_sam
 
       real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
@@ -173,6 +173,14 @@ module cam_tests
       var_cam_exp = 1.0
 
       call assert_array_equal(var_cam_exp, var_cam, test_name)
+
+      ! Compare sums of the variables to check conservation (mass) between matching grids
+      do i = 1, num_cols
+        sum_sam(i) = sum(var_sam(i, :) * (presi_sam(1 : num_sam_cells) - presi_sam(2 : num_sam_cells + 1)))
+        sum_cam(i) = sum(var_cam(i, :) * (p_int_cam(i, 1 : nrf) - p_int_cam(i, 2 : nrf + 1)))
+      enddo
+   
+      call assert_array_equal(sum_sam, sum_cam, test_name//": integrated sum")
     
     end subroutine test_interp_to_cam_match
 
@@ -194,11 +202,7 @@ module cam_tests
       ! Fetch SAM grid data
       call fetch_sam_data(pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam)
 
-<<<<<<< HEAD
       ! Define CAM grid coarser than SAM grid - one CAM cell to every 3 SAM cells.
-=======
-      ! Define CAM grid coarser than SAM grid - one CAM cell to every 3 SAM cells
->>>>>>> ad4a77c (clean up with suggestions)
       do j = 1, num_cam_cells_coarse + 1
           p_int_cam(:,j) = presi_sam(3 * (j - 1) + 1)
       enddo
@@ -277,7 +281,7 @@ module cam_tests
 
     subroutine test_interp_to_cam_fine(test_name)
       !! Check conservative regridding to CAM grid by interpolating constant density
-      !! => should conserve density
+      !! => should conserve mass
       !! For case CAM and SAM grids match and CAM grid inside SAM grid
 
       character(len=*), intent(in) :: test_name
