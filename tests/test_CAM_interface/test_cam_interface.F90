@@ -606,11 +606,6 @@ program run_cam_tests
 
   implicit none
 
-  real(dp), dimension(num_cols) :: a = [1.0, 2.0, 3.0, 4.0]
-  real(dp), dimension(5) :: b = [1.0, 2.0, 3.0, 4.0, 6.0]
-  integer, dimension(num_cols) :: aa = [1, 2, 3, 4]
-  integer, dimension(num_cols) :: bb = [1, 2, 3, 4]
-
   character(len=1024) :: nn_file = "../../YOG_convection/NN_weights_YOG_convection.nc"
   character(len=1024) :: sounding_file = "../../YOG_convection/resources/SAM_sounding.nc"
 
