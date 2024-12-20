@@ -543,6 +543,7 @@ module cam_tests
       real(dp), dimension(num_cols, sam_sounding) :: t, q, tabs, qv, qc, qi
       real(dp), dimension(num_cols, sam_sounding) :: r, p_sat, q_sat
       real(dp), dimension(num_cols, sam_sounding) :: tabs_exp, qv_exp, qc_exp, qi_exp
+      real(dp), dimension(num_cols, sam_sounding) :: tabs_int, qv_int, qc_int, qi_int
       integer :: i
       real(dp), dimension(sam_sounding) :: pres_sam, presi_sam, gamaz_sam, rho_sam, z_sam
 
@@ -576,25 +577,36 @@ module cam_tests
       qc = 0.0
       qi = 0.0
 
-      tabs_exp = -100.0
-      qv_exp = -100.0
-      qc_exp = -100.0
-      qi_exp = -100.0
+      tabs_exp = tabs
+      ! Store existing qv, qc, qi values before CAM->SAM conversion
+      qv_exp = qv
+      qc_exp = qc
+      qi_exp = qi
 
       call CAM_var_conversion(qv, qc, qi, q, tabs, t)
-      call SAM_var_conversion(t, q, tabs_exp, qv_exp, qc_exp, qi_exp)
+      ! Store intermediates after CAM conversion
+      qv_int = qv
+      qc_int = qc
+      qi_int = qi
+      tabs_int = tabs
+      call SAM_var_conversion(t, q, tabs, qv, qc, qi)
 
-      ! Add 1.0 to q values (they should be 0.0) to avoid division by 0.0 errors in check
-      qc = qc + 1.0
-      qi = qi + 1.0
+      ! Note: in the assertions,
+      ! add 1.0 to the q values (that should be 0.0) to avoid division by 0.0 errors in check
 
-      qc_exp = 1.0
-      qi_exp = 1.0
-
+      ! Compare pre-conversion with post-conversion values
       call assert_array_equal(tabs, tabs_exp, test_name//": tabs")
       call assert_array_equal(qv, qv_exp, test_name//": qv")
-      call assert_array_equal(qc, qc_exp, test_name//": qc")
-      call assert_array_equal(qi, qi_exp, test_name//": qi")
+      call assert_array_equal(qc+1.0, qc_exp+1.0, test_name//": qc")
+      call assert_array_equal(qi+1.0, qi_exp+1.0, test_name//": qi")
+
+      ! Convert SAM->CAM one last time, i.e., is the conversion invertible
+      call CAM_var_conversion(qv, qc, qi, q, tabs, t)
+
+      call assert_array_equal(tabs, tabs_int, test_name//": tabs")
+      call assert_array_equal(qv, qv_int, test_name//": qv")
+      call assert_array_equal(qc+1.0, qc_int+1.0, test_name//": qc")
+      call assert_array_equal(qi+1.0, qi_int+1.0, test_name//": qi")
 
     end subroutine test_rev_var_conv_moist
 
