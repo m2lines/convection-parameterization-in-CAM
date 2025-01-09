@@ -1,0 +1,12 @@
+# Workflow to run CAM-ML test suite
+name: TestSuiteUbuntu
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on pushes to the "main" branch, i.e., PR merges
+  push:
+    branches: [ "main" ]
+
+  # Triggers the workflow on pushes to open pull requests with code changes
+  pull_request:
+    paths:
