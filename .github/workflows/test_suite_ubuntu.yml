@@ -60,3 +60,13 @@ jobs:
         run: |
           sudo apt update
           sudo apt install mpich
+
+      - name: Install pFUnit
+        run: |
+          export FC=/usr/bin/gfortran
+          export MPIF90=/usr/bin/mpif90
+          git clone -b v4.10.0 https://github.com/Goddard-Fortran-Ecosystem/pFUnit.git
+          mkdir pFUnit/build
+          cd pFUnit/build
+          cmake ..
+          make -j 4 install    
