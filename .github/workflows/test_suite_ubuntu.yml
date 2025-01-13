@@ -32,8 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        std: ["f2008", "f2018"]
 
     # These steps represent sequence of tasks that will be executed as part of the job
     steps:
