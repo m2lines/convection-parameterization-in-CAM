@@ -63,6 +63,14 @@ jobs:
           deactivate
           cd ../../
 
+      # Add Python linter which is ruff
+      - name: ruff
+        if: always()
+        run:  |
+          cd ${{ github.workspace }}
+          ruff format --diff $(git ls-files *.py)
+          ruff check --diff $(git ls-files *.py)
+
       # Build the code 
       - name: Build test suite
         run:  |
