@@ -41,7 +41,36 @@ jobs:
           persist-credentials: false
         uses: actions/checkout@v4
 
+      # Install Python 3
       - name: Install Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+
+      # Install python dependencies
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r requirements.txt
+
+      # Generate sounding files
+      - name: Generate sounding files 
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python sounding_to_netcdf.py
+          deactivate
+
+      # Build the code 
+      - name: Build test suite
+        run:  |
+          export TEST_DIR=$(pwd)/tests
+          cd ${TEST_DIR}
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build .
+
+      # Run the test suites
+      - name: Test suite
+        run: |
+          ./test_CAM_interface
