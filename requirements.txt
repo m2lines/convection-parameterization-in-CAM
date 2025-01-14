@@ -1,4 +1,5 @@
 torch
+hdf5
 netcdf4
 ruff
 pytest
