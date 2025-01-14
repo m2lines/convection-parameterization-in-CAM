@@ -55,10 +55,13 @@ jobs:
       # Generate sounding files
       - name: Generate sounding files 
         run: |
-          python -m venv venv
+          cd YOG_convection/resources/
+          python3 -m venv venv
           source venv/bin/activate
-          python sounding_to_netcdf.py
+          python3 -m pip install -r requirements.txt
+          python3 sounding_to_netcdf.py
           deactivate
+          cd ../../
 
       # Build the code 
       - name: Build test suite
