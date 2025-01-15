@@ -181,8 +181,8 @@ def load_from_netcdf_params(nc_file: str, dtype: str = "float32") -> ANN:
     for i, layer in enumerate(
         lyr for lyr in model.modules() if isinstance(lyr, nn.Linear)
     ):
-        layer.weight.data = torch.tensor(data_set[f"w{i+1}"][:].astype(dtype))
-        layer.bias.data = torch.tensor(data_set[f"b{i+1}"][:].astype(dtype))
+        layer.weight.data = torch.tensor(data_set[f"w{i + 1}"][:].astype(dtype))
+        layer.bias.data = torch.tensor(data_set[f"b{i + 1}"][:].astype(dtype))
 
     return model
 
