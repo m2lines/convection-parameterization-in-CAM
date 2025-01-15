@@ -1,4 +1,4 @@
 torch
 netcdf4
-ruff
+ruff==0.9.1
 pytest
