@@ -47,9 +47,11 @@ jobs:
         with:
           python-version: '3.x'
 
-      # Install python dependencies
+      # Install dependencies
       - name: Install dependencies
         run: |
+          apt update
+          apt install -y libhdf5-dev 
           python3 -m pip install -r requirements.txt
 
       # Generate sounding files
@@ -71,7 +73,7 @@ jobs:
           ruff format --diff $(git ls-files *.py)
           ruff check --diff $(git ls-files *.py)
 
-      # Build the code 
+      # Build the code with cmake
       - name: Build test suite
         run:  |
           export TEST_DIR=$(pwd)/tests
