@@ -9,13 +9,12 @@ module cam_tests
   use SAM_consts_mod, only: nrf, num_cols, sam_sounding, num_cells, num_cam_cells_fine, num_sam_cells, & 
   num_cam_cells_coarse
   use nn_interface_CAM, only: nn_convection_flux_CAM, nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize, &
-  interp_to_sam, interp_to_cam, fetch_sam_data, SAM_var_conversion, CAM_var_conversion
-  use test_utils, only: assert_array_equal
+  interp_to_sam, interp_to_cam, fetch_sam_data, SAM_var_conversion, CAM_var_conversion, &
+  get_n_combined, construct_combined_grid
+  use test_utils, only: assert_array_equal, pass, fail
 
   implicit none
 
-  character(len=15) :: pass = char(27)//'[32m'//'PASSED'//char(27)//'[0m'
-  character(len=15) :: fail = char(27)//'[31m'//'FAILED'//char(27)//'[0m'
   integer, parameter :: n_nn_out = 148
   real(dp), dimension(n_nn_out) :: nn_out_ones
 
@@ -443,6 +442,94 @@ module cam_tests
 
     end subroutine test_interp_to_cam_coarse_interlocking
 
+    subroutine test_extend_sam_grid(test_name)
+      !! Test the subroutine that should take the SAM grid and extend it up to the
+      !! same height as the CAM grid matching the SAM cells above the top of the SAM
+      !! grid
+      !! Set up a CAM grid that runs from 2-100 in increments of 2 and a SAM grid that
+      !! runs from 50 to 100 in increments of 1.0
+      !! Result should be a grid that runs from 100 to 70 in increments of 1, and 70 to
+      !! 2 in increments of 2
+      character(len=*), intent(in) :: test_name
+      
+      integer :: i
+
+      real(dp), dimension(num_cols, 50) :: p_int_cam
+      real(dp), dimension(num_cols, 49) :: p_cam
+      real(dp), dimension(num_cols) :: ps_cam
+
+      real(dp), dimension(30) :: presi_sam
+      real(dp), dimension(29) :: pres_sam
+
+      real(dp), dimension(num_cols, 65) :: p_int_combined_expected
+      real(dp), dimension(num_cols, 64) :: p_combined_expected
+      real(dp), dimension(:,:), allocatable :: p_combined, p_int_combined
+
+      real(dp) :: cam_top, cam_base, cam_inc
+      real(dp) :: sam_top, sam_base, sam_inc
+
+      integer :: n_combined
+
+      cam_top = 2.0
+      cam_base = 100.0
+      cam_inc = 2.0
+      do i = 1, 50
+          p_int_cam(:, i) = cam_base - (i-1) * cam_inc
+      enddo
+      do i = 1, 49
+        p_cam(:, i) = (p_int_cam(:, i+1) + p_int_cam(:, i)) / 2.0
+      end do
+      ! write(*,*) p_int_cam(1, :)
+      ! write(*,*) p_cam(1, :)
+
+      sam_top = 1.0
+      sam_base = 100.0
+      sam_inc = 1.0
+      do i = 1, 30
+          presi_sam(i) = sam_base - (i-1) * sam_inc
+      enddo
+      do i = 1, 29
+        pres_sam(i) = (presi_sam(i+1) + presi_sam(i)) / 2.0
+      end do
+      ! write(*,*) presi_sam(:)
+      ! write(*,*) pres_sam(:)
+
+      do i = 1, 30
+          p_int_combined_expected(:, i) = presi_sam(i)
+      enddo
+      p_int_combined_expected(:, 31:) = p_int_cam(:, 16:)
+      do i = 1, 64
+        p_combined_expected(:,i) = (p_int_combined_expected(:,i+1) + p_int_combined_expected(:,i)) / 2.0
+      end do
+
+      ! Also test the estimation of the size of the combined grid
+      call get_n_combined(p_int_cam, presi_sam, n_combined)
+      if (n_combined == 65) then
+        write(*, '(A, " :: [", A, "] combined array length = ", I3, " as expected.")') pass, trim(test_name), n_combined
+      else
+        write(*, '(A, " :: [", A, "] combined array length = ", I3, " expected 65.")') fail, trim(test_name), n_combined
+      end if
+
+      allocate(p_combined(num_cols, n_combined-1))
+      allocate(p_int_combined(num_cols, n_combined))
+
+      call construct_combined_grid(p_int_cam, presi_sam, n_combined, p_int_combined, p_combined)
+
+      call assert_array_equal(p_combined, p_combined_expected, test_name)
+      call assert_array_equal(p_int_combined, p_int_combined_expected, test_name)
+
+      deallocate(p_int_combined, p_combined)
+
+      ! call interp_to_sam(p_cam, ps_cam, var_cam, var_sam, var_cam_surface)
+
+      ! Compare the results of the interpolation scheme to expected output
+      ! Set anything above 30 elems to zero as the parameterization and interpolation
+      ! code only uses the bottom 30 cells on the SAM grid
+      ! var_sam_exp = var_cam
+      ! call assert_array_equal(var_sam, var_sam_exp, test_name)
+
+    end subroutine test_extend_sam_grid
+
     subroutine test_var_conv_sam_zero(test_name)
       !! Check variable conversion SAM->CAM with 0.0 results in 0.0 on the other side
 
@@ -611,7 +698,7 @@ program run_cam_tests
 
   ! Initialise the NN module
   call nn_convection_flux_CAM_init(nn_file, sounding_file)
-  
+
   ! Run tests
   ! CAM to SAM grid interpolation
   call test_interp_to_sam_match("Test interpolation to SAM from matching grid")
@@ -629,6 +716,9 @@ program run_cam_tests
 
   ! SAM to CAM grid interpolation: Interlocking Grid
   call test_interp_to_cam_coarse_interlocking("Test interpolation to CAM mapping density 1:1 interlocking grid")
+
+  ! Extension of SAM grid
+  call test_extend_sam_grid("Test extension of SAM grid.")
 
   ! Variable conversion
   call test_var_conv_sam_zero("Test variable conversion SAM->CAM for 0.0")
