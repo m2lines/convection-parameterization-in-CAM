@@ -50,8 +50,8 @@ jobs:
       # Install dependencies
       - name: Install dependencies
         run: |
-          apt update
-          apt install -y libhdf5-dev 
+          sudo apt-get update
+          sudo apt-get install -y libhdf5-dev 
           python3 -m pip install -r requirements.txt
 
       # Generate sounding files
