@@ -61,7 +61,6 @@ jobs:
           cd build
           cmake ..
           cmake --build .
-          ./test_CAM_interface
 
       # Run the test suites
       - name: Test suite
