@@ -591,7 +591,7 @@ module cam_tests
       qc_exp = 1.0
       qi_exp = 1.0
 
-      call assert_array_equal(tabs, tabs_exp, test_name//": tabs")
+      call assert_array_equal(tabs, tabs_exp + 1000, test_name//": tabs")
       call assert_array_equal(qv, qv_exp, test_name//": qv")
       call assert_array_equal(qc, qc_exp, test_name//": qc")
       call assert_array_equal(qi, qi_exp, test_name//": qi")
