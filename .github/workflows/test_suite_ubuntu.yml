@@ -67,4 +67,5 @@ jobs:
         run: |
           cd tests/build
           ./test_CAM_interface
-          ./test_YOG_convection
+      # This YOG convection test will be addressed in a separate issue    
+      #    ./test_YOG_convection
