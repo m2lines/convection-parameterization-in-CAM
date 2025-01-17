@@ -30,6 +30,7 @@ module test_utils
       write(*, '(A, " :: [", A, "] maximum relative error = ", E11.4)') pass, trim(test_name), relative_error
     else
       write(*, '(A, " :: [", A, "] maximum relative error = ", E11.4)') fail, trim(test_name), relative_error
+      stop 999
     end if
 
   end subroutine print_assert_sp
@@ -44,6 +45,7 @@ module test_utils
       write(*, '(A, " :: [", A, "] maximum relative error = ", E11.4)') pass, trim(test_name), relative_error
     else
       write(*, '(A, " :: [", A, "] maximum relative error = ", E11.4)') fail, trim(test_name), relative_error
+      stop 999
     end if
 
   end subroutine print_assert_dp
@@ -58,6 +60,7 @@ module test_utils
       write(*, '(A, " :: [", A, "] maximum absolute error = ", I8)') pass, trim(test_name), abs_error
     else
       write(*, '(A, " :: [", A, "] maximum absolute error = ", I8)') fail, trim(test_name), abs_error
+      stop 999
     end if
 
   end subroutine print_assert_int
