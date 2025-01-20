@@ -41,12 +41,6 @@ jobs:
           persist-credentials: false
         uses: actions/checkout@v4
 
-      # Install Python 3
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
       # Install dependencies
       - name: Install dependencies
         run: |
